@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The Library | House of Hedaux</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='library.css') }}">
+</head>
+<body class="library-room">
+
+    <!-- Protected Content Wrapper -->
+    <div id="protectedContent" style="display:none;">
+
+        <header class="library-header">
+            <a href="{{ url_for('home') }}" class="back-to-house">← Return to the house</a>
+            <h1>The Library</h1>
+            <p class="philosophy">“A house is built of walls and beams; a library is built of memories and dreams.”</p>
+        </header>
+
+        <section class="library-index">
+            <h2>Memoir Index</h2>
+            <ul class="chapter-list">
+                <li><a href="#chapter-dad">📖 Tribute to Dad</a></li>
+                <li><a href="#chapter-origins">📜 Origins of Hedaux</a></li>
+                <li><a href="#chapter-skywatch">🔭 Skywatch Reflections</a></li>
+            </ul>
+        </section>
+
+        <section class="library-chapter" id="chapter-dad">
+            <h3>Tribute to Dad</h3>
+            <div class="chapter-content">
+        <p>My Father, My Compass</p><p>My father, Leslie Hedaux, was a man of many hobbies and ever-changing interests—a restless explorer of the world and of himself. 
+            Born and raised in East London, he carried with him stories of resilience, like the time he was bullied on his way to school and had his lunch money taken. 
+            He could be tough, too—I remember hearing how his own father once chopped up his bike after he’d upset him. But beneath that steel was a man overflowing 
+            with love for his wife, my mum, and for his children and grandchildren.</p><p>Before family life, he travelled the world with the navy. I don’t know much 
+            about those years, but I do know he met my mum in Stanford-le-Hope in the 1970s, where they worked together. They wrote letters while he sailed—pages of 
+            longing and devotion. They moved to South Africa for a time, where my brother Dan was born in 1976. Homesick, they returned to Essex, and I was born in 
+            Orsett in 1978. Dad had so much time for us boys. It felt like he was living the childhood he never had—through us. Most weekends were spent racing 
+            motocross around the country. He gave us an upbringing other kids could only dream of: skiing, go-karting, and summers in Carlucet, South of France. 
+            He adored the culture, the food—especially Rocamadour Cabecous and smoked duck.</p><p>We fished together often, searching for the perfect lake, casting 
+            lines for carp, trout, and salmon. I remember wrapping ourselves in black bin bags in the Scottish rain, laughing through the discomfort. We took 
+            narrowboat trips through English canals, navigating locks and tunnels, fishing off the side. He’d take me to Grays to buy stamps, always making it feel 
+            like it was for me, though I knew it was for him.</p><p>He earned his private pilot’s license and took us flying to different airfields. He loved aircraft, 
+            and he passed that love on to me. I had my first flying lesson at twelve. We flew in formation with a group called the Seaweeds, from Southend to North 
+            Weald.</p><p>He introduced me to the casino. Our first night, we won on roulette—pure beginner’s luck. The second night, we lost it all. That was part of 
+            the lesson, too. We often talked about gambling, not just the games but the psychology, the stories, the odds. At home, we’d host our own casino nights 
+            with a proper setup: green baize, weighted chips, and official blackjack cards. It wasn’t about money. It was about theatre, strategy, and laughter. He 
+            loved the ritual of it all, and I loved sharing it with him.</p><p>In his forties, cancer arrived. He sold his share in the fabrication business he’d 
+            built—a hard decision, but one made for his health. He and Mum moved to Lincolnshire for a quieter life. I’d visit and find him on his PC, immersed in 
+            flight simulators and virtual air traffic control. He kept busy—driving the Spalding river taxi, selling seed at the Deeping St. Nicholas farm shop.
+            </p><p>Later, we discovered World of Tanks. We played for hours. He wasn’t very good—his gun often pointed skyward—but he loved it. Eventually, his 
+            grandson Josh joined us, and the three of us played together. Dad looked to the sky, just like I do. He tinkered with telescopes, collected stamps and 
+            coins, and wore beautiful watches—Rolex, Breitling, and others. When we visited, he’d be on his computer, quiet but comforted by our presence. He’d slice 
+            biltong, mussels, smoked duck, urging us to try. </p><p>In the end, the cancer returned—faster, stronger. Yet he still cared for others, travelling any 
+            distance to help someone in need. He never asked for money. He gave from the heart. In his final months, I’d drive him to hospital for treatment, and 
+            even then, he couldn’t help but nag about my driving. It was his way of staying engaged, of still being my dad. Teaching me, correcting me, loving me—right 
+            to the very end.</p><p>Leslie was a man of motion—always learning, always tinkering, always giving. He lived with intensity and heart, pouring his energy 
+            into his family, his passions, and the skies above. Whether flying planes, racing bikes, collecting stamps, or fishing lochs in bin bags, he made life 
+            feel like an adventure. He gave us more than memories—he gave us momentum. And though he’s gone, the echo of his curiosity, generosity, and quiet strength 
+            still guides me. I see him in the sky, in the coins I inherited, in the way I build this mansion. He was my compass. He still is.</p>
+            </div>
+            <aside class="author-notes">
+                <h4>Author’s Notes</h4>
+                <ul>
+                    <li>Memory Tags: resilience, curiosity, generosity</li>
+                    <li>Written: August 2025</li>
+                    <li>Location: Spalding, England</li>
+                </ul>
+            </aside>
+        </section>
+
+        <footer>
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="localStorage.removeItem('library_lantern_lit'); location.reload();" style="opacity: 0.3; font-size: 0.8em;">
+                🔄 Extinguish Lantern
+                </button>
+            </div>
+        </footer>
+
+
+    </div> <!-- End protectedContent -->
+
+<!-- Lantern Modal Include -->
+{% set passphrase = "Leslie's Lantern" %}
+{% set room_name = "Library" %}
+{% include 'lantern_modal.html' %}
+
+<script>
+  const lanternKey = "library_lantern_lit";
+
+  window.onload = function() {
+    console.log("Lantern check running...");
+    if (localStorage.getItem(lanternKey) === "true") {
+      document.getElementById("lanternModal").style.display = "none";
+      document.getElementById("protectedContent").style.display = "block";
+    } else {
+      document.getElementById("lanternModal").style.display = "flex";
+    }
+  };
+
+  function checkPassphrase() {
+    let enteredPassphrase = document.getElementById("passphraseInput").value;
+    enteredPassphrase = enteredPassphrase.replace(/[’‘]/g, "'"); // sanitize curly apostrophes
+    console.log("Entered:", enteredPassphrase);
+
+    if (enteredPassphrase === "Leslie's Lantern") {
+      localStorage.setItem(lanternKey, "true");
+      document.getElementById("lanternModal").style.display = "none";
+      document.getElementById("protectedContent").style.display = "block";
+    } else {
+      alert("Incorrect passphrase. Try again.");
+    }
+  }
+</script>
+
+</body>
+</html>
+

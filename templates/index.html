@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>House of Hedaux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="site-header">
+    <div class="site-title">House of Hedaux</div>
+    <div class="site-subtitle">A digital sanctuary of legacy and wonder</div>
+  </div>
+  <div class="blueprint-container">
+    <img src="{{ url_for('static', filename='assets/HoH Blueprint V3.png') }}" alt="Blueprint" class="blueprint-img" />
+    
+    <div class="zone tree-zone" title="Family Tree">
+      <span class="zone-label">Garden</span>
+    </div>
+    
+<div class="zone skywatch-zone" title="Skywatch">
+  <a href="{{ url_for('skywatch') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Observatory</span>
+  </a>
+</div>
+
+<div class="zone tesla-zone" title="Tesla">
+  <a href="{{ url_for('garage') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Garage</span>
+  </a>
+</div>
+
+<div class="zone welcome-zone" title="About">
+  <a href="{{ url_for('foyer') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Foyer</span>
+  </a>
+</div>
+
+<div class="zone library-zone" title="Hedaux Tome">
+  <a href="{{ url_for('library') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Library</span>
+  </a>
+</div>
+
+<div class="zone phoebe-zone" title="Phoebe Dance">
+  <a href="{{ url_for('phoebe') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Bedroom 5</span>
+  </a>
+</div>
+
+<div class="zone career-zone" title="My Career">
+  <a href="{{ url_for('career') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Study</span>
+  </a>
+</div>
+    
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+<footer style="text-align: center; font-size: 0.9em; color: #aaaaaa; margin-top: 40px; padding: 20px 0;">
+  © 2025 Nathan Hedaux. House of Hedaux™ is a personal archive and creative concept. All rights reserved.
+</footer>
+</html>

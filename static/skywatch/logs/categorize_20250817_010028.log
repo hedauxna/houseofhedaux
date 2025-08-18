@@ -1,0 +1,836 @@
+2025-08-17 01:00:28,863 - INFO - 🕒 Categorization run started at 2025-08-17 01:00:28
+2025-08-17 01:00:28,914 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-08-20250816163049.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:28,921 - INFO - Moved 0-08-20250816163049.mkv → review
+2025-08-17 01:00:28,924 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-09-20250816163511.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:28,931 - INFO - Moved 0-09-20250816163511.mkv → review
+2025-08-17 01:00:28,935 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-10-20250816163958.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:28,941 - INFO - Moved 0-10-20250816163958.mkv → review
+2025-08-17 01:00:28,945 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-11-20250816164304.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:28,951 - INFO - Moved 0-11-20250816164304.mkv → review
+2025-08-17 01:00:28,955 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-12-20250816164813.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:28,961 - INFO - Moved 0-12-20250816164813.mkv → review
+2025-08-17 01:00:28,965 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-13-20250816170048.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:28,971 - INFO - Moved 0-13-20250816170048.mkv → review
+2025-08-17 01:00:28,975 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-14-20250816170349.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:28,982 - INFO - Moved 0-14-20250816170349.mkv → review
+2025-08-17 01:00:28,986 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-15-20250816171039.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:28,993 - INFO - Moved 0-15-20250816171039.mkv → review
+2025-08-17 01:00:28,996 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-16-20250816171345.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,015 - INFO - Moved 0-16-20250816171345.mkv → review
+2025-08-17 01:00:29,019 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-17-20250816172435.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,025 - INFO - Moved 0-17-20250816172435.mkv → review
+2025-08-17 01:00:29,029 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-18-20250816175409.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,036 - INFO - Moved 0-18-20250816175409.mkv → review
+2025-08-17 01:00:29,040 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-19-20250816184141.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,046 - INFO - Moved 0-19-20250816184141.mkv → review
+2025-08-17 01:00:29,052 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-20-20250816185347.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,058 - INFO - Moved 0-20-20250816185347.mkv → review
+2025-08-17 01:00:29,063 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-21-20250816194301.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,070 - INFO - Moved 0-21-20250816194301.mkv → review
+2025-08-17 01:00:29,075 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-22-20250816194709.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,081 - INFO - Moved 0-22-20250816194709.mkv → review
+2025-08-17 01:00:29,086 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-23-20250816202344.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,093 - INFO - Moved 0-23-20250816202344.mkv → review
+2025-08-17 01:00:29,098 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-24-20250816202807.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,104 - INFO - Moved 0-24-20250816202807.mkv → review
+2025-08-17 01:00:29,116 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-26-20250817002146.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,123 - INFO - Moved 0-26-20250817002146.mkv → review
+2025-08-17 01:00:29,133 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-27-20250817002357.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,140 - INFO - Moved 0-27-20250817002357.mkv → review
+2025-08-17 01:00:29,145 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-28-20250817003138.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,152 - INFO - Moved 0-28-20250817003138.mkv → review
+2025-08-17 01:00:29,172 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-29-20250817003431.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,179 - INFO - Moved 0-29-20250817003431.mkv → review
+2025-08-17 01:00:29,189 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-29-20250817003531.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,196 - INFO - Moved 0-29-20250817003531.mkv → review
+2025-08-17 01:00:29,205 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-30-20250817003936.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,211 - INFO - Moved 0-30-20250817003936.mkv → review
+2025-08-17 01:00:29,224 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-31-20250817004412.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,230 - INFO - Moved 0-31-20250817004412.mkv → review
+2025-08-17 01:00:29,246 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-32-20250817004650.mkv: cannot identify image file <_io.BytesIO object at 0x78ddd86a7d80>
+2025-08-17 01:00:29,253 - INFO - Moved 0-32-20250817004650.mkv → review
+2025-08-17 01:00:29,889 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:29,889 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:29,890 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:29,898 - INFO - Moved 20250816163049-00.jpg → review
+2025-08-17 01:00:29,983 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:29,983 - INFO - Prediction: screw (0.05)
+2025-08-17 01:00:29,983 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:29,990 - INFO - Moved 20250816163049-01.jpg → review
+2025-08-17 01:00:30,074 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:30,075 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:30,075 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:30,081 - INFO - Moved 20250816163050-00.jpg → review
+2025-08-17 01:00:30,158 - INFO - Prediction: tick (0.56)
+2025-08-17 01:00:30,164 - INFO - Moved 20250816163050-01.jpg → unknown
+2025-08-17 01:00:30,237 - INFO - Prediction: tick (0.87)
+2025-08-17 01:00:30,243 - INFO - Moved 20250816163051-00.jpg → unknown
+2025-08-17 01:00:30,322 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:30,322 - INFO - Prediction: screw (0.05)
+2025-08-17 01:00:30,322 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:30,328 - INFO - Moved 20250816163511-00.jpg → review
+2025-08-17 01:00:30,407 - INFO - Prediction: screw (0.05)
+2025-08-17 01:00:30,407 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:30,408 - INFO - Prediction: envelope (0.05)
+2025-08-17 01:00:30,413 - INFO - Moved 20250816163511-01.jpg → review
+2025-08-17 01:00:30,489 - INFO - Prediction: tick (0.05)
+2025-08-17 01:00:30,490 - INFO - Prediction: ant (0.05)
+2025-08-17 01:00:30,490 - INFO - Prediction: envelope (0.03)
+2025-08-17 01:00:30,496 - INFO - Moved 20250816163511-02.jpg → review
+2025-08-17 01:00:30,572 - INFO - Prediction: envelope (0.08)
+2025-08-17 01:00:30,572 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:30,572 - INFO - Prediction: cup (0.03)
+2025-08-17 01:00:30,579 - INFO - Moved 20250816163512-00.jpg → review
+2025-08-17 01:00:30,652 - INFO - Prediction: envelope (0.06)
+2025-08-17 01:00:30,652 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:30,652 - INFO - Prediction: matchstick (0.03)
+2025-08-17 01:00:30,658 - INFO - Moved 20250816163513-00.jpg → review
+2025-08-17 01:00:30,730 - INFO - Prediction: screw (0.07)
+2025-08-17 01:00:30,730 - INFO - Prediction: matchstick (0.05)
+2025-08-17 01:00:30,730 - INFO - Prediction: envelope (0.05)
+2025-08-17 01:00:30,736 - INFO - Moved 20250816163958-00.jpg → review
+2025-08-17 01:00:30,814 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:30,814 - INFO - Prediction: matchstick (0.05)
+2025-08-17 01:00:30,814 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:30,823 - INFO - Moved 20250816163958-01.jpg → review
+2025-08-17 01:00:30,906 - INFO - Prediction: tick (0.08)
+2025-08-17 01:00:30,906 - INFO - Prediction: ant (0.06)
+2025-08-17 01:00:30,906 - INFO - Prediction: screw (0.03)
+2025-08-17 01:00:30,914 - INFO - Moved 20250816163959-00.jpg → review
+2025-08-17 01:00:30,989 - INFO - Prediction: tick (0.93)
+2025-08-17 01:00:30,994 - INFO - Moved 20250816164000-00.jpg → unknown
+2025-08-17 01:00:31,075 - INFO - Prediction: tick (0.62)
+2025-08-17 01:00:31,082 - INFO - Moved 20250816164000-01.jpg → unknown
+2025-08-17 01:00:31,160 - INFO - Prediction: ant (0.52)
+2025-08-17 01:00:31,166 - INFO - Moved 20250816164001-00.jpg → unknown
+2025-08-17 01:00:31,238 - INFO - Prediction: wall_clock (0.06)
+2025-08-17 01:00:31,238 - INFO - Prediction: screw (0.05)
+2025-08-17 01:00:31,238 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:31,245 - INFO - Moved 20250816164304-00.jpg → review
+2025-08-17 01:00:31,314 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:31,314 - INFO - Prediction: screw (0.05)
+2025-08-17 01:00:31,314 - INFO - Prediction: tick (0.04)
+2025-08-17 01:00:31,321 - INFO - Moved 20250816164304-01.jpg → review
+2025-08-17 01:00:31,396 - INFO - Prediction: tick (0.06)
+2025-08-17 01:00:31,396 - INFO - Prediction: ant (0.04)
+2025-08-17 01:00:31,396 - INFO - Prediction: matchstick (0.03)
+2025-08-17 01:00:31,403 - INFO - Moved 20250816164304-02.jpg → review
+2025-08-17 01:00:31,480 - INFO - Prediction: envelope (0.08)
+2025-08-17 01:00:31,481 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:31,481 - INFO - Prediction: cup (0.03)
+2025-08-17 01:00:31,487 - INFO - Moved 20250816164305-00.jpg → review
+2025-08-17 01:00:31,569 - INFO - Prediction: envelope (0.07)
+2025-08-17 01:00:31,569 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:31,569 - INFO - Prediction: cup (0.02)
+2025-08-17 01:00:31,576 - INFO - Moved 20250816164306-00.jpg → review
+2025-08-17 01:00:31,650 - INFO - Prediction: envelope (0.08)
+2025-08-17 01:00:31,650 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:31,651 - INFO - Prediction: cup (0.03)
+2025-08-17 01:00:31,657 - INFO - Moved 20250816164306-01.jpg → review
+2025-08-17 01:00:31,739 - INFO - Prediction: envelope (0.08)
+2025-08-17 01:00:31,739 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:31,739 - INFO - Prediction: crane (0.02)
+2025-08-17 01:00:31,747 - INFO - Moved 20250816164307-00.jpg → review
+2025-08-17 01:00:31,821 - INFO - Prediction: envelope (0.07)
+2025-08-17 01:00:31,821 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:31,821 - INFO - Prediction: matchstick (0.03)
+2025-08-17 01:00:31,828 - INFO - Moved 20250816164307-01.jpg → review
+2025-08-17 01:00:31,899 - INFO - Prediction: screw (0.05)
+2025-08-17 01:00:31,900 - INFO - Prediction: matchstick (0.05)
+2025-08-17 01:00:31,900 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:31,906 - INFO - Moved 20250816164813-01.jpg → review
+2025-08-17 01:00:31,980 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:31,981 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:31,981 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:31,986 - INFO - Moved 20250816164814-00.jpg → review
+2025-08-17 01:00:32,063 - INFO - Prediction: tick (0.11)
+2025-08-17 01:00:32,063 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:32,064 - INFO - Prediction: ant (0.05)
+2025-08-17 01:00:32,070 - INFO - Moved 20250816164815-00.jpg → review
+2025-08-17 01:00:32,154 - INFO - Prediction: warplane (0.22)
+2025-08-17 01:00:32,161 - INFO - Moved 20250816164815-01.jpg → unknown
+2025-08-17 01:00:32,243 - INFO - Prediction: screw (0.07)
+2025-08-17 01:00:32,243 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:32,243 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:32,249 - INFO - Moved 20250816170048-00.jpg → review
+2025-08-17 01:00:32,328 - INFO - Prediction: tick (0.08)
+2025-08-17 01:00:32,328 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:32,329 - INFO - Prediction: wall_clock (0.06)
+2025-08-17 01:00:32,334 - INFO - Moved 20250816170048-01.jpg → review
+2025-08-17 01:00:32,413 - INFO - Prediction: tick (0.52)
+2025-08-17 01:00:32,420 - INFO - Moved 20250816170049-00.jpg → unknown
+2025-08-17 01:00:32,496 - INFO - Prediction: tick (0.17)
+2025-08-17 01:00:32,496 - INFO - Prediction: ant (0.05)
+2025-08-17 01:00:32,497 - INFO - Prediction: parachute (0.04)
+2025-08-17 01:00:32,505 - INFO - Moved 20250816170050-00.jpg → review
+2025-08-17 01:00:32,587 - INFO - Prediction: screw (0.07)
+2025-08-17 01:00:32,588 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:32,588 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:32,594 - INFO - Moved 20250816170349-00.jpg → review
+2025-08-17 01:00:32,669 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:32,670 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:32,670 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:32,678 - INFO - Moved 20250816170349-01.jpg → review
+2025-08-17 01:00:32,753 - INFO - Prediction: screw (0.07)
+2025-08-17 01:00:32,753 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:32,754 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:32,760 - INFO - Moved 20250816170350-00.jpg → review
+2025-08-17 01:00:32,837 - INFO - Prediction: kite (0.08)
+2025-08-17 01:00:32,837 - INFO - Prediction: vulture (0.06)
+2025-08-17 01:00:32,837 - INFO - Prediction: white_stork (0.06)
+2025-08-17 01:00:32,844 - INFO - Moved 20250816170350-01.jpg → review
+2025-08-17 01:00:32,918 - INFO - Prediction: envelope (0.06)
+2025-08-17 01:00:32,918 - INFO - Prediction: warplane (0.05)
+2025-08-17 01:00:32,919 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:32,925 - INFO - Moved 20250816170351-00.jpg → review
+2025-08-17 01:00:32,999 - INFO - Prediction: screw (0.07)
+2025-08-17 01:00:32,999 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:32,999 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:33,006 - INFO - Moved 20250816171039-00.jpg → review
+2025-08-17 01:00:33,083 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:33,083 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:33,083 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:33,089 - INFO - Moved 20250816171039-01.jpg → review
+2025-08-17 01:00:33,168 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:33,168 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:33,168 - INFO - Prediction: envelope (0.05)
+2025-08-17 01:00:33,173 - INFO - Moved 20250816171040-00.jpg → review
+2025-08-17 01:00:33,249 - INFO - Prediction: tick (0.05)
+2025-08-17 01:00:33,249 - INFO - Prediction: screw (0.05)
+2025-08-17 01:00:33,249 - INFO - Prediction: warplane (0.05)
+2025-08-17 01:00:33,255 - INFO - Moved 20250816171040-01.jpg → review
+2025-08-17 01:00:33,327 - INFO - Prediction: tick (0.54)
+2025-08-17 01:00:33,332 - INFO - Moved 20250816171041-00.jpg → unknown
+2025-08-17 01:00:33,404 - INFO - Prediction: screw (0.07)
+2025-08-17 01:00:33,404 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:33,404 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:33,410 - INFO - Moved 20250816171345-00.jpg → review
+2025-08-17 01:00:33,502 - INFO - Prediction: screw (0.07)
+2025-08-17 01:00:33,502 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:33,502 - INFO - Prediction: wall_clock (0.05)
+2025-08-17 01:00:33,511 - INFO - Moved 20250816171346-00.jpg → review
+2025-08-17 01:00:33,611 - INFO - Prediction: matchstick (0.06)
+2025-08-17 01:00:33,611 - INFO - Prediction: screw (0.06)
+2025-08-17 01:00:33,611 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:33,621 - INFO - Moved 20250816171346-01.jpg → review
+2025-08-17 01:00:33,709 - INFO - Prediction: tick (0.50)
+2025-08-17 01:00:33,716 - INFO - Moved 20250816171347-00.jpg → unknown
+2025-08-17 01:00:33,798 - INFO - Prediction: wall_clock (0.09)
+2025-08-17 01:00:33,799 - INFO - Prediction: envelope (0.06)
+2025-08-17 01:00:33,799 - INFO - Prediction: matchstick (0.05)
+2025-08-17 01:00:33,805 - INFO - Moved 20250816172435-00.jpg → review
+2025-08-17 01:00:33,885 - INFO - Prediction: wall_clock (0.10)
+2025-08-17 01:00:33,885 - INFO - Prediction: envelope (0.05)
+2025-08-17 01:00:33,885 - INFO - Prediction: matchstick (0.04)
+2025-08-17 01:00:33,892 - INFO - Moved 20250816172435-01.jpg → review
+2025-08-17 01:00:33,968 - INFO - Prediction: wall_clock (0.12)
+2025-08-17 01:00:33,968 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:33,969 - INFO - Prediction: matchstick (0.04)
+2025-08-17 01:00:33,975 - INFO - Moved 20250816172436-00.jpg → review
+2025-08-17 01:00:34,055 - INFO - Prediction: warplane (0.18)
+2025-08-17 01:00:34,055 - INFO - Prediction: parachute (0.18)
+2025-08-17 01:00:34,055 - INFO - Prediction: space_shuttle (0.05)
+2025-08-17 01:00:34,061 - INFO - Moved 20250816172436-01.jpg → review
+2025-08-17 01:00:34,140 - INFO - Prediction: envelope (0.07)
+2025-08-17 01:00:34,140 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:34,140 - INFO - Prediction: matchstick (0.04)
+2025-08-17 01:00:34,147 - INFO - Moved 20250816172505-03.jpg → review
+2025-08-17 01:00:34,241 - INFO - Prediction: envelope (0.07)
+2025-08-17 01:00:34,242 - INFO - Prediction: wall_clock (0.04)
+2025-08-17 01:00:34,242 - INFO - Prediction: matchstick (0.03)
+2025-08-17 01:00:34,249 - INFO - Moved 20250816172506-00.jpg → review
+2025-08-17 01:00:34,331 - INFO - Prediction: tick (0.38)
+2025-08-17 01:00:34,337 - INFO - Moved 20250816172507-00.jpg → unknown
+2025-08-17 01:00:34,423 - INFO - Prediction: envelope (0.08)
+2025-08-17 01:00:34,423 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:34,424 - INFO - Prediction: matchstick (0.03)
+2025-08-17 01:00:34,430 - INFO - Moved 20250816172507-01.jpg → review
+2025-08-17 01:00:34,514 - INFO - Prediction: ant (0.05)
+2025-08-17 01:00:34,514 - INFO - Prediction: tick (0.04)
+2025-08-17 01:00:34,514 - INFO - Prediction: parachute (0.04)
+2025-08-17 01:00:34,521 - INFO - Moved 20250816172508-00.jpg → review
+2025-08-17 01:00:34,609 - INFO - Prediction: tick (0.81)
+2025-08-17 01:00:34,617 - INFO - Moved 20250816175409-01.jpg → unknown
+2025-08-17 01:00:34,705 - INFO - Prediction: tick (0.41)
+2025-08-17 01:00:34,712 - INFO - Moved 20250816175410-00.jpg → unknown
+2025-08-17 01:00:34,803 - INFO - Prediction: parachute (0.22)
+2025-08-17 01:00:34,810 - INFO - Moved 20250816175410-01.jpg → unknown
+2025-08-17 01:00:34,892 - INFO - Prediction: envelope (0.09)
+2025-08-17 01:00:34,893 - INFO - Prediction: tick (0.08)
+2025-08-17 01:00:34,893 - INFO - Prediction: matchstick (0.03)
+2025-08-17 01:00:34,901 - INFO - Moved 20250816175411-00.jpg → review
+2025-08-17 01:00:34,983 - INFO - Prediction: geyser (0.13)
+2025-08-17 01:00:34,983 - INFO - Prediction: parachute (0.06)
+2025-08-17 01:00:34,983 - INFO - Prediction: fountain (0.04)
+2025-08-17 01:00:34,990 - INFO - Moved 20250816184141-01.jpg → review
+2025-08-17 01:00:35,065 - INFO - Prediction: parachute (0.10)
+2025-08-17 01:00:35,065 - INFO - Prediction: geyser (0.09)
+2025-08-17 01:00:35,066 - INFO - Prediction: fountain (0.07)
+2025-08-17 01:00:35,072 - INFO - Moved 20250816184141-02.jpg → review
+2025-08-17 01:00:35,143 - INFO - Prediction: fountain (0.11)
+2025-08-17 01:00:35,144 - INFO - Prediction: geyser (0.10)
+2025-08-17 01:00:35,144 - INFO - Prediction: parachute (0.10)
+2025-08-17 01:00:35,150 - INFO - Moved 20250816184142-00.jpg → review
+2025-08-17 01:00:35,224 - INFO - Prediction: parachute (0.75)
+2025-08-17 01:00:35,231 - INFO - Moved 20250816184142-01.jpg → unknown
+2025-08-17 01:00:35,313 - INFO - Prediction: bubble (0.04)
+2025-08-17 01:00:35,314 - INFO - Prediction: flagpole (0.03)
+2025-08-17 01:00:35,314 - INFO - Prediction: spotlight (0.03)
+2025-08-17 01:00:35,321 - INFO - Moved 20250816185347-00.jpg → review
+2025-08-17 01:00:35,399 - INFO - Prediction: bubble (0.04)
+2025-08-17 01:00:35,399 - INFO - Prediction: flagpole (0.04)
+2025-08-17 01:00:35,399 - INFO - Prediction: vulture (0.03)
+2025-08-17 01:00:35,406 - INFO - Moved 20250816185347-01.jpg → review
+2025-08-17 01:00:35,480 - INFO - Prediction: parachute (0.03)
+2025-08-17 01:00:35,480 - INFO - Prediction: bubble (0.03)
+2025-08-17 01:00:35,481 - INFO - Prediction: flagpole (0.03)
+2025-08-17 01:00:35,487 - INFO - Moved 20250816185348-00.jpg → review
+2025-08-17 01:00:35,562 - INFO - Prediction: parachute (0.10)
+2025-08-17 01:00:35,563 - INFO - Prediction: airship (0.03)
+2025-08-17 01:00:35,563 - INFO - Prediction: crane (0.02)
+2025-08-17 01:00:35,571 - INFO - Moved 20250816185348-01.jpg → review
+2025-08-17 01:00:35,650 - INFO - Prediction: parachute (0.15)
+2025-08-17 01:00:35,651 - INFO - Prediction: bubble (0.05)
+2025-08-17 01:00:35,651 - INFO - Prediction: airship (0.04)
+2025-08-17 01:00:35,659 - INFO - Moved 20250816185349-00.jpg → review
+2025-08-17 01:00:35,739 - INFO - Prediction: spotlight (0.17)
+2025-08-17 01:00:35,739 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:35,739 - INFO - Prediction: lampshade (0.02)
+2025-08-17 01:00:35,746 - INFO - Moved 20250816194301-01.jpg → review
+2025-08-17 01:00:35,832 - INFO - Prediction: spotlight (0.18)
+2025-08-17 01:00:35,833 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:35,833 - INFO - Prediction: lampshade (0.02)
+2025-08-17 01:00:35,840 - INFO - Moved 20250816194302-00.jpg → review
+2025-08-17 01:00:35,925 - INFO - Prediction: spotlight (0.26)
+2025-08-17 01:00:35,933 - INFO - Moved 20250816194302-01.jpg → unknown
+2025-08-17 01:00:36,016 - INFO - Prediction: tick (0.85)
+2025-08-17 01:00:36,022 - INFO - Moved 20250816194303-00.jpg → unknown
+2025-08-17 01:00:36,097 - INFO - Prediction: tick (0.25)
+2025-08-17 01:00:36,103 - INFO - Moved 20250816194304-00.jpg → unknown
+2025-08-17 01:00:36,186 - INFO - Prediction: parachute (0.36)
+2025-08-17 01:00:36,193 - INFO - Moved 20250816194709-01.jpg → unknown
+2025-08-17 01:00:36,280 - INFO - Prediction: parachute (0.62)
+2025-08-17 01:00:36,287 - INFO - Moved 20250816194710-00.jpg → unknown
+2025-08-17 01:00:36,371 - INFO - Prediction: parachute (0.52)
+2025-08-17 01:00:36,378 - INFO - Moved 20250816194711-00.jpg → unknown
+2025-08-17 01:00:36,458 - INFO - Prediction: parachute (0.34)
+2025-08-17 01:00:36,465 - INFO - Moved 20250816194711-01.jpg → unknown
+2025-08-17 01:00:36,545 - INFO - Prediction: spotlight (0.12)
+2025-08-17 01:00:36,546 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:36,546 - INFO - Prediction: lampshade (0.03)
+2025-08-17 01:00:36,553 - INFO - Moved 20250816202344-01.jpg → review
+2025-08-17 01:00:36,630 - INFO - Prediction: spotlight (0.11)
+2025-08-17 01:00:36,630 - INFO - Prediction: lampshade (0.02)
+2025-08-17 01:00:36,630 - INFO - Prediction: wall_clock (0.02)
+2025-08-17 01:00:36,639 - INFO - Moved 20250816202344-02.jpg → review
+2025-08-17 01:00:36,716 - INFO - Prediction: spotlight (0.10)
+2025-08-17 01:00:36,717 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:36,717 - INFO - Prediction: crane (0.02)
+2025-08-17 01:00:36,723 - INFO - Moved 20250816202345-00.jpg → review
+2025-08-17 01:00:36,796 - INFO - Prediction: kite (0.22)
+2025-08-17 01:00:36,802 - INFO - Moved 20250816202346-00.jpg → unknown
+2025-08-17 01:00:36,874 - INFO - Prediction: spotlight (0.15)
+2025-08-17 01:00:36,874 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:36,874 - INFO - Prediction: lampshade (0.03)
+2025-08-17 01:00:36,880 - INFO - Moved 20250816202807-00.jpg → review
+2025-08-17 01:00:36,954 - INFO - Prediction: spotlight (0.17)
+2025-08-17 01:00:36,954 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:36,954 - INFO - Prediction: lampshade (0.03)
+2025-08-17 01:00:36,961 - INFO - Moved 20250816202807-01.jpg → review
+2025-08-17 01:00:37,035 - INFO - Prediction: spotlight (0.18)
+2025-08-17 01:00:37,035 - INFO - Prediction: lampshade (0.03)
+2025-08-17 01:00:37,035 - INFO - Prediction: wall_clock (0.03)
+2025-08-17 01:00:37,041 - INFO - Moved 20250816202807-02.jpg → review
+2025-08-17 01:00:37,112 - INFO - Prediction: spotlight (0.07)
+2025-08-17 01:00:37,112 - INFO - Prediction: white_stork (0.05)
+2025-08-17 01:00:37,112 - INFO - Prediction: vase (0.03)
+2025-08-17 01:00:37,119 - INFO - Moved 20250816202808-00.jpg → review
+2025-08-17 01:00:37,189 - INFO - Prediction: airship (0.45)
+2025-08-17 01:00:37,195 - INFO - Moved 20250816202809-00.jpg → plane
+2025-08-17 01:00:37,266 - INFO - Prediction: tick (0.27)
+2025-08-17 01:00:37,272 - INFO - Moved 20250816202809-01.jpg → unknown
+2025-08-17 01:00:37,346 - INFO - Prediction: walking_stick (0.06)
+2025-08-17 01:00:37,346 - INFO - Prediction: knot (0.06)
+2025-08-17 01:00:37,346 - INFO - Prediction: chain (0.05)
+2025-08-17 01:00:37,352 - INFO - Moved 20250817002146-01.jpg → review
+2025-08-17 01:00:37,439 - INFO - Prediction: knot (0.08)
+2025-08-17 01:00:37,439 - INFO - Prediction: walking_stick (0.06)
+2025-08-17 01:00:37,439 - INFO - Prediction: chain (0.05)
+2025-08-17 01:00:37,447 - INFO - Moved 20250817002146-02.jpg → review
+2025-08-17 01:00:37,536 - INFO - Prediction: bathtub (0.08)
+2025-08-17 01:00:37,536 - INFO - Prediction: hook (0.06)
+2025-08-17 01:00:37,536 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:37,546 - INFO - Moved 20250817002147-00.jpg → review
+2025-08-17 01:00:37,635 - INFO - Prediction: hand_blower (0.07)
+2025-08-17 01:00:37,635 - INFO - Prediction: shower_curtain (0.06)
+2025-08-17 01:00:37,636 - INFO - Prediction: bathtub (0.06)
+2025-08-17 01:00:37,643 - INFO - Moved 20250817002149-00.jpg → review
+2025-08-17 01:00:37,727 - INFO - Prediction: oscilloscope (0.06)
+2025-08-17 01:00:37,728 - INFO - Prediction: hand_blower (0.06)
+2025-08-17 01:00:37,728 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:37,736 - INFO - Moved 20250817002150-00.jpg → review
+2025-08-17 01:00:37,819 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:37,820 - INFO - Prediction: cassette (0.07)
+2025-08-17 01:00:37,820 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:37,827 - INFO - Moved 20250817002151-00.jpg → review
+2025-08-17 01:00:37,910 - INFO - Prediction: bathtub (0.09)
+2025-08-17 01:00:37,910 - INFO - Prediction: oscilloscope (0.06)
+2025-08-17 01:00:37,910 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:37,918 - INFO - Moved 20250817002151-01.jpg → review
+2025-08-17 01:00:37,999 - INFO - Prediction: envelope (0.10)
+2025-08-17 01:00:37,999 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:37,999 - INFO - Prediction: hand_blower (0.05)
+2025-08-17 01:00:38,006 - INFO - Moved 20250817002151-02.jpg → review
+2025-08-17 01:00:38,087 - INFO - Prediction: envelope (0.06)
+2025-08-17 01:00:38,087 - INFO - Prediction: shower_curtain (0.05)
+2025-08-17 01:00:38,087 - INFO - Prediction: hand_blower (0.05)
+2025-08-17 01:00:38,094 - INFO - Moved 20250817002152-00.jpg → review
+2025-08-17 01:00:38,174 - INFO - Prediction: knot (0.06)
+2025-08-17 01:00:38,175 - INFO - Prediction: chain (0.05)
+2025-08-17 01:00:38,175 - INFO - Prediction: walking_stick (0.05)
+2025-08-17 01:00:38,182 - INFO - Moved 20250817002236-00.jpg → review
+2025-08-17 01:00:38,263 - INFO - Prediction: chain (0.05)
+2025-08-17 01:00:38,264 - INFO - Prediction: knot (0.05)
+2025-08-17 01:00:38,264 - INFO - Prediction: hook (0.04)
+2025-08-17 01:00:38,271 - INFO - Moved 20250817002236-01.jpg → review
+2025-08-17 01:00:38,349 - INFO - Prediction: wing (0.05)
+2025-08-17 01:00:38,349 - INFO - Prediction: hook (0.04)
+2025-08-17 01:00:38,349 - INFO - Prediction: walking_stick (0.04)
+2025-08-17 01:00:38,356 - INFO - Moved 20250817002237-00.jpg → review
+2025-08-17 01:00:38,440 - INFO - Prediction: modem (0.09)
+2025-08-17 01:00:38,440 - INFO - Prediction: oscilloscope (0.05)
+2025-08-17 01:00:38,441 - INFO - Prediction: iron (0.05)
+2025-08-17 01:00:38,447 - INFO - Moved 20250817002238-00.jpg → review
+2025-08-17 01:00:38,530 - INFO - Prediction: modem (0.08)
+2025-08-17 01:00:38,530 - INFO - Prediction: oscilloscope (0.06)
+2025-08-17 01:00:38,530 - INFO - Prediction: cassette (0.04)
+2025-08-17 01:00:38,539 - INFO - Moved 20250817002240-00.jpg → review
+2025-08-17 01:00:38,611 - INFO - Prediction: modem (0.11)
+2025-08-17 01:00:38,611 - INFO - Prediction: oscilloscope (0.06)
+2025-08-17 01:00:38,611 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:38,618 - INFO - Moved 20250817002240-01.jpg → review
+2025-08-17 01:00:38,691 - INFO - Prediction: modem (0.09)
+2025-08-17 01:00:38,691 - INFO - Prediction: envelope (0.05)
+2025-08-17 01:00:38,691 - INFO - Prediction: iron (0.05)
+2025-08-17 01:00:38,698 - INFO - Moved 20250817002241-00.jpg → review
+2025-08-17 01:00:38,769 - INFO - Prediction: modem (0.10)
+2025-08-17 01:00:38,769 - INFO - Prediction: bathtub (0.06)
+2025-08-17 01:00:38,770 - INFO - Prediction: cassette (0.06)
+2025-08-17 01:00:38,776 - INFO - Moved 20250817002241-01.jpg → review
+2025-08-17 01:00:38,855 - INFO - Prediction: wing (0.07)
+2025-08-17 01:00:38,855 - INFO - Prediction: bullet_train (0.06)
+2025-08-17 01:00:38,855 - INFO - Prediction: hook (0.03)
+2025-08-17 01:00:38,862 - INFO - Moved 20250817002357-02.jpg → review
+2025-08-17 01:00:38,938 - INFO - Prediction: bullet_train (0.07)
+2025-08-17 01:00:38,938 - INFO - Prediction: wing (0.06)
+2025-08-17 01:00:38,938 - INFO - Prediction: modem (0.03)
+2025-08-17 01:00:38,945 - INFO - Moved 20250817002358-00.jpg → review
+2025-08-17 01:00:39,030 - INFO - Prediction: bathtub (0.20)
+2025-08-17 01:00:39,037 - INFO - Moved 20250817002358-01.jpg → unknown
+2025-08-17 01:00:39,139 - INFO - Prediction: bathtub (0.11)
+2025-08-17 01:00:39,139 - INFO - Prediction: modem (0.09)
+2025-08-17 01:00:39,139 - INFO - Prediction: mouse (0.06)
+2025-08-17 01:00:39,146 - INFO - Moved 20250817002359-00.jpg → review
+2025-08-17 01:00:39,232 - INFO - Prediction: bathtub (0.13)
+2025-08-17 01:00:39,232 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:39,232 - INFO - Prediction: hook (0.03)
+2025-08-17 01:00:39,239 - INFO - Moved 20250817002400-00.jpg → review
+2025-08-17 01:00:39,317 - INFO - Prediction: bathtub (0.12)
+2025-08-17 01:00:39,317 - INFO - Prediction: shower_curtain (0.12)
+2025-08-17 01:00:39,318 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:39,324 - INFO - Moved 20250817002400-01.jpg → review
+2025-08-17 01:00:39,398 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:39,398 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:39,399 - INFO - Prediction: binder (0.05)
+2025-08-17 01:00:39,406 - INFO - Moved 20250817002401-00.jpg → review
+2025-08-17 01:00:39,488 - INFO - Prediction: bathtub (0.11)
+2025-08-17 01:00:39,488 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:39,488 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:39,496 - INFO - Moved 20250817002402-00.jpg → review
+2025-08-17 01:00:39,574 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:39,574 - INFO - Prediction: bathtub (0.06)
+2025-08-17 01:00:39,574 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:39,581 - INFO - Moved 20250817002402-01.jpg → review
+2025-08-17 01:00:39,657 - INFO - Prediction: bathtub (0.09)
+2025-08-17 01:00:39,658 - INFO - Prediction: shower_curtain (0.08)
+2025-08-17 01:00:39,658 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:39,665 - INFO - Moved 20250817002403-00.jpg → review
+2025-08-17 01:00:39,742 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:39,742 - INFO - Prediction: shower_curtain (0.05)
+2025-08-17 01:00:39,742 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:39,749 - INFO - Moved 20250817002404-00.jpg → review
+2025-08-17 01:00:39,819 - INFO - Prediction: bathtub (0.14)
+2025-08-17 01:00:39,820 - INFO - Prediction: shower_curtain (0.06)
+2025-08-17 01:00:39,820 - INFO - Prediction: oscilloscope (0.04)
+2025-08-17 01:00:39,826 - INFO - Moved 20250817002404-01.jpg → review
+2025-08-17 01:00:39,896 - INFO - Prediction: wing (0.27)
+2025-08-17 01:00:39,902 - INFO - Moved 20250817003138-01.jpg → unknown
+2025-08-17 01:00:39,975 - INFO - Prediction: wing (0.58)
+2025-08-17 01:00:39,981 - INFO - Moved 20250817003139-00.jpg → unknown
+2025-08-17 01:00:40,056 - INFO - Prediction: wing (0.21)
+2025-08-17 01:00:40,062 - INFO - Moved 20250817003140-00.jpg → unknown
+2025-08-17 01:00:40,130 - INFO - Prediction: wing (0.26)
+2025-08-17 01:00:40,136 - INFO - Moved 20250817003140-01.jpg → unknown
+2025-08-17 01:00:40,211 - INFO - Prediction: wing (0.19)
+2025-08-17 01:00:40,211 - INFO - Prediction: bullet_train (0.07)
+2025-08-17 01:00:40,212 - INFO - Prediction: solar_dish (0.05)
+2025-08-17 01:00:40,219 - INFO - Moved 20250817003431-01.jpg → review
+2025-08-17 01:00:40,296 - INFO - Prediction: wing (0.14)
+2025-08-17 01:00:40,297 - INFO - Prediction: bullet_train (0.06)
+2025-08-17 01:00:40,297 - INFO - Prediction: hook (0.05)
+2025-08-17 01:00:40,304 - INFO - Moved 20250817003432-00.jpg → review
+2025-08-17 01:00:40,376 - INFO - Prediction: bullet_train (0.10)
+2025-08-17 01:00:40,377 - INFO - Prediction: wing (0.05)
+2025-08-17 01:00:40,377 - INFO - Prediction: chain (0.05)
+2025-08-17 01:00:40,383 - INFO - Moved 20250817003433-00.jpg → review
+2025-08-17 01:00:40,460 - INFO - Prediction: binder (0.21)
+2025-08-17 01:00:40,467 - INFO - Moved 20250817003433-01.jpg → unknown
+2025-08-17 01:00:40,539 - INFO - Prediction: envelope (0.08)
+2025-08-17 01:00:40,539 - INFO - Prediction: wing (0.07)
+2025-08-17 01:00:40,540 - INFO - Prediction: rule (0.05)
+2025-08-17 01:00:40,547 - INFO - Moved 20250817003435-00.jpg → review
+2025-08-17 01:00:40,619 - INFO - Prediction: binder (0.09)
+2025-08-17 01:00:40,619 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:40,619 - INFO - Prediction: bathtub (0.06)
+2025-08-17 01:00:40,626 - INFO - Moved 20250817003435-01.jpg → review
+2025-08-17 01:00:40,699 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:40,700 - INFO - Prediction: iron (0.04)
+2025-08-17 01:00:40,700 - INFO - Prediction: oscilloscope (0.04)
+2025-08-17 01:00:40,706 - INFO - Moved 20250817003436-00.jpg → review
+2025-08-17 01:00:40,782 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:40,782 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:40,782 - INFO - Prediction: shower_curtain (0.03)
+2025-08-17 01:00:40,789 - INFO - Moved 20250817003436-01.jpg → review
+2025-08-17 01:00:40,864 - INFO - Prediction: modem (0.08)
+2025-08-17 01:00:40,864 - INFO - Prediction: ipod (0.05)
+2025-08-17 01:00:40,864 - INFO - Prediction: binder (0.04)
+2025-08-17 01:00:40,870 - INFO - Moved 20250817003436-02.jpg → review
+2025-08-17 01:00:40,943 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:40,943 - INFO - Prediction: bathtub (0.05)
+2025-08-17 01:00:40,943 - INFO - Prediction: shower_curtain (0.05)
+2025-08-17 01:00:40,950 - INFO - Moved 20250817003437-00.jpg → review
+2025-08-17 01:00:41,022 - INFO - Prediction: bathtub (0.14)
+2025-08-17 01:00:41,023 - INFO - Prediction: modem (0.09)
+2025-08-17 01:00:41,023 - INFO - Prediction: shower_curtain (0.06)
+2025-08-17 01:00:41,029 - INFO - Moved 20250817003438-00.jpg → review
+2025-08-17 01:00:41,100 - INFO - Prediction: bathtub (0.16)
+2025-08-17 01:00:41,100 - INFO - Prediction: shower_curtain (0.08)
+2025-08-17 01:00:41,101 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:41,107 - INFO - Moved 20250817003439-00.jpg → review
+2025-08-17 01:00:41,180 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:41,180 - INFO - Prediction: bathtub (0.08)
+2025-08-17 01:00:41,180 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:41,187 - INFO - Moved 20250817003439-01.jpg → review
+2025-08-17 01:00:41,263 - INFO - Prediction: bathtub (0.11)
+2025-08-17 01:00:41,263 - INFO - Prediction: modem (0.10)
+2025-08-17 01:00:41,263 - INFO - Prediction: shower_curtain (0.06)
+2025-08-17 01:00:41,270 - INFO - Moved 20250817003440-00.jpg → review
+2025-08-17 01:00:41,339 - INFO - Prediction: bathtub (0.15)
+2025-08-17 01:00:41,339 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:41,340 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:41,346 - INFO - Moved 20250817003440-01.jpg → review
+2025-08-17 01:00:41,421 - INFO - Prediction: bathtub (0.08)
+2025-08-17 01:00:41,421 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:41,421 - INFO - Prediction: shower_curtain (0.05)
+2025-08-17 01:00:41,429 - INFO - Moved 20250817003441-00.jpg → review
+2025-08-17 01:00:41,501 - INFO - Prediction: bathtub (0.23)
+2025-08-17 01:00:41,507 - INFO - Moved 20250817003442-00.jpg → unknown
+2025-08-17 01:00:41,577 - INFO - Prediction: bullet_train (0.08)
+2025-08-17 01:00:41,577 - INFO - Prediction: wing (0.06)
+2025-08-17 01:00:41,578 - INFO - Prediction: hook (0.05)
+2025-08-17 01:00:41,584 - INFO - Moved 20250817003455-01.jpg → review
+2025-08-17 01:00:41,659 - INFO - Prediction: bathtub (0.12)
+2025-08-17 01:00:41,660 - INFO - Prediction: bullet_train (0.07)
+2025-08-17 01:00:41,660 - INFO - Prediction: hook (0.05)
+2025-08-17 01:00:41,667 - INFO - Moved 20250817003457-00.jpg → review
+2025-08-17 01:00:41,744 - INFO - Prediction: bathtub (0.22)
+2025-08-17 01:00:41,751 - INFO - Moved 20250817003457-01.jpg → unknown
+2025-08-17 01:00:41,826 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:41,826 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:41,826 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:41,833 - INFO - Moved 20250817003458-00.jpg → review
+2025-08-17 01:00:41,910 - INFO - Prediction: bathtub (0.09)
+2025-08-17 01:00:41,910 - INFO - Prediction: shower_curtain (0.08)
+2025-08-17 01:00:41,910 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:41,917 - INFO - Moved 20250817003459-00.jpg → review
+2025-08-17 01:00:41,992 - INFO - Prediction: shower_curtain (0.14)
+2025-08-17 01:00:41,992 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:41,992 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:41,999 - INFO - Moved 20250817003459-01.jpg → review
+2025-08-17 01:00:42,070 - INFO - Prediction: shower_curtain (0.12)
+2025-08-17 01:00:42,070 - INFO - Prediction: bathtub (0.07)
+2025-08-17 01:00:42,071 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:42,077 - INFO - Moved 20250817003500-00.jpg → review
+2025-08-17 01:00:42,158 - INFO - Prediction: shower_curtain (0.17)
+2025-08-17 01:00:42,158 - INFO - Prediction: bathtub (0.11)
+2025-08-17 01:00:42,158 - INFO - Prediction: binder (0.03)
+2025-08-17 01:00:42,165 - INFO - Moved 20250817003501-00.jpg → review
+2025-08-17 01:00:42,243 - INFO - Prediction: shower_curtain (0.12)
+2025-08-17 01:00:42,244 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:42,244 - INFO - Prediction: modem (0.03)
+2025-08-17 01:00:42,251 - INFO - Moved 20250817003501-01.jpg → review
+2025-08-17 01:00:42,327 - INFO - Prediction: shower_curtain (0.12)
+2025-08-17 01:00:42,328 - INFO - Prediction: bathtub (0.07)
+2025-08-17 01:00:42,328 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:42,337 - INFO - Moved 20250817003502-00.jpg → review
+2025-08-17 01:00:42,414 - INFO - Prediction: shower_curtain (0.10)
+2025-08-17 01:00:42,414 - INFO - Prediction: bathtub (0.08)
+2025-08-17 01:00:42,414 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:42,420 - INFO - Moved 20250817003502-01.jpg → review
+2025-08-17 01:00:42,496 - INFO - Prediction: walking_stick (0.06)
+2025-08-17 01:00:42,496 - INFO - Prediction: solar_dish (0.05)
+2025-08-17 01:00:42,496 - INFO - Prediction: wing (0.04)
+2025-08-17 01:00:42,503 - INFO - Moved 20250817003529-01.jpg → review
+2025-08-17 01:00:42,575 - INFO - Prediction: wing (0.06)
+2025-08-17 01:00:42,576 - INFO - Prediction: walking_stick (0.06)
+2025-08-17 01:00:42,576 - INFO - Prediction: solar_dish (0.05)
+2025-08-17 01:00:42,582 - INFO - Moved 20250817003530-00.jpg → review
+2025-08-17 01:00:42,654 - INFO - Prediction: wing (0.10)
+2025-08-17 01:00:42,654 - INFO - Prediction: solar_dish (0.07)
+2025-08-17 01:00:42,654 - INFO - Prediction: walking_stick (0.04)
+2025-08-17 01:00:42,661 - INFO - Moved 20250817003531-00.jpg → review
+2025-08-17 01:00:42,735 - INFO - Prediction: knot (0.28)
+2025-08-17 01:00:42,742 - INFO - Moved 20250817003531-01.jpg → unknown
+2025-08-17 01:00:42,818 - INFO - Prediction: knot (0.14)
+2025-08-17 01:00:42,819 - INFO - Prediction: chain (0.06)
+2025-08-17 01:00:42,819 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:42,825 - INFO - Moved 20250817003533-00.jpg → review
+2025-08-17 01:00:42,901 - INFO - Prediction: knot (0.12)
+2025-08-17 01:00:42,901 - INFO - Prediction: chain (0.07)
+2025-08-17 01:00:42,901 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:42,908 - INFO - Moved 20250817003533-01.jpg → review
+2025-08-17 01:00:42,981 - INFO - Prediction: knot (0.07)
+2025-08-17 01:00:42,981 - INFO - Prediction: bathtub (0.06)
+2025-08-17 01:00:42,982 - INFO - Prediction: wing (0.04)
+2025-08-17 01:00:42,988 - INFO - Moved 20250817003533-02.jpg → review
+2025-08-17 01:00:43,059 - INFO - Prediction: modem (0.14)
+2025-08-17 01:00:43,059 - INFO - Prediction: oscilloscope (0.07)
+2025-08-17 01:00:43,059 - INFO - Prediction: bathtub (0.05)
+2025-08-17 01:00:43,066 - INFO - Moved 20250817003534-00.jpg → review
+2025-08-17 01:00:43,139 - INFO - Prediction: shower_curtain (0.08)
+2025-08-17 01:00:43,139 - INFO - Prediction: bathtub (0.05)
+2025-08-17 01:00:43,139 - INFO - Prediction: modem (0.04)
+2025-08-17 01:00:43,146 - INFO - Moved 20250817003534-01.jpg → review
+2025-08-17 01:00:43,217 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:43,217 - INFO - Prediction: cassette (0.06)
+2025-08-17 01:00:43,217 - INFO - Prediction: hand_blower (0.05)
+2025-08-17 01:00:43,224 - INFO - Moved 20250817003535-00.jpg → review
+2025-08-17 01:00:43,302 - INFO - Prediction: modem (0.16)
+2025-08-17 01:00:43,302 - INFO - Prediction: iron (0.05)
+2025-08-17 01:00:43,303 - INFO - Prediction: hand_blower (0.04)
+2025-08-17 01:00:43,311 - INFO - Moved 20250817003535-01.jpg → review
+2025-08-17 01:00:43,389 - INFO - Prediction: shower_curtain (0.08)
+2025-08-17 01:00:43,389 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:43,390 - INFO - Prediction: iron (0.06)
+2025-08-17 01:00:43,396 - INFO - Moved 20250817003536-00.jpg → review
+2025-08-17 01:00:43,468 - INFO - Prediction: bathtub (0.14)
+2025-08-17 01:00:43,468 - INFO - Prediction: modem (0.08)
+2025-08-17 01:00:43,469 - INFO - Prediction: shower_curtain (0.04)
+2025-08-17 01:00:43,475 - INFO - Moved 20250817003537-00.jpg → review
+2025-08-17 01:00:43,547 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:43,547 - INFO - Prediction: hand_blower (0.06)
+2025-08-17 01:00:43,547 - INFO - Prediction: bathtub (0.06)
+2025-08-17 01:00:43,553 - INFO - Moved 20250817003537-01.jpg → review
+2025-08-17 01:00:43,625 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:43,626 - INFO - Prediction: shower_curtain (0.06)
+2025-08-17 01:00:43,626 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:43,632 - INFO - Moved 20250817003538-00.jpg → review
+2025-08-17 01:00:43,705 - INFO - Prediction: bathtub (0.12)
+2025-08-17 01:00:43,705 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:43,706 - INFO - Prediction: hand_blower (0.04)
+2025-08-17 01:00:43,712 - INFO - Moved 20250817003538-01.jpg → review
+2025-08-17 01:00:43,784 - INFO - Prediction: walking_stick (0.07)
+2025-08-17 01:00:43,784 - INFO - Prediction: bathtub (0.06)
+2025-08-17 01:00:43,784 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:43,791 - INFO - Moved 20250817003539-00.jpg → review
+2025-08-17 01:00:43,863 - INFO - Prediction: bullet_train (0.16)
+2025-08-17 01:00:43,863 - INFO - Prediction: wing (0.13)
+2025-08-17 01:00:43,863 - INFO - Prediction: bathtub (0.05)
+2025-08-17 01:00:43,869 - INFO - Moved 20250817003936-00.jpg → review
+2025-08-17 01:00:43,939 - INFO - Prediction: bathtub (0.09)
+2025-08-17 01:00:43,939 - INFO - Prediction: bullet_train (0.09)
+2025-08-17 01:00:43,939 - INFO - Prediction: hook (0.05)
+2025-08-17 01:00:43,946 - INFO - Moved 20250817003936-01.jpg → review
+2025-08-17 01:00:44,019 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:44,019 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:44,020 - INFO - Prediction: oscilloscope (0.04)
+2025-08-17 01:00:44,026 - INFO - Moved 20250817003937-00.jpg → review
+2025-08-17 01:00:44,097 - INFO - Prediction: shower_curtain (0.13)
+2025-08-17 01:00:44,097 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:44,097 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:44,104 - INFO - Moved 20250817003938-00.jpg → review
+2025-08-17 01:00:44,173 - INFO - Prediction: modem (0.10)
+2025-08-17 01:00:44,174 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:44,174 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:44,180 - INFO - Moved 20250817003939-00.jpg → review
+2025-08-17 01:00:44,251 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:44,252 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:44,252 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:44,259 - INFO - Moved 20250817003939-01.jpg → review
+2025-08-17 01:00:44,338 - INFO - Prediction: bathtub (0.08)
+2025-08-17 01:00:44,339 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:44,339 - INFO - Prediction: iron (0.05)
+2025-08-17 01:00:44,346 - INFO - Moved 20250817003939-02.jpg → review
+2025-08-17 01:00:44,421 - INFO - Prediction: bathtub (0.12)
+2025-08-17 01:00:44,421 - INFO - Prediction: shower_curtain (0.10)
+2025-08-17 01:00:44,421 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:44,428 - INFO - Moved 20250817003940-00.jpg → review
+2025-08-17 01:00:44,500 - INFO - Prediction: wing (0.16)
+2025-08-17 01:00:44,501 - INFO - Prediction: bullet_train (0.09)
+2025-08-17 01:00:44,501 - INFO - Prediction: hook (0.05)
+2025-08-17 01:00:44,507 - INFO - Moved 20250817004412-00.jpg → review
+2025-08-17 01:00:44,588 - INFO - Prediction: wing (0.12)
+2025-08-17 01:00:44,588 - INFO - Prediction: hook (0.04)
+2025-08-17 01:00:44,589 - INFO - Prediction: chain (0.04)
+2025-08-17 01:00:44,595 - INFO - Moved 20250817004412-01.jpg → review
+2025-08-17 01:00:44,673 - INFO - Prediction: wing (0.07)
+2025-08-17 01:00:44,674 - INFO - Prediction: knot (0.04)
+2025-08-17 01:00:44,674 - INFO - Prediction: solar_dish (0.04)
+2025-08-17 01:00:44,680 - INFO - Moved 20250817004413-00.jpg → review
+2025-08-17 01:00:44,756 - INFO - Prediction: wing (0.10)
+2025-08-17 01:00:44,756 - INFO - Prediction: envelope (0.04)
+2025-08-17 01:00:44,757 - INFO - Prediction: hook (0.04)
+2025-08-17 01:00:44,763 - INFO - Moved 20250817004413-01.jpg → review
+2025-08-17 01:00:44,838 - INFO - Prediction: wing (0.19)
+2025-08-17 01:00:44,838 - INFO - Prediction: walking_stick (0.04)
+2025-08-17 01:00:44,838 - INFO - Prediction: modem (0.03)
+2025-08-17 01:00:44,845 - INFO - Moved 20250817004415-00.jpg → review
+2025-08-17 01:00:44,919 - INFO - Prediction: modem (0.11)
+2025-08-17 01:00:44,920 - INFO - Prediction: oscilloscope (0.08)
+2025-08-17 01:00:44,920 - INFO - Prediction: mouse (0.04)
+2025-08-17 01:00:44,926 - INFO - Moved 20250817004415-01.jpg → review
+2025-08-17 01:00:44,999 - INFO - Prediction: bathtub (0.11)
+2025-08-17 01:00:45,000 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:45,000 - INFO - Prediction: hook (0.04)
+2025-08-17 01:00:45,007 - INFO - Moved 20250817004415-02.jpg → review
+2025-08-17 01:00:45,080 - INFO - Prediction: bathtub (0.07)
+2025-08-17 01:00:45,081 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:45,081 - INFO - Prediction: shower_curtain (0.06)
+2025-08-17 01:00:45,087 - INFO - Moved 20250817004416-00.jpg → review
+2025-08-17 01:00:45,160 - INFO - Prediction: modem (0.16)
+2025-08-17 01:00:45,160 - INFO - Prediction: binder (0.06)
+2025-08-17 01:00:45,161 - INFO - Prediction: envelope (0.05)
+2025-08-17 01:00:45,167 - INFO - Moved 20250817004416-01.jpg → review
+2025-08-17 01:00:45,242 - INFO - Prediction: bathtub (0.08)
+2025-08-17 01:00:45,242 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:45,242 - INFO - Prediction: shower_curtain (0.06)
+2025-08-17 01:00:45,252 - INFO - Moved 20250817004417-00.jpg → review
+2025-08-17 01:00:45,334 - INFO - Prediction: bathtub (0.10)
+2025-08-17 01:00:45,334 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:45,334 - INFO - Prediction: shower_curtain (0.06)
+2025-08-17 01:00:45,340 - INFO - Moved 20250817004419-00.jpg → review
+2025-08-17 01:00:45,415 - INFO - Prediction: shower_curtain (0.12)
+2025-08-17 01:00:45,415 - INFO - Prediction: bathtub (0.07)
+2025-08-17 01:00:45,415 - INFO - Prediction: iron (0.04)
+2025-08-17 01:00:45,422 - INFO - Moved 20250817004419-01.jpg → review
+2025-08-17 01:00:45,497 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:45,497 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:45,497 - INFO - Prediction: ipod (0.05)
+2025-08-17 01:00:45,503 - INFO - Moved 20250817004420-00.jpg → review
+2025-08-17 01:00:45,574 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:45,575 - INFO - Prediction: iron (0.05)
+2025-08-17 01:00:45,575 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:45,580 - INFO - Moved 20250817004420-01.jpg → review
+2025-08-17 01:00:45,654 - INFO - Prediction: shower_curtain (0.11)
+2025-08-17 01:00:45,654 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:45,654 - INFO - Prediction: mouse (0.04)
+2025-08-17 01:00:45,661 - INFO - Moved 20250817004421-00.jpg → review
+2025-08-17 01:00:45,739 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:45,739 - INFO - Prediction: binder (0.05)
+2025-08-17 01:00:45,739 - INFO - Prediction: ipod (0.05)
+2025-08-17 01:00:45,746 - INFO - Moved 20250817004421-01.jpg → review
+2025-08-17 01:00:45,825 - INFO - Prediction: shower_curtain (0.09)
+2025-08-17 01:00:45,825 - INFO - Prediction: walking_stick (0.05)
+2025-08-17 01:00:45,825 - INFO - Prediction: iron (0.05)
+2025-08-17 01:00:45,832 - INFO - Moved 20250817004422-00.jpg → review
+2025-08-17 01:00:45,906 - INFO - Prediction: wing (0.20)
+2025-08-17 01:00:45,906 - INFO - Prediction: bullet_train (0.03)
+2025-08-17 01:00:45,906 - INFO - Prediction: walking_stick (0.02)
+2025-08-17 01:00:45,913 - INFO - Moved 20250817004650-01.jpg → review
+2025-08-17 01:00:45,989 - INFO - Prediction: wing (0.18)
+2025-08-17 01:00:45,990 - INFO - Prediction: bullet_train (0.06)
+2025-08-17 01:00:45,990 - INFO - Prediction: envelope (0.02)
+2025-08-17 01:00:45,996 - INFO - Moved 20250817004651-00.jpg → review
+2025-08-17 01:00:46,069 - INFO - Prediction: wing (0.10)
+2025-08-17 01:00:46,069 - INFO - Prediction: envelope (0.09)
+2025-08-17 01:00:46,070 - INFO - Prediction: solar_dish (0.04)
+2025-08-17 01:00:46,076 - INFO - Moved 20250817004651-01.jpg → review
+2025-08-17 01:00:46,150 - INFO - Prediction: knot (0.16)
+2025-08-17 01:00:46,151 - INFO - Prediction: chain (0.07)
+2025-08-17 01:00:46,151 - INFO - Prediction: wing (0.04)
+2025-08-17 01:00:46,160 - INFO - Moved 20250817004652-00.jpg → review
+2025-08-17 01:00:46,237 - INFO - Prediction: knot (0.17)
+2025-08-17 01:00:46,238 - INFO - Prediction: chain (0.07)
+2025-08-17 01:00:46,238 - INFO - Prediction: hook (0.04)
+2025-08-17 01:00:46,244 - INFO - Moved 20250817004653-00.jpg → review
+2025-08-17 01:00:46,324 - INFO - Prediction: envelope (0.11)
+2025-08-17 01:00:46,324 - INFO - Prediction: bathtub (0.09)
+2025-08-17 01:00:46,324 - INFO - Prediction: iron (0.05)
+2025-08-17 01:00:46,331 - INFO - Moved 20250817004654-00.jpg → review
+2025-08-17 01:00:46,409 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:46,409 - INFO - Prediction: iron (0.06)
+2025-08-17 01:00:46,409 - INFO - Prediction: hook (0.06)
+2025-08-17 01:00:46,415 - INFO - Moved 20250817004654-01.jpg → review
+2025-08-17 01:00:46,490 - INFO - Prediction: shower_curtain (0.07)
+2025-08-17 01:00:46,490 - INFO - Prediction: hand_blower (0.07)
+2025-08-17 01:00:46,490 - INFO - Prediction: bathtub (0.06)
+2025-08-17 01:00:46,497 - INFO - Moved 20250817004655-00.jpg → review
+2025-08-17 01:00:46,577 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:46,577 - INFO - Prediction: cassette (0.06)
+2025-08-17 01:00:46,577 - INFO - Prediction: hand_blower (0.04)
+2025-08-17 01:00:46,583 - INFO - Moved 20250817004655-01.jpg → review
+2025-08-17 01:00:46,658 - INFO - Prediction: modem (0.13)
+2025-08-17 01:00:46,659 - INFO - Prediction: iron (0.07)
+2025-08-17 01:00:46,659 - INFO - Prediction: hand_blower (0.06)
+2025-08-17 01:00:46,666 - INFO - Moved 20250817004656-00.jpg → review
+2025-08-17 01:00:46,741 - INFO - Prediction: modem (0.08)
+2025-08-17 01:00:46,742 - INFO - Prediction: iron (0.06)
+2025-08-17 01:00:46,742 - INFO - Prediction: envelope (0.06)
+2025-08-17 01:00:46,749 - INFO - Moved 20250817004656-01.jpg → review
+2025-08-17 01:00:46,827 - INFO - Prediction: modem (0.10)
+2025-08-17 01:00:46,827 - INFO - Prediction: iron (0.06)
+2025-08-17 01:00:46,827 - INFO - Prediction: hand_blower (0.06)
+2025-08-17 01:00:46,834 - INFO - Moved 20250817004657-00.jpg → review
+2025-08-17 01:00:46,910 - INFO - Prediction: knot (0.11)
+2025-08-17 01:00:46,911 - INFO - Prediction: chain (0.07)
+2025-08-17 01:00:46,911 - INFO - Prediction: envelope (0.03)
+2025-08-17 01:00:46,917 - INFO - Moved 20250817004703-01.jpg → review
+2025-08-17 01:00:46,993 - INFO - Prediction: knot (0.09)
+2025-08-17 01:00:46,993 - INFO - Prediction: chain (0.08)
+2025-08-17 01:00:46,994 - INFO - Prediction: walking_stick (0.03)
+2025-08-17 01:00:47,000 - INFO - Moved 20250817004704-00.jpg → review
+2025-08-17 01:00:47,073 - INFO - Prediction: knot (0.09)
+2025-08-17 01:00:47,073 - INFO - Prediction: chain (0.06)
+2025-08-17 01:00:47,074 - INFO - Prediction: modem (0.03)
+2025-08-17 01:00:47,080 - INFO - Moved 20250817004704-01.jpg → review
+2025-08-17 01:00:47,149 - INFO - Prediction: bullet_train (0.08)
+2025-08-17 01:00:47,150 - INFO - Prediction: wing (0.06)
+2025-08-17 01:00:47,150 - INFO - Prediction: solar_dish (0.04)
+2025-08-17 01:00:47,158 - INFO - Moved 20250817004705-00.jpg → review
+2025-08-17 01:00:47,227 - INFO - Prediction: wing (0.05)
+2025-08-17 01:00:47,228 - INFO - Prediction: bullet_train (0.04)
+2025-08-17 01:00:47,228 - INFO - Prediction: solar_dish (0.03)
+2025-08-17 01:00:47,234 - INFO - Moved 20250817004706-00.jpg → review
+2025-08-17 01:00:47,309 - INFO - Prediction: bullet_train (0.07)
+2025-08-17 01:00:47,310 - INFO - Prediction: modem (0.05)
+2025-08-17 01:00:47,310 - INFO - Prediction: wing (0.05)
+2025-08-17 01:00:47,316 - INFO - Moved 20250817004706-01.jpg → review
+2025-08-17 01:00:47,402 - INFO - Prediction: shower_curtain (0.15)
+2025-08-17 01:00:47,403 - INFO - Prediction: bathtub (0.12)
+2025-08-17 01:00:47,403 - INFO - Prediction: binder (0.04)
+2025-08-17 01:00:47,410 - INFO - Moved 20250817004707-00.jpg → review
+2025-08-17 01:00:47,490 - INFO - Prediction: modem (0.07)
+2025-08-17 01:00:47,490 - INFO - Prediction: ipod (0.06)
+2025-08-17 01:00:47,490 - INFO - Prediction: shower_curtain (0.05)
+2025-08-17 01:00:47,497 - INFO - Moved 20250817004708-00.jpg → review
+2025-08-17 01:00:47,575 - INFO - Prediction: bathtub (0.20)
+2025-08-17 01:00:47,581 - INFO - Moved 20250817004708-01.jpg → unknown
+2025-08-17 01:00:47,656 - INFO - Prediction: shower_curtain (0.16)
+2025-08-17 01:00:47,657 - INFO - Prediction: bathtub (0.11)
+2025-08-17 01:00:47,657 - INFO - Prediction: iron (0.05)
+2025-08-17 01:00:47,663 - INFO - Moved 20250817004709-00.jpg → review
+2025-08-17 01:00:47,737 - INFO - Prediction: ipod (0.06)
+2025-08-17 01:00:47,737 - INFO - Prediction: modem (0.06)
+2025-08-17 01:00:47,738 - INFO - Prediction: shower_curtain (0.05)
+2025-08-17 01:00:47,746 - INFO - Moved 20250817004710-00.jpg → review
+2025-08-17 01:00:47,748 - INFO - ✅ Categorized 238 files in 0:00:18.

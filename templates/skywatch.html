@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skywatch Observatory</title>
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+  <div class="site-header">
+    <a href="{{ url_for('home') }}" class="back-to-house">&#8592;</a>
+    <div class="site-title">Skywatch</div>
+    <div class="site-subtitle">A Window to the Ever-Changing Canvas Above</div>
+
+    <div class="skywatch-nav">
+      <nav>
+        <a href="{{ url_for('skywatch') }}" class="nav-link {% if active_page == 'skywatch' %}active{% endif %}">Skywatch</a>
+        <a href="{{ url_for('swgallery') }}" class="nav-link {% if active_page == 'swgallery' %}active{% endif %}">Gallery</a>
+        <a href="#" class="nav-link">Live Feed</a>
+        <a href="#" class="nav-link">Logbook</a>
+      </nav>
+    </div>
+  </div>
+  <div class="skywatch-intro">
+    Every image captured here is a quiet moment of wonder—whether it’s a drifting cloud, a passing plane, or the fleeting silhouette of a bird in flight. This project blends automation and curiosity: photos are collected from my Raspberry Pi setup and sorted with the help of AI into categories that reflect the skies’ shifting stories. Skywatch is a space for reflection, observation, and the joy of noticing what often goes unseen.
+  </div>
+</body>
+<footer style="text-align: center; font-size: 0.9em; color: #aaaaaa; margin-top: 40px; padding: 20px 0;">
+  Skywatch V1.0 &nbsp;|&nbsp; Last updated {{ last_updated }} &nbsp;|&nbsp; House of Hedaux
+</footer>
+</html>

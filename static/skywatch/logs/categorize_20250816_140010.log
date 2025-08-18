@@ -1,0 +1,20 @@
+2025-08-16 14:00:11,819 - INFO - 🕒 Categorization run started at 2025-08-16 14:00:11
+2025-08-16 14:00:11,884 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-02-20250816132330.mkv: cannot identify image file <_io.BytesIO object at 0x71d454397dd0>
+2025-08-16 14:00:11,890 - INFO - Moved 0-02-20250816132330.mkv → review
+2025-08-16 14:00:12,562 - INFO - Prediction: white_stork (0.03)
+2025-08-16 14:00:12,562 - INFO - Prediction: vulture (0.02)
+2025-08-16 14:00:12,562 - INFO - Prediction: ant (0.02)
+2025-08-16 14:00:12,568 - INFO - Moved 20250816132330-02.jpg → review
+2025-08-16 14:00:12,661 - INFO - Prediction: white_stork (0.03)
+2025-08-16 14:00:12,662 - INFO - Prediction: vulture (0.03)
+2025-08-16 14:00:12,662 - INFO - Prediction: ant (0.02)
+2025-08-16 14:00:12,668 - INFO - Moved 20250816132331-00.jpg → review
+2025-08-16 14:00:12,761 - INFO - Prediction: white_stork (0.03)
+2025-08-16 14:00:12,761 - INFO - Prediction: vulture (0.03)
+2025-08-16 14:00:12,762 - INFO - Prediction: ant (0.02)
+2025-08-16 14:00:12,767 - INFO - Moved 20250816132331-01.jpg → review
+2025-08-16 14:00:12,851 - INFO - Prediction: airship (0.14)
+2025-08-16 14:00:12,851 - INFO - Prediction: parachute (0.06)
+2025-08-16 14:00:12,851 - INFO - Prediction: kite (0.05)
+2025-08-16 14:00:12,857 - INFO - Moved 20250816132332-00.jpg → review
+2025-08-16 14:00:12,858 - INFO - ✅ Categorized 5 files in 0:00:01.

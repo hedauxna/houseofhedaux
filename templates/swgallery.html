@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skywatch Gallery</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    /* Gallery styles (same as before) */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.5rem;
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .gallery-thumb {
+      position: relative;
+      cursor: pointer;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
+    }
+    .gallery-thumb:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .gallery-thumb img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      display: block;
+      border-radius: 0.5rem;
+    }
+    .category-label {
+      position: absolute;
+      bottom: 6px;
+      left: 6px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 0.8rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Cinzel', serif;
+    }
+    .lightbox {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox:target {
+      display: flex;
+    }
+    .lightbox-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      margin: auto;
+    }
+    .lightbox-content img {
+      width: auto;
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 1rem;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.7);
+      display: block;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: -50px;
+      right: 0;
+      color: #fff;
+      font-size: 2.5rem;
+      text-decoration: none;
+      font-weight: bold;
+      z-index: 1010;
+      transition: color 0.2s;
+    }
+    .lightbox-close:hover {
+      color: #ffd700;
+    }
+    @media (max-width: 600px) {
+      .gallery-thumb img { height: 90px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-header">
+    <a href="/skywatch" title="Back to Skywatch Home" class="back-to-house">&#8592;</a>
+    <div class="site-title">Skywatch Gallery</div>
+    <div class="site-subtitle">Captured Moments from Above</div>
+    <nav class="skywatch-nav">
+      <a href="/skywatch" class="nav-link {% if active_page == 'skywatch' %}active{% endif %}">Home</a>
+      <a href="/swgallery" class="nav-link {% if active_page == 'swgallery.html' %}active{% endif %}">Gallery</a>
+      <a href="#" class="nav-link">Live Feed</a>
+      <a href="#" class="nav-link">Logbook</a>
+    </nav>
+  </div>
+
+<div class="gallery-description">
+  Step into the Observatory wing of the House of Hedaux, where the Raspberry Pi keeps watch over the skies. This gallery showcases fleeting moments—clouds, birds, planes, and mysteries—captured in real time.  
+  <br><br>
+  The AI curator is still learning its way around the skies, so some images may be misfiled. Consider this room under gentle renovation. Check back often as the system improves and the view becomes clearer.
+  <br><br>
+  Click any thumbnail to expand the scene.
+</div>
+
+<div class="category-selector">
+  <a href="{{ url_for('swgallery', category='review') }}" class="category-link {% if category == 'review' %}active{% endif %}">Review</a>
+  <a href="{{ url_for('swgallery', category='bird') }}" class="category-link {% if category == 'bird' %}active{% endif %}">Bird</a>
+  <a href="{{ url_for('swgallery', category='blank') }}" class="category-link {% if category == 'blank' %}active{% endif %}">Blank</a>
+  <a href="{{ url_for('swgallery', category='cloud') }}" class="category-link {% if category == 'cloud' %}active{% endif %}">Cloud</a>
+  <a href="{{ url_for('swgallery', category='plane') }}" class="category-link {% if category == 'plane' %}active{% endif %}">Plane</a>
+  <a href="{{ url_for('swgallery', category='unknown') }}" class="category-link {% if category == 'unknown' %}active{% endif %}">Unknown</a>
+</div>
+
+{% if images %}
+  <div class="gallery-grid">
+    {% for img in images %}
+      <a href="#img{{ loop.index }}" class="gallery-thumb">
+        <img src="{{ url_for('static', filename='skywatch/sorted/' + img) }}" alt="Sky photo {{ loop.index }}">
+        {% if not category %}
+          <div class="category-label">{{ img.split('/')[0] }}</div>
+        {% endif %}
+        <div class="filename-label{% if img.split('/')[-1].startswith(today_str) %} today{% endif %}">
+          {{ img.split('/')[-1] }}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+    {% for img in images %}
+    <div id="img{{ loop.index }}" class="lightbox">
+      <div class="lightbox-content">
+        <a href="#" class="lightbox-close" title="Close">&times;</a>
+        <img src="{{ url_for('static', filename='skywatch/sorted/' + img) }}" alt="Sky photo {{ loop.index }} full">
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p class="gallery-description">No images found. The sky might be quiet today, or the sync pipeline needs a check.</p>
+{% endif %}
+</body>
+<footer style="text-align: center; font-size: 0.9em; color: #ffffff; margin-top: 40px; padding: 20px 0;">
+  Skywatch V1.0 &nbsp;|&nbsp; Last updated {{ last_updated }} &nbsp;|&nbsp; House of Hedaux
+</footer>
+</html>

@@ -1,0 +1,26 @@
+2025-08-16 15:00:10,647 - INFO - 🕒 Categorization run started at 2025-08-16 15:00:10
+2025-08-16 15:00:10,706 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-02-20250816132330.mkv: cannot identify image file <_io.BytesIO object at 0x7575f8597d80>
+2025-08-16 15:00:10,711 - INFO - Moved 0-02-20250816132330.mkv → review
+2025-08-16 15:00:10,715 - ERROR - Error categorizing image /mnt/c/Users/natha/HouseOfHedaux/static/skywatch/raw/0-07-20250816141021.mkv: cannot identify image file <_io.BytesIO object at 0x7575f8597d80>
+2025-08-16 15:00:10,721 - INFO - Moved 0-07-20250816141021.mkv → review
+2025-08-16 15:00:11,373 - INFO - Prediction: screw (0.07)
+2025-08-16 15:00:11,373 - INFO - Prediction: matchstick (0.06)
+2025-08-16 15:00:11,373 - INFO - Prediction: wall_clock (0.05)
+2025-08-16 15:00:11,379 - INFO - Moved 20250816141021-02.jpg → review
+2025-08-16 15:00:11,474 - INFO - Prediction: screw (0.07)
+2025-08-16 15:00:11,475 - INFO - Prediction: matchstick (0.06)
+2025-08-16 15:00:11,475 - INFO - Prediction: envelope (0.04)
+2025-08-16 15:00:11,481 - INFO - Moved 20250816141022-00.jpg → review
+2025-08-16 15:00:11,570 - INFO - Prediction: matchstick (0.05)
+2025-08-16 15:00:11,571 - INFO - Prediction: screw (0.05)
+2025-08-16 15:00:11,571 - INFO - Prediction: wall_clock (0.04)
+2025-08-16 15:00:11,577 - INFO - Moved 20250816141022-01.jpg → review
+2025-08-16 15:00:11,657 - INFO - Prediction: kite (0.11)
+2025-08-16 15:00:11,658 - INFO - Prediction: goose (0.07)
+2025-08-16 15:00:11,658 - INFO - Prediction: tick (0.05)
+2025-08-16 15:00:11,663 - INFO - Moved 20250816141022-02.jpg → review
+2025-08-16 15:00:11,742 - INFO - Prediction: screw (0.07)
+2025-08-16 15:00:11,743 - INFO - Prediction: tick (0.06)
+2025-08-16 15:00:11,743 - INFO - Prediction: envelope (0.05)
+2025-08-16 15:00:11,748 - INFO - Moved 20250816141024-00.jpg → review
+2025-08-16 15:00:11,749 - INFO - ✅ Categorized 7 files in 0:00:01.
