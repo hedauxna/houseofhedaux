@@ -66,6 +66,18 @@ def travel():
 def conservatory():
     return render_template('conservatory.html')
 
+@app.route('/masterbedroom')
+def masterbedroom():
+    return render_template('masterbedroom.html')
+
+@app.route('/gamesroom')
+def gamesroom():
+    return render_template('gamesroom.html')
+
+@app.route('/kitchen')
+def kitchen():
+    return render_template('kitchen.html')
+
 @app.route('/swgallery')
 def swgallery():
     today_str = datetime.now().strftime('%Y%m%d')

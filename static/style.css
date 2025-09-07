@@ -212,6 +212,21 @@ body {
   top: 30%;
 }
 
+.masterbedroom-zone {
+  left: 60%;
+  top: 72%;
+}
+
+.gamesroom-zone {
+  left: 41.5%;
+  top: 58%;
+}
+
+.kitchen-zone {
+  left: 41.5%;
+  top: 68%;
+}
+
 .zone-label {
   position: absolute;
   bottom: -25px;
