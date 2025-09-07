@@ -6,6 +6,7 @@
   <title>House of Hedaux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 </head>
 <body>
   <div class="site-header">
@@ -43,6 +44,24 @@
   </a>
 </div>
 
+<div class="zone abi-zone" title="Abi">
+  <a href="{{ url_for('abi') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Bedroom 2</span>
+  </a>
+</div>
+
+<div class="zone josh-zone" title="Josh">
+  <a href="{{ url_for('josh') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Bedroom 3</span>
+  </a>
+</div>
+
+<div class="zone aaron-zone" title="Aaron">
+  <a href="{{ url_for('aaron') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Bedroom 4</span>
+  </a>
+</div>
+
 <div class="zone phoebe-zone" title="Phoebe Dance">
   <a href="{{ url_for('phoebe') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
     <span class="zone-label">Bedroom 5</span>
@@ -54,7 +73,25 @@
     <span class="zone-label">Study</span>
   </a>
 </div>
-    
+
+<div class="zone pergola-zone" title="Table Tennis">
+  <a href="{{ url_for('pergola') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Pergola</span>
+  </a>
+</div>
+
+<div class="zone travel-zone" title="The Travel Log Room">
+  <a href="{{ url_for('travel') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Travel</span>
+  </a>
+</div>
+
+<div class="zone bonsai-zone" title="The Conservatory">
+  <a href="{{ url_for('conservatory') }}" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none;">
+    <span class="zone-label">Conservatory</span>
+  </a>
+</div>
+
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 <footer style="text-align: center; font-size: 0.9em; color: #aaaaaa; margin-top: 40px; padding: 20px 0;">

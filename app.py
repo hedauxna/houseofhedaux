@@ -30,6 +30,18 @@ def foyer():
 def career():
     return render_template('study.html')
 
+@app.route('/abi')
+def abi():
+    return render_template('abi.html')
+
+@app.route('/josh')
+def josh():
+    return render_template('josh.html')
+
+@app.route('/aaron')
+def aaron():
+    return render_template('aaron.html')
+
 @app.route('/phoebe')
 def phoebe():
     return redirect("https://phoebedance.com")
@@ -41,6 +53,18 @@ def library():
 @app.route('/skywatch')
 def skywatch():
     return render_template('skywatch.html', active_page='skywatch', last_updated=get_last_updated())
+
+@app.route('/pergola')
+def pergola():
+    return render_template('pergola.html')
+
+@app.route('/travel')
+def travel():
+    return render_template('travel.html')
+
+@app.route('/conservatory')
+def conservatory():
+    return render_template('conservatory.html')
 
 @app.route('/swgallery')
 def swgallery():
