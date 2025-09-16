@@ -44,7 +44,7 @@ def aaron():
 
 @app.route('/phoebe')
 def phoebe():
-    return redirect("https://phoebedance.com")
+    return render_template('phoebe.html')
 
 @app.route('/library')
 def library():
@@ -77,6 +77,10 @@ def gamesroom():
 @app.route('/kitchen')
 def kitchen():
     return render_template('kitchen.html')
+
+@app.route('/pets')
+def pets():
+    return render_template('pets.html')
 
 @app.route('/swgallery')
 def swgallery():

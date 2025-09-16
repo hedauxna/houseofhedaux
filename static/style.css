@@ -168,18 +168,18 @@ body {
 }
 
 .career-zone {
-  left: 26.5%;
-  top: 72%;
+  left: 20%;
+  top: 52.5%;
 }
 
 .library-zone {
-  left: 26.5%;
+  left: 29.5%;
   top: 52.5%;
 }
 
 .bonsai-zone {
-  left: 13%;
-  top: 52.5%;
+  left: 26.5%;
+  top: 72%;
 }
 
 .abi-zone {
@@ -218,13 +218,18 @@ body {
 }
 
 .gamesroom-zone {
-  left: 41.5%;
-  top: 58%;
+  left: 10.5%;
+  top: 52.5%;
 }
 
 .kitchen-zone {
   left: 41.5%;
   top: 68%;
+}
+
+.pets-zone {
+  left: 61.5%;
+  top: 39%;
 }
 
 .zone-label {
