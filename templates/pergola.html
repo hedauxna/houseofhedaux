@@ -1,22 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Pergola | House of Hedaux</title>
-  <link rel="stylesheet" href="static/style.css">
-</head>
-<body>
-  <div class="site-header">
-    <a href="{{ url_for('home') }}" class="back-to-house">&#8592;</a>
-    <div class="site-title">Under the Pergola</div>
-    <div class="site-subtitle">Smashes, Spins, and Garden Wins</div>
-  </div>
-  <div class="skywatch-intro"><p>Welcome to the back garden battleground where legends are made and laughter reigns supreme. For years, table tennis was a holiday treat—casual rallies on borrowed 
-    tables, cheeky tuition from schoolmates and work colleagues, and the occasional surprise spin that left us grinning. Hayley’s grandma and grandad were the 
-    original champions, hosting garden matches that echoed with joy and the clatter of paddles. The kids played under their watchful eyes, learning the rhythm of 
+{% extends 'base.html' %}
+
+{% block main %}
+  <div class="skywatch-intro"><p>Welcome to the back garden battleground where legends are made and laughter reigns supreme. For years, table tennis was a holiday treat—casual rallies on borrowed
+    tables, cheeky tuition from schoolmates and work colleagues, and the occasional surprise spin that left us grinning. Hayley’s grandma and grandad were the
+    original champions, hosting garden matches that echoed with joy and the clatter of paddles. The kids played under their watchful eyes, learning the rhythm of
     the game and the rhythm of family.<br>
-    And now, at last, we have our very own table. A place not just for play, but for memory-making. The rallies are longer, the spins sharper, and the laughter louder. 
+    And now, at last, we have our very own table. A place not just for play, but for memory-making. The rallies are longer, the spins sharper, and the laughter louder.
     This is where the Hedaux league begins.</p>
 <figure class="pergola-figure">
   <img src="static/assets/tabletennis.png" alt="Table tennis under the pergola" class="pergola-image">
@@ -28,7 +17,7 @@
 
   <section id="garden-games">
   <h2>🏓 Garden Games: The Hedaux Table Tennis League</h2>
-  
+
   <div class="champion">
     <h3>👑 Nathan – The Unyielding King</h3>
     <p>Undefeated. Tactical. Regal. Rallies with precision and rules the court with calm authority.</p>
@@ -59,9 +48,4 @@
     <p>Brackets to be drawn, titles to be claimed.</p>
   </div>
 </section>
-
-</body>
-<footer style="text-align: center; font-size: 0.9em; color: #aaaaaa; margin-top: 40px; padding: 20px 0;">
-  © 2025 Nathan Hedaux. House of Hedaux™ is a personal archive and creative concept. All rights reserved.
-</footer>
-</html>
+{% endblock %}

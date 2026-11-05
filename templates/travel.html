@@ -1,23 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Travel Log Room | House of Hedaux</title>
-  <link rel="stylesheet" href="static/style.css">
-</head>
-<body>
-  <div class="site-header">
-    <a href="{{ url_for('home') }}" class="back-to-house">&#8592;</a>
-    <div class="site-title">The Travel Log Room</div>
-    <div class="site-subtitle">Summer Road Trip to Verdon – 2025
-    </div>
-  </div>
+{% extends 'base.html' %}
+
+{% block main %}
   <div class="skywatch-intro">
 A family adventure through France, full of laughter, tolls, tapenade, and the occasional cricket invasion.
-</div>
+  </div>
   <div class="skywatch-main">
-  
+
 🚗 The Journey Begins<br>
 We made it to Dover with one supercharge under our belt and plenty of battery to spare. Ferry crossing smooth. Spirits high. The kind of start that makes you suspicious something’s bound to go wrong later.
 Once on French soil, everything felt… quieter. The roads were silky smooth, the tyres practically whispering. Toll booths, however, were less poetic—€60 for the privilege of gliding along, but hey, no petrol costs, so it balanced out. Familiar scenery rolled by, though this year we took a new route down the east side: Reims, Troyes, Dijon. No family visits this time—just a fresh adventure toward Verdon near Nice.
@@ -54,8 +42,4 @@ Now the dust has settled, reality’s creeping back in. Work is calling. Daily r
 But somewhere in the back of our minds, the dream lingers—of one day making it work. Moving to France. Slowing down. Savoring the scenery, the food, the rhythm.
 Not just a holiday… but a new chapter.
   </div>
-</body>
-<footer style="text-align: center; font-size: 0.9em; color: #aaaaaa; margin-top: 40px; padding: 20px 0;">
-  © 2025 Nathan Hedaux. House of Hedaux™ is a personal archive and creative concept. All rights reserved.
-</footer>
-</html>
+{% endblock %}

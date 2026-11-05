@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title_tag %}{{ title_tag or "House of Hedaux" }}{% endblock %}</title>
+  {% block styles %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% endblock %}
+  {% block head_extra %}{% endblock %}
+</head>
+<body{% block body_attrs %}{% endblock %}>
+{% block content %}
+  <div class="site-header">
+    {% block header %}
+      {% if page_title %}
+      <a href="{{ url_for('home') }}" class="back-to-house">&#8592;</a>
+      <div class="site-title">{{ page_title }}</div>
+      <div class="site-subtitle">{{ page_subtitle or '' }}</div>
+      {% endif %}
+    {% endblock %}
+  </div>
+  {% block main %}{% endblock %}
+{% endblock %}
+<footer style="text-align: center; font-size: 0.9em; color: #aaaaaa; margin-top: 40px; padding: 20px 0;">
+  {% block footer %}
+  © 2025 Nathan Hedaux. House of Hedaux™ is a personal archive and creative concept. All rights reserved.
+  {% endblock %}
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>
