@@ -4,7 +4,7 @@ from datetime import datetime
 
 def get_last_updated():
     try:
-        with open("/mnt/c/Users/natha/HouseOfHedaux/last_updated.txt", "r") as f:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "last_updated.txt"), "r") as f:
             return f.read().strip()
     except FileNotFoundError:
         return "Unknown"
