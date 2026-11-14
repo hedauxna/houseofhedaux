@@ -686,7 +686,8 @@
     }
 
     .case-card {
-      padding: clamp(18px, 3vw, 28px);
+      display: block;
+      margin: 20px 0 30px;
       border: 1px solid rgba(215, 189, 133, .54);
       border-left: 4px solid var(--gold);
       background:
@@ -696,39 +697,73 @@
     }
 
     .case-card[hidden],
-    .case-empty[hidden] {
+    .case-empty[hidden],
+    .timeline-entry[hidden],
+    .case-file[hidden] {
       display: none !important;
     }
 
-    .case-card-heading {
+    .case-card > summary {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 18px;
+      gap: 20px;
+      padding: clamp(18px, 3vw, 28px);
+      cursor: pointer;
+      list-style: none;
     }
 
-    .case-card-status {
-      margin: 0 0 8px !important;
-      color: var(--gold) !important;
-      font-size: 10px !important;
+    .case-card > summary:focus-visible,
+    .case-file > summary:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: -3px;
+    }
+
+    .case-card > summary::-webkit-details-marker,
+    .case-file > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .case-card > summary::after {
+      flex: 0 0 auto;
+      color: var(--gold);
+      content: "+";
+      font: 24px/1 var(--serif);
+    }
+
+    .case-card[open] > summary {
+      border-bottom: 1px solid rgba(243, 239, 227, .18);
+    }
+
+    .case-card[open] > summary::after {
+      content: "−";
+    }
+
+    .featured-case-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--gold);
+      font-size: 10px;
       font-weight: 600;
-      letter-spacing: .13em;
+      letter-spacing: .14em;
       text-transform: uppercase;
     }
 
-    .case-card-heading h5 {
-      margin: 0;
+    .featured-case-title {
+      display: block;
       color: var(--paper);
       font: 400 clamp(22px, 3vw, 30px)/1.2 var(--serif);
     }
 
-    .case-card-date {
-      flex: 0 0 auto;
-      padding: 7px 9px;
-      border: 1px solid rgba(243, 239, 227, .2);
-      color: rgba(243, 239, 227, .84);
+    .featured-case-date {
+      display: block;
+      margin-top: 8px;
+      color: rgba(243, 239, 227, .76);
       font-size: 11px;
-      letter-spacing: .03em;
+    }
+
+    .case-card-content {
+      padding: clamp(18px, 3vw, 28px);
     }
 
     .case-card-summary {
@@ -736,9 +771,51 @@
       margin: 18px 0 !important;
     }
 
+    .case-detail-columns {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .case-detail-block {
+      min-width: 0;
+      padding: 15px;
+      border: 1px solid rgba(243, 239, 227, .15);
+      background: rgba(243, 239, 227, .025);
+    }
+
+    .case-detail-block h5 {
+      margin: 0 0 8px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .case-detail-block p,
+    .case-detail-block ul {
+      margin: 0 !important;
+      color: rgba(243, 239, 227, .82) !important;
+      font-size: 12px !important;
+      line-height: 1.7;
+    }
+
+    .case-detail-block ul {
+      padding-left: 18px;
+    }
+
+    .hypothesis-note {
+      margin-top: 8px !important;
+      color: rgba(193, 202, 212, .72) !important;
+      font-size: 10px !important;
+      font-style: italic;
+    }
+
     .case-record {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin: 20px 0;
     }
@@ -765,27 +842,443 @@
       line-height: 1.5;
     }
 
-    .case-tag-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 7px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .case-tag-list li {
-      padding: 5px 8px;
-      border: 1px solid rgba(243, 239, 227, .2);
-      color: rgba(243, 239, 227, .8);
-      font-size: 10px;
-    }
-
     .case-filter-note,
     .case-empty {
       margin: 12px 0 0 !important;
       color: rgba(193, 202, 212, .82) !important;
       font-size: 12px !important;
+    }
+
+    .case-dashboard {
+      margin: 28px 0 34px;
+      padding: 22px;
+      border: 1px solid rgba(243, 239, 227, .18);
+      background: rgba(3, 26, 52, .4);
+    }
+
+    .case-dashboard-heading {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .case-dashboard-heading h5,
+    .archive-subsection-heading h5 {
+      margin: 0;
+      color: var(--paper);
+      font: 400 22px/1.2 var(--serif);
+    }
+
+    .case-dashboard-heading p {
+      margin: 0;
+      color: rgba(193, 202, 212, .76);
+      font-size: 11px;
+    }
+
+    .case-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .case-stat-card {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      padding: 13px;
+      border: 1px solid rgba(243, 239, 227, .16);
+      background: rgba(243, 239, 227, .025);
+      color: var(--paper);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color .18s ease, background .18s ease;
+    }
+
+    .case-stat-card:hover,
+    .case-stat-card:focus-visible,
+    .case-stat-card[aria-pressed="true"] {
+      border-color: rgba(215, 189, 133, .72);
+      background: rgba(215, 189, 133, .08);
+      outline: none;
+    }
+
+    .case-stat-icon {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 1px solid rgba(215, 189, 133, .32);
+      border-radius: 50%;
+      color: var(--gold);
+      font-size: 14px;
+    }
+
+    .case-stat-number {
+      display: block;
+      color: var(--paper);
+      font: 400 22px/1 var(--serif);
+    }
+
+    .case-stat-label {
+      display: block;
+      margin-top: 5px;
+      color: rgba(243, 239, 227, .72);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .case-count-note {
+      margin: 12px 0 0 !important;
+      color: rgba(193, 202, 212, .68) !important;
+      font-size: 10px !important;
+    }
+
+    .case-status-key {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin: 12px 0 0;
+      color: rgba(193, 202, 212, .78);
+      font-size: 10px;
+    }
+
+    .case-status-key strong {
+      color: var(--paper);
+      font-weight: 600;
+    }
+
+    .case-filters-label {
+      margin: 0 0 8px !important;
+      color: var(--gold) !important;
+      font-size: 10px !important;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .archive-subsection {
+      margin-top: 34px;
+      scroll-margin-top: 20px;
+    }
+
+    .archive-subsection-heading {
+      margin-bottom: 14px;
+    }
+
+    .archive-subsection-heading p {
+      margin: 7px 0 0 !important;
+      color: rgba(193, 202, 212, .78) !important;
+      font-size: 11px !important;
+    }
+
+    .incident-timeline {
+      position: relative;
+      display: grid;
+      gap: 11px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .incident-timeline::before {
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 154px;
+      width: 1px;
+      background: linear-gradient(rgba(215, 189, 133, .68), rgba(243, 239, 227, .12));
+      content: "";
+    }
+
+    .timeline-entry {
+      position: relative;
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+      animation: archive-entry .3s ease both;
+    }
+
+    .timeline-entry::before {
+      position: absolute;
+      top: 14px;
+      left: 149px;
+      width: 11px;
+      height: 11px;
+      border: 2px solid var(--gold);
+      border-radius: 50%;
+      background: var(--blue-deep);
+      box-shadow: 0 0 0 4px rgba(215, 189, 133, .08);
+      content: "";
+    }
+
+    .timeline-date {
+      padding-top: 11px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-align: right;
+    }
+
+    .timeline-card {
+      display: block;
+      padding: 13px 15px;
+      border: 1px solid rgba(243, 239, 227, .16);
+      background: rgba(3, 26, 52, .4);
+      color: var(--paper);
+      text-decoration: none;
+      transition: border-color .18s ease, background .18s ease;
+    }
+
+    .timeline-card:hover,
+    .timeline-card:focus-visible {
+      border-color: rgba(215, 189, 133, .68);
+      background: rgba(18, 57, 97, .44);
+      outline: none;
+    }
+
+    .timeline-card-type {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .timeline-card-title {
+      display: block;
+      margin-bottom: 5px;
+      font: 400 18px/1.25 var(--serif);
+    }
+
+    .timeline-card-summary {
+      display: block;
+      color: rgba(243, 239, 227, .75);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .case-file-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 11px;
+    }
+
+    .case-file {
+      min-width: 0;
+      border: 1px solid rgba(243, 239, 227, .2);
+      background: rgba(3, 26, 52, .42);
+    }
+
+    .case-file > summary {
+      position: relative;
+      display: block;
+      padding: 16px 46px 16px 16px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .case-file > summary::after {
+      position: absolute;
+      top: 50%;
+      right: 16px;
+      color: var(--gold);
+      content: "+";
+      font: 22px/1 var(--serif);
+      transform: translateY(-50%);
+    }
+
+    .case-file[open] > summary {
+      border-bottom: 1px solid rgba(243, 239, 227, .16);
+    }
+
+    .case-file[open] > summary::after {
+      content: "−";
+    }
+
+    .case-file-id {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .case-file-title {
+      display: block;
+      color: var(--paper);
+      font: 400 18px/1.25 var(--serif);
+    }
+
+    .case-file-date {
+      display: block;
+      color: rgba(193, 202, 212, .8);
+      font-size: 10px;
+    }
+
+    .case-file-body {
+      padding: 16px;
+    }
+
+    .case-file-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+
+    .case-file-fields div {
+      min-width: 0;
+      padding: 9px;
+      border: 1px solid rgba(243, 239, 227, .12);
+      background: rgba(243, 239, 227, .025);
+    }
+
+    .case-file-fields dt {
+      margin-bottom: 4px;
+      color: var(--gold);
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .case-file-fields dd {
+      margin: 0;
+      color: rgba(243, 239, 227, .84);
+      font-size: 10px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .case-file-notes {
+      padding-top: 11px;
+      border-top: 1px solid rgba(243, 239, 227, .12);
+    }
+
+    .case-file-notes h6 {
+      margin: 11px 0 5px;
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .case-file-notes h6:first-child {
+      margin-top: 0;
+    }
+
+    .case-file-notes p,
+    .case-file-notes ul {
+      margin: 0 !important;
+      color: rgba(243, 239, 227, .8) !important;
+      font-size: 11px !important;
+      line-height: 1.6;
+    }
+
+    .case-file-notes ul {
+      padding-left: 17px;
+    }
+
+    .case-status-chip {
+      display: inline-block;
+      padding: 5px 8px;
+      border: 1px solid rgba(215, 189, 133, .42);
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+
+    .case-status-chip.unexplained {
+      border-color: rgba(145, 182, 214, .42);
+      color: #b7d0e7;
+    }
+
+    .case-status-chip.explained {
+      border-color: rgba(126, 181, 149, .5);
+      color: #a7d2b6;
+    }
+
+    .archive-future-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 11px;
+    }
+
+    .archive-future-card {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 16px;
+      border: 1px dashed rgba(215, 189, 133, .36);
+      background: rgba(3, 26, 52, .32);
+      color: var(--paper);
+      text-decoration: none;
+    }
+
+    .archive-future-card:hover,
+    .archive-future-card:focus-visible {
+      border-color: var(--gold);
+      background: rgba(18, 57, 97, .38);
+      outline: none;
+    }
+
+    .archive-future-status {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .archive-future-card strong {
+      margin-bottom: 6px;
+      font: 400 18px/1.25 var(--serif);
+    }
+
+    .archive-future-card span:last-child {
+      color: rgba(243, 239, 227, .72);
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    @keyframes archive-entry {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .timeline-entry {
+        animation: none;
+      }
+
+      .case-filter-button,
+      .case-stat-card,
+      .timeline-card,
+      .case-file > summary {
+        transition: none;
+      }
     }
 
     .skywatch-grid {
@@ -1183,6 +1676,39 @@
         grid-template-columns: 1fr;
       }
 
+      .case-stat-grid,
+      .archive-future-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .case-record,
+      .case-detail-columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .case-file-list {
+        grid-template-columns: 1fr;
+      }
+
+      .incident-timeline::before {
+        left: 8px;
+      }
+
+      .timeline-entry {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        padding-left: 25px;
+      }
+
+      .timeline-entry::before {
+        left: 3px;
+      }
+
+      .timeline-date {
+        padding-top: 0;
+        text-align: left;
+      }
+
       .skywatch-card:last-child {
         grid-column: auto;
       }
@@ -1248,18 +1774,32 @@
         font-size: 14px;
       }
 
-      .case-card-heading {
+      .case-record,
+      .case-detail-columns,
+      .case-file-fields,
+      .starship-card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .case-dashboard {
+        padding: 15px;
+      }
+
+      .case-dashboard-heading {
         display: block;
       }
 
-      .case-card-date {
-        display: inline-block;
-        margin-top: 12px;
+      .case-dashboard-heading p {
+        margin-top: 7px;
       }
 
-      .case-record,
-      .starship-card-grid {
+      .case-stat-grid,
+      .archive-future-grid {
         grid-template-columns: 1fr;
+      }
+
+      .case-card > summary {
+        gap: 12px;
       }
 
       .family-tree {
@@ -1927,45 +2467,382 @@
             <header class="observatory-section-header">
               <span class="observatory-section-kicker">01 · Investigation archive</span>
               <h4 id="paranormal-title">Paranormal Archive <span aria-hidden="true">👻</span></h4>
-              <p>Case files preserve what was reported, when it happened, and what is still unknown. Categories describe the subject of a report, not a proven explanation.</p>
+              <p>A careful record of reported events: what was observed, who was present, and which details still need documenting. Categories describe the report, not a proven cause.</p>
             </header>
-            <div class="case-filters" role="group" aria-label="Filter investigation cases">
-              <button class="case-filter-button" type="button" data-case-filter="all" aria-pressed="true" aria-controls="case-results">All cases</button>
-              <button class="case-filter-button" type="button" data-case-filter="unexplained" aria-pressed="false" aria-controls="case-results">Unexplained</button>
-              <button class="case-filter-button" type="button" data-case-filter="explained" aria-pressed="false" aria-controls="case-results">Explained</button>
-              <button class="case-filter-button" type="button" data-case-filter="electrical" aria-pressed="false" aria-controls="case-results">Electrical</button>
-              <button class="case-filter-button" type="button" data-case-filter="physical" aria-pressed="false" aria-controls="case-results">Physical</button>
-              <button class="case-filter-button" type="button" data-case-filter="witness-reports" aria-pressed="false" aria-controls="case-results">Witness Reports</button>
-            </div>
-            <div id="case-results" aria-live="polite">
-              <article class="case-card" data-case-card data-case-categories="unexplained electrical witness-reports">
-                <header class="case-card-heading">
-                  <div>
-                    <p class="case-card-status">Featured investigation · Open file</p>
-                    <h5>The Early-Hours Stair &amp; TV Activation</h5>
-                  </div>
-                  <time class="case-card-date" datetime="2026-07-07">7 July 2026</time>
-                </header>
-                <p class="case-card-summary">A record of the reported early-hours stair event and television activation. The entry stays close to the observation; no cause or interpretation has been assigned.</p>
+            <details class="case-card" id="featured-case-study" data-case-card data-case-categories="electrical unexplained witness-reports">
+              <summary>
+                <span>
+                  <span class="featured-case-label">Featured investigation · HOH-PA-006</span>
+                  <span class="featured-case-title">The Early-Hours Stair &amp; TV Activation</span>
+                  <span class="featured-case-date">7 July 2026 · approximately 2:00am</span>
+                </span>
+              </summary>
+              <div class="case-card-content">
+                <p class="case-card-summary">Multiple stair light activations occurred during the same period as the television activation, creating the strongest concentration of anomalies recorded so far.</p>
                 <dl class="case-record">
                   <div>
-                    <dt>Record status</dt>
-                    <dd>Initial case entry</dd>
+                    <dt>Event ID</dt>
+                    <dd>HOH-PA-006</dd>
                   </div>
                   <div>
-                    <dt>Interpretation</dt>
-                    <dd>Unresolved; further notes may be added</dd>
+                    <dt>Date</dt>
+                    <dd>7 July 2026 · approximately 2:00am</dd>
+                  </div>
+                  <div>
+                    <dt>Location</dt>
+                    <dd>Stairs and television area; exact room not recorded</dd>
+                  </div>
+                  <div>
+                    <dt>Witnesses</dt>
+                    <dd>Hayley</dd>
+                  </div>
+                  <div>
+                    <dt>Event Classification</dt>
+                    <dd>Clustered Electrical Event</dd>
+                  </div>
+                  <div>
+                    <dt>Investigation Status</dt>
+                    <dd><span class="case-status-chip">Under Investigation</span></dd>
                   </div>
                 </dl>
-                <ul class="case-tag-list" aria-label="Case categories">
-                  <li>Unexplained</li>
-                  <li>Electrical report</li>
-                  <li>Witness report</li>
-                </ul>
-              </article>
-              <p class="case-empty" data-case-empty hidden>No cases are filed under this category yet. New entries can be added as reports are documented.</p>
+                <div class="case-detail-columns">
+                  <section class="case-detail-block">
+                    <h5>Summary</h5>
+                    <p>Hayley reported several stair light activations in the same period that the television powered on. No remote interaction, timer, or known trigger was identified in the report.</p>
+                  </section>
+                  <section class="case-detail-block">
+                    <h5>Notes</h5>
+                    <p>This is the archive's strongest recorded cluster so far. It links the dated television report with the stair-light activity; it does not establish a shared cause.</p>
+                  </section>
+                  <section class="case-detail-block">
+                    <h5>Possible Explanations</h5>
+                    <ul>
+                      <li>Separate sensor and television triggers occurring close together</li>
+                      <li>A shared environmental or electrical condition</li>
+                      <li>A timing coincidence or another cause not yet identified</li>
+                    </ul>
+                    <p class="hypothesis-note">These are investigation avenues only; none is confirmed.</p>
+                  </section>
+                </div>
+              </div>
+            </details>
+
+            <section class="case-dashboard" aria-labelledby="case-dashboard-title">
+              <div class="case-dashboard-heading">
+                <div>
+                  <span class="observatory-section-kicker">Archive snapshot</span>
+                  <h5 id="case-dashboard-title">Observatory Dashboard</h5>
+                </div>
+                <p>Counts reflect the current six case files.</p>
+              </div>
+              <div class="case-stat-grid" role="group" aria-label="Case totals and categories">
+                <button class="case-stat-card" type="button" data-case-filter="all" aria-pressed="true" aria-controls="case-results featured-case-study">
+                  <span class="case-stat-icon" aria-hidden="true">#</span>
+                  <span><strong class="case-stat-number" data-case-count="total">6</strong><span class="case-stat-label">Total Cases Logged</span></span>
+                </button>
+                <button class="case-stat-card" type="button" data-case-filter="electrical" aria-pressed="false" aria-controls="case-results featured-case-study">
+                  <span class="case-stat-icon" aria-hidden="true">⚡</span>
+                  <span><strong class="case-stat-number" data-case-count="electrical">5</strong><span class="case-stat-label">Electrical Anomalies</span></span>
+                </button>
+                <button class="case-stat-card" type="button" data-case-filter="physical" aria-pressed="false" aria-controls="case-results featured-case-study">
+                  <span class="case-stat-icon" aria-hidden="true">↕</span>
+                  <span><strong class="case-stat-number" data-case-count="physical">1</strong><span class="case-stat-label">Physical Displacement Events</span></span>
+                </button>
+                <button class="case-stat-card" type="button" data-case-filter="object-activation" aria-pressed="false" aria-controls="case-results featured-case-study">
+                  <span class="case-stat-icon" aria-hidden="true">◎</span>
+                  <span><strong class="case-stat-number" data-case-count="object-activation">3</strong><span class="case-stat-label">Object Activation Events</span></span>
+                </button>
+                <button class="case-stat-card" type="button" data-case-filter="animal-related" aria-pressed="false" aria-controls="case-results featured-case-study">
+                  <span class="case-stat-icon" aria-hidden="true">🐾</span>
+                  <span><strong class="case-stat-number" data-case-count="animal-related">1</strong><span class="case-stat-label">Animal Related Events</span></span>
+                </button>
+                <button class="case-stat-card" type="button" data-case-filter="unexplained" aria-pressed="false" aria-controls="case-results featured-case-study">
+                  <span class="case-stat-icon" aria-hidden="true">?</span>
+                  <span><strong class="case-stat-number" data-case-count="unexplained">6</strong><span class="case-stat-label">Unexplained Cases</span></span>
+                </button>
+              </div>
+              <p class="case-count-note">Categories can overlap. “Unexplained” means no confirmed cause is recorded; it does not imply a paranormal cause. The cluster file links existing reports and is not counted as another object activation.</p>
+              <div class="case-status-key" aria-label="Investigation status definitions">
+                <span><strong>Explained</strong> · a cause is documented</span>
+                <span><strong>Unexplained</strong> · no cause is recorded</span>
+                <span><strong>Under Investigation</strong> · follow-up remains open</span>
+              </div>
+            </section>
+
+            <p class="case-filters-label">Filter case files</p>
+            <div class="case-filters" role="group" aria-label="Filter investigation cases">
+              <button class="case-filter-button" type="button" data-case-filter="all" aria-pressed="true" aria-controls="case-results featured-case-study">All cases</button>
+              <button class="case-filter-button" type="button" data-case-filter="unexplained" aria-pressed="false" aria-controls="case-results featured-case-study">Unexplained</button>
+              <button class="case-filter-button" type="button" data-case-filter="explained" aria-pressed="false" aria-controls="case-results featured-case-study">Explained</button>
+              <button class="case-filter-button" type="button" data-case-filter="electrical" aria-pressed="false" aria-controls="case-results featured-case-study">Electrical</button>
+              <button class="case-filter-button" type="button" data-case-filter="physical" aria-pressed="false" aria-controls="case-results featured-case-study">Physical</button>
+              <button class="case-filter-button" type="button" data-case-filter="witness-reports" aria-pressed="false" aria-controls="case-results featured-case-study">Witness Reports</button>
+              <button class="case-filter-button" type="button" data-case-filter="object-activation" aria-pressed="false" aria-controls="case-results featured-case-study">Object Activation</button>
+              <button class="case-filter-button" type="button" data-case-filter="animal-related" aria-pressed="false" aria-controls="case-results featured-case-study">Animal Related</button>
             </div>
-            <p class="case-filter-note">Filters group reports by subject; they do not establish a cause.</p>
+            <p class="case-filter-note">Categories describe reported details and may overlap; they are not conclusions about cause.</p>
+
+            <div id="case-results" aria-live="polite">
+              <section class="archive-subsection" aria-labelledby="incident-timeline-title">
+                <div class="archive-subsection-heading">
+                  <h5 id="incident-timeline-title">Incident Timeline</h5>
+                  <p>Undated and recurring reports appear first. Events with known dates follow in chronological order.</p>
+                </div>
+                <ol class="incident-timeline">
+                  <li class="timeline-entry" data-case-timeline data-case-categories="electrical object-activation unexplained">
+                    <span class="timeline-date">Date unknown</span>
+                    <a class="timeline-card" href="#case-file-oven">
+                      <span class="timeline-card-type">Electrical Anomaly</span>
+                      <strong class="timeline-card-title">Oven Incident</strong>
+                      <span class="timeline-card-summary">Found switched on in the morning despite nobody using or activating it.</span>
+                    </a>
+                  </li>
+                  <li class="timeline-entry" data-case-timeline data-case-categories="electrical object-activation animal-related unexplained">
+                    <span class="timeline-date">Ongoing</span>
+                    <a class="timeline-card" href="#case-file-collar">
+                      <span class="timeline-card-type">Emotional / Electrical Anomaly</span>
+                      <strong class="timeline-card-title">Scooby's LED Collar</strong>
+                      <span class="timeline-card-summary">The stored LED collar occasionally flashes despite being considered out of battery.</span>
+                    </a>
+                  </li>
+                  <li class="timeline-entry" data-case-timeline data-case-categories="electrical unexplained">
+                    <span class="timeline-date">Multiple occurrences</span>
+                    <a class="timeline-card" href="#case-file-stair-lights">
+                      <span class="timeline-card-type">Environmental / Electrical</span>
+                      <strong class="timeline-card-title">Stair Motion Light Activations</strong>
+                      <span class="timeline-card-summary">Motion-activated stair lights illuminate despite no visible movement within the home.</span>
+                    </a>
+                  </li>
+                  <li class="timeline-entry" data-case-timeline data-case-categories="physical witness-reports unexplained">
+                    <time class="timeline-date">Late May / Early June 2026</time>
+                    <a class="timeline-card" href="#case-file-kitchen-fall">
+                      <span class="timeline-card-type">Physical Displacement</span>
+                      <strong class="timeline-card-title">Kitchen Pot &amp; Bananas Fall</strong>
+                      <span class="timeline-card-summary">A hanging pot and bananas were found on the kitchen floor after a loud crash; Josh was the witness.</span>
+                    </a>
+                  </li>
+                  <li class="timeline-entry" data-case-timeline data-case-categories="electrical object-activation witness-reports unexplained">
+                    <time class="timeline-date" datetime="2026-07-07T02:00">7 July 2026 · approximately 2:00am</time>
+                    <a class="timeline-card" href="#case-file-tv-activation">
+                      <span class="timeline-card-type">Electrical Activation</span>
+                      <strong class="timeline-card-title">TV Activation</strong>
+                      <span class="timeline-card-summary">The television powered on without remote interaction, timers, or known triggers; Hayley witnessed it.</span>
+                    </a>
+                  </li>
+                  <li class="timeline-entry" data-case-timeline data-case-categories="electrical witness-reports unexplained">
+                    <time class="timeline-date" datetime="2026-07-07">7 July 2026</time>
+                    <a class="timeline-card" href="#featured-case-study">
+                      <span class="timeline-card-type">Clustered Electrical Event</span>
+                      <strong class="timeline-card-title">Stair Lights &amp; TV Cluster Event</strong>
+                      <span class="timeline-card-summary">Multiple stair light activations occurred in the same period as the television activation.</span>
+                    </a>
+                  </li>
+                </ol>
+              </section>
+
+              <section class="archive-subsection" aria-labelledby="case-files-title">
+                <div class="archive-subsection-heading">
+                  <h5 id="case-files-title">Detailed Case Files</h5>
+                  <p>Open a file to review its record, notes, possible explanations, and current status.</p>
+                </div>
+                <div class="case-file-list">
+                  <details class="case-file" id="case-file-oven" data-case-card data-case-categories="electrical object-activation unexplained">
+                    <summary>
+                      <span>
+                        <span class="case-file-id">HOH-PA-001</span>
+                        <strong class="case-file-title">Oven Incident</strong>
+                        <span class="case-file-date">Date unknown</span>
+                        <span class="case-status-chip unexplained">Unexplained</span>
+                      </span>
+                    </summary>
+                    <div class="case-file-body">
+                      <dl class="case-file-fields">
+                        <div><dt>Event ID</dt><dd>HOH-PA-001</dd></div>
+                        <div><dt>Date</dt><dd>Unknown</dd></div>
+                        <div><dt>Location</dt><dd>Kitchen</dd></div>
+                        <div><dt>Witnesses</dt><dd>Not recorded</dd></div>
+                        <div><dt>Event Classification</dt><dd>Electrical Anomaly · Object Activation</dd></div>
+                        <div><dt>Investigation Status</dt><dd>Unexplained</dd></div>
+                      </dl>
+                      <div class="case-file-notes">
+                        <h6>Summary</h6>
+                        <p>The oven was discovered switched on in the morning despite nobody using or activating it.</p>
+                        <h6>Notes</h6>
+                        <p>The date, last known use, and oven control settings at the time are not recorded.</p>
+                        <h6>Possible Explanations</h6>
+                        <ul>
+                          <li>A timer or delayed-start setting</li>
+                          <li>A control-panel or relay fault</li>
+                          <li>A prior activation not recalled</li>
+                        </ul>
+                        <p class="hypothesis-note">These possibilities have not been verified.</p>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="case-file" id="case-file-collar" data-case-card data-case-categories="electrical object-activation animal-related unexplained">
+                    <summary>
+                      <span>
+                        <span class="case-file-id">HOH-PA-002</span>
+                        <strong class="case-file-title">Scooby's LED Collar</strong>
+                        <span class="case-file-date">Ongoing</span>
+                        <span class="case-status-chip">Under Investigation</span>
+                      </span>
+                    </summary>
+                    <div class="case-file-body">
+                      <dl class="case-file-fields">
+                        <div><dt>Event ID</dt><dd>HOH-PA-002</dd></div>
+                        <div><dt>Date</dt><dd>Ongoing</dd></div>
+                        <div><dt>Location</dt><dd>Storage location not recorded</dd></div>
+                        <div><dt>Witnesses</dt><dd>Not recorded</dd></div>
+                        <div><dt>Event Classification</dt><dd>Emotional / Electrical Anomaly · Animal Related</dd></div>
+                        <div><dt>Investigation Status</dt><dd>Under Investigation</dd></div>
+                      </dl>
+                      <div class="case-file-notes">
+                        <h6>Summary</h6>
+                        <p>Scooby's stored LED collar occasionally flashes despite being considered out of battery.</p>
+                        <h6>Notes</h6>
+                        <p>The first occurrence, flash frequency, and independently confirmed battery condition have not been recorded.</p>
+                        <h6>Possible Explanations</h6>
+                        <ul>
+                          <li>Residual battery charge</li>
+                          <li>Intermittent battery contact or low-voltage behavior</li>
+                          <li>A fault in the LED or switch circuit</li>
+                        </ul>
+                        <p class="hypothesis-note">These are untested possibilities, not findings.</p>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="case-file" id="case-file-kitchen-fall" data-case-card data-case-categories="physical witness-reports unexplained">
+                    <summary>
+                      <span>
+                        <span class="case-file-id">HOH-PA-003</span>
+                        <strong class="case-file-title">Kitchen Pot &amp; Bananas Fall</strong>
+                        <span class="case-file-date">Late May / Early June 2026</span>
+                        <span class="case-status-chip">Under Investigation</span>
+                      </span>
+                    </summary>
+                    <div class="case-file-body">
+                      <dl class="case-file-fields">
+                        <div><dt>Event ID</dt><dd>HOH-PA-003</dd></div>
+                        <div><dt>Date</dt><dd>Late May / Early June 2026</dd></div>
+                        <div><dt>Location</dt><dd>Kitchen</dd></div>
+                        <div><dt>Witnesses</dt><dd>Josh</dd></div>
+                        <div><dt>Event Classification</dt><dd>Physical Displacement</dd></div>
+                        <div><dt>Investigation Status</dt><dd>Under Investigation</dd></div>
+                      </dl>
+                      <div class="case-file-notes">
+                        <h6>Summary</h6>
+                        <p>A hanging pot and bananas were discovered on the kitchen floor after a loud crash. Both items normally require deliberate lifting from hooks.</p>
+                        <h6>Notes</h6>
+                        <p>Josh was the witness. The exact date, time, hook condition, and sequence of the fall are not recorded.</p>
+                        <h6>Possible Explanations</h6>
+                        <ul>
+                          <li>A hook or mounting point shifted or failed</li>
+                          <li>Vibration or contact disturbed one or both items</li>
+                          <li>A prior disturbance was not observed</li>
+                        </ul>
+                        <p class="hypothesis-note">No explanation has been established.</p>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="case-file" id="case-file-stair-lights" data-case-card data-case-categories="electrical unexplained">
+                    <summary>
+                      <span>
+                        <span class="case-file-id">HOH-PA-004</span>
+                        <strong class="case-file-title">Stair Motion Light Activations</strong>
+                        <span class="case-file-date">Multiple occurrences</span>
+                        <span class="case-status-chip unexplained">Unexplained</span>
+                      </span>
+                    </summary>
+                    <div class="case-file-body">
+                      <dl class="case-file-fields">
+                        <div><dt>Event ID</dt><dd>HOH-PA-004</dd></div>
+                        <div><dt>Date</dt><dd>Multiple occurrences; dates not recorded</dd></div>
+                        <div><dt>Location</dt><dd>Stairs</dd></div>
+                        <div><dt>Witnesses</dt><dd>Not recorded</dd></div>
+                        <div><dt>Event Classification</dt><dd>Environmental / Electrical</dd></div>
+                        <div><dt>Investigation Status</dt><dd>Unexplained</dd></div>
+                      </dl>
+                      <div class="case-file-notes">
+                        <h6>Summary</h6>
+                        <p>Motion-activated stair lights illuminate despite no visible movement within the home.</p>
+                        <h6>Notes</h6>
+                        <p>Individual dates, durations, sensor states, and independent witnesses have not yet been logged. Some occurrences may relate to the 7 July cluster record.</p>
+                        <h6>Possible Explanations</h6>
+                        <ul>
+                          <li>Sensor range, sensitivity, or placement</li>
+                          <li>Changes in heat, airflow, or the sensor's environment</li>
+                          <li>An electrical or sensor fault</li>
+                        </ul>
+                        <p class="hypothesis-note">These are possibilities to check; no cause is recorded.</p>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="case-file" id="case-file-tv-activation" data-case-card data-case-categories="electrical object-activation witness-reports unexplained">
+                    <summary>
+                      <span>
+                        <span class="case-file-id">HOH-PA-005</span>
+                        <strong class="case-file-title">TV Activation</strong>
+                        <span class="case-file-date">7 July 2026 · approximately 2:00am</span>
+                        <span class="case-status-chip">Under Investigation</span>
+                      </span>
+                    </summary>
+                    <div class="case-file-body">
+                      <dl class="case-file-fields">
+                        <div><dt>Event ID</dt><dd>HOH-PA-005</dd></div>
+                        <div><dt>Date</dt><dd>7 July 2026 · approximately 2:00am</dd></div>
+                        <div><dt>Location</dt><dd>Television area; exact room not recorded</dd></div>
+                        <div><dt>Witnesses</dt><dd>Hayley</dd></div>
+                        <div><dt>Event Classification</dt><dd>Electrical Activation · Object Activation</dd></div>
+                        <div><dt>Investigation Status</dt><dd>Under Investigation</dd></div>
+                      </dl>
+                      <div class="case-file-notes">
+                        <h6>Summary</h6>
+                        <p>The television powered on without remote interaction, timers, or known triggers. Hayley witnessed the activation.</p>
+                        <h6>Notes</h6>
+                        <p>No remote interaction, timer, or known trigger was reported. Device settings and connected-device history have not been documented here.</p>
+                        <h6>Possible Explanations</h6>
+                        <ul>
+                          <li>A connected-device wake signal or TV setting</li>
+                          <li>A remote signal or control fault</li>
+                          <li>A power interruption or another electrical trigger</li>
+                        </ul>
+                        <p class="hypothesis-note">No candidate has been confirmed.</p>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </section>
+              <p class="case-empty" data-case-empty hidden>No case files match this filter. No recorded incident currently has a confirmed explanation.</p>
+            </div>
+
+            <section class="archive-subsection" aria-labelledby="archive-future-title">
+              <div class="archive-subsection-heading">
+                <h5 id="archive-future-title">A Living Archive</h5>
+                <p>Related projects and new reports can grow alongside the case record.</p>
+              </div>
+              <div class="archive-future-grid">
+                <a class="archive-future-card" href="#observatory-skywatch">
+                  <span class="archive-future-status">Project branch</span>
+                  <strong>SkyWatch</strong>
+                  <span>AI-assisted sky monitoring and image classification.</span>
+                </a>
+                <a class="archive-future-card" href="#observatory-starship">
+                  <span class="archive-future-status">Programme archive</span>
+                  <strong>Starship Watch</strong>
+                  <span>SpaceX Starship flight tests, engineering, and future missions.</span>
+                </a>
+                <div class="archive-future-card">
+                  <span class="archive-future-status">Planned</span>
+                  <strong>Future Case Uploads</strong>
+                  <span>A structured place for new case notes and supporting material; uploads are not enabled yet.</span>
+                </div>
+              </div>
+            </section>
             <a class="observatory-back-link" href="#observatory-start">↑ Observatory overview</a>
           </section>
 
@@ -2056,7 +2933,21 @@
     const roomTriggers = document.querySelectorAll("[data-room]");
     const caseFilterButtons = [...document.querySelectorAll("[data-case-filter]")];
     const caseCards = [...document.querySelectorAll("[data-case-card]")];
+    const caseTimelineEntries = [...document.querySelectorAll("[data-case-timeline]")];
+    const caseCountElements = [...document.querySelectorAll("[data-case-count]")];
     const caseEmptyState = document.querySelector("[data-case-empty]");
+
+    function caseCategories(caseElement) {
+      return (caseElement.dataset.caseCategories || "").split(/\s+/).filter(Boolean);
+    }
+
+    caseCountElements.forEach((element) => {
+      const category = element.dataset.caseCount;
+      const count = category === "total"
+        ? caseCards.length
+        : caseCards.filter((card) => caseCategories(card).includes(category)).length;
+      element.textContent = String(count);
+    });
 
     function enterRoom(roomName) {
       const selectedPanel = roomPanels.find((panel) => panel.dataset.roomPanel === roomName);
@@ -2076,19 +2967,25 @@
       button.addEventListener("click", () => {
         const filter = button.dataset.caseFilter;
         let visibleCount = 0;
+        const matchesFilter = (caseElement) => (
+          filter === "all" || caseCategories(caseElement).includes(filter)
+        );
 
         caseCards.forEach((card) => {
-          const categories = card.dataset.caseCategories.split(/\s+/);
-          const matches = filter === "all" || categories.includes(filter);
+          const matches = matchesFilter(card);
           card.hidden = !matches;
           if (matches) {
             visibleCount += 1;
           }
         });
 
+        caseTimelineEntries.forEach((entry) => {
+          entry.hidden = !matchesFilter(entry);
+        });
+
         caseEmptyState.hidden = visibleCount > 0;
         caseFilterButtons.forEach((filterButton) => {
-          filterButton.setAttribute("aria-pressed", String(filterButton === button));
+          filterButton.setAttribute("aria-pressed", String(filterButton.dataset.caseFilter === filter));
         });
       });
     });
