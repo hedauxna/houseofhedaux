@@ -1,0 +1,1530 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#06264a">
+  <meta name="description" content="Step inside the House of Hedaux: a family archive of memories, stories, and the rooms that hold them.">
+  <title>House of Hedaux</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --blue: #06264a;
+      --blue-deep: #031a34;
+      --blue-light: #123961;
+      --paper: #f3efe3;
+      --muted: #c1cad4;
+      --gold: #d7bd85;
+      --serif: Georgia, "Times New Roman", serif;
+      --sans: "Segoe UI", Arial, sans-serif;
+      font-family: var(--sans);
+      color: var(--paper);
+      background: var(--blue);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-width: 320px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-width: 320px;
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 50% 0, rgba(28, 72, 119, .48), transparent 55rem),
+        var(--blue);
+    }
+
+    button,
+    a {
+      font: inherit;
+    }
+
+    .page-header {
+      padding: 46px 20px 24px;
+      text-align: center;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--paper);
+      font: 500 clamp(38px, 6vw, 66px)/1.08 var(--serif);
+      letter-spacing: .12em;
+      text-shadow: 0 3px 22px rgba(0, 0, 0, .35);
+      text-transform: uppercase;
+    }
+
+    .tagline {
+      margin: 14px 0 0;
+      color: rgba(243, 239, 227, .82);
+      font: 500 clamp(12px, 1.8vw, 17px)/1.5 var(--serif);
+      letter-spacing: .12em;
+    }
+
+    main {
+      padding: 12px 0 54px;
+    }
+
+    .instruction {
+      margin: 0 auto 18px;
+      padding: 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: .04em;
+      text-align: center;
+    }
+
+    .blueprint-frame {
+      position: relative;
+      width: min(1400px, calc(100% - 32px));
+      aspect-ratio: 3 / 2;
+      margin: 0 auto;
+      overflow: hidden;
+      border: 1px solid rgba(215, 189, 133, .4);
+      background: var(--blue-deep);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .3);
+    }
+
+    .blueprint-image,
+    .room-map {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .blueprint-image {
+      display: block;
+      object-fit: cover;
+    }
+
+    .room-map {
+      overflow: visible;
+    }
+
+    .room-hit {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .room-hit polygon {
+      fill: transparent;
+      stroke: transparent;
+      stroke-width: 5;
+      transition: fill .18s ease, stroke .18s ease;
+      pointer-events: all;
+    }
+
+    .room-hit:hover polygon,
+    .room-hit:focus-visible polygon {
+      fill: rgba(215, 189, 133, .17);
+      stroke: rgba(243, 239, 227, .86);
+      stroke-dasharray: 10 7;
+    }
+
+    .room-label {
+      position: absolute;
+      z-index: 2;
+      left: var(--x);
+      top: var(--y);
+      transform: translate(-50%, -50%);
+      padding: 3px 7px;
+      border: 1px solid transparent;
+      color: var(--paper);
+      font: 600 clamp(10px, 1.15vw, 15px)/1.25 var(--serif);
+      letter-spacing: .035em;
+      text-align: center;
+      text-shadow: 0 1px 5px #00162e, 1px 1px 2px #00162e, -1px -1px 2px #00162e;
+      white-space: nowrap;
+      cursor: default;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .room-index {
+      width: min(1100px, calc(100% - 40px));
+      margin: 26px auto 0;
+      border-top: 1px solid rgba(243, 239, 227, .18);
+      border-bottom: 1px solid rgba(243, 239, 227, .18);
+    }
+
+    .room-index-title {
+      margin: 0;
+      padding: 14px 2px;
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .room-index-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0;
+      padding: 0 0 18px;
+      list-style: none;
+    }
+
+    .room-index-list li {
+      padding: 8px 11px;
+      border: 1px solid rgba(243, 239, 227, .24);
+      border-radius: 2px;
+      color: var(--paper);
+      cursor: default;
+      font-size: 13px;
+    }
+
+    .page-footer {
+      padding: 20px 18px 30px;
+      color: rgba(193, 202, 212, .72);
+      font-size: 11px;
+      letter-spacing: .04em;
+      text-align: center;
+    }
+
+    .room-dialog {
+      width: min(1080px, calc(100% - 40px));
+      max-width: none;
+      max-height: min(850px, calc(100dvh - 40px));
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid rgba(215, 189, 133, .48);
+      border-radius: 4px;
+      background: var(--blue-deep);
+      color: var(--paper);
+      box-shadow: 0 30px 100px rgba(0, 0, 0, .45);
+    }
+
+    .room-dialog::backdrop {
+      background: rgba(1, 13, 27, .84);
+      backdrop-filter: blur(5px);
+    }
+
+    .room-dialog[open] {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .dialog-bar {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 74px;
+      padding: 15px 25px;
+      border-bottom: 1px solid rgba(243, 239, 227, .2);
+      background: var(--blue);
+    }
+
+    .dialog-brand {
+      margin: 0 0 3px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .dialog-bar h2 {
+      margin: 0;
+      color: var(--paper);
+      font: 400 24px/1.1 var(--serif);
+    }
+
+    .dialog-close {
+      flex: 0 0 auto;
+      padding: 10px 13px;
+      border: 1px solid rgba(243, 239, 227, .4);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--paper);
+      cursor: pointer;
+      font-size: 12px;
+      letter-spacing: .05em;
+    }
+
+    .dialog-close:hover,
+    .dialog-close:focus-visible {
+      border-color: var(--gold);
+      background: var(--blue-light);
+      outline: none;
+    }
+
+    .dialog-content {
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      background: linear-gradient(145deg, rgba(18, 57, 97, .68), var(--blue-deep) 72%);
+    }
+
+    .room-panel[hidden] {
+      display: none !important;
+    }
+
+    .room-panel {
+      min-height: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+    }
+
+    .room-panel.no-photo {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .room-photo {
+      width: 100%;
+      height: auto;
+      max-height: 440px;
+      aspect-ratio: 16 / 10;
+      display: block;
+      align-self: start;
+      border: 1px solid rgba(243, 239, 227, .22);
+      object-fit: cover;
+      object-position: center;
+      background: var(--blue-light);
+    }
+
+    .room-story-photo {
+      display: block;
+      width: 100%;
+      max-width: 280px;
+      height: auto;
+      margin: 18px 0;
+      border: 1px solid rgba(243, 239, 227, .22);
+    }
+
+    .room-story-photo-wide {
+      max-width: 560px;
+    }
+
+    .study-clipping {
+      max-width: 560px;
+      margin: 24px 0;
+    }
+
+    .study-clipping img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(243, 239, 227, .22);
+    }
+
+    .room-copy {
+      align-self: center;
+      max-width: 680px;
+      padding: clamp(28px, 6vw, 72px);
+    }
+
+    .room-panel:not(.no-photo) > .room-copy {
+      align-self: start;
+    }
+
+    .room-kicker {
+      margin: 0 0 18px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .room-copy h3 {
+      margin: 0 0 22px;
+      color: var(--paper);
+      font: 400 clamp(30px, 4vw, 46px)/1.15 var(--serif);
+      letter-spacing: -.025em;
+    }
+
+    .room-copy p {
+      margin: 0 0 16px;
+      color: rgba(243, 239, 227, .86);
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .room-copy ul {
+      margin: 12px 0 20px;
+      padding-left: 20px;
+      color: rgba(243, 239, 227, .86);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .room-copy a {
+      color: #e8d39e;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 4px;
+    }
+
+    .room-copy a:hover,
+    .room-copy a:focus-visible {
+      color: #fff;
+    }
+
+    .room-quote {
+      margin: 27px 0 0;
+      padding: 18px 0 0;
+      border-top: 1px solid rgba(243, 239, 227, .3);
+      color: var(--paper);
+      font: 22px/1.45 var(--serif);
+    }
+
+    .room-original-story {
+      margin-top: 30px;
+      padding-top: 22px;
+      border-top: 1px solid rgba(243, 239, 227, .3);
+    }
+
+    .room-original-story summary {
+      margin-bottom: 18px;
+      color: var(--gold);
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .room-original-story:not([open]) summary {
+      margin-bottom: 0;
+    }
+
+    .room-original-story h4 {
+      margin: 24px 0 10px;
+      color: var(--paper);
+      font: 400 22px/1.3 var(--serif);
+    }
+
+    .room-original-story .source-caption {
+      color: rgba(243, 239, 227, .72);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    .room-original-story > :last-child {
+      margin-bottom: 0;
+    }
+
+    .travel-archive.room-copy {
+      width: 100%;
+      max-width: 1040px;
+      margin: 0 auto;
+      align-self: start;
+    }
+
+    .travel-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .travel-card {
+      min-width: 0;
+      border: 1px solid rgba(243, 239, 227, .24);
+      background: rgba(3, 26, 52, .48);
+    }
+
+    .travel-card > summary {
+      padding: 20px;
+      cursor: pointer;
+    }
+
+    .travel-card > summary::marker {
+      color: var(--gold);
+    }
+
+    .travel-card[open] > summary {
+      border-bottom: 1px solid rgba(243, 239, 227, .2);
+    }
+
+    .travel-card-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .travel-card-title {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--paper);
+      font: 400 22px/1.25 var(--serif);
+    }
+
+    .travel-card-teaser {
+      display: block;
+      color: rgba(243, 239, 227, .78);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .travel-story {
+      padding: 8px 20px 20px;
+    }
+
+    .travel-story h4 {
+      margin: 24px 0 10px;
+      color: var(--paper);
+      font: 400 22px/1.3 var(--serif);
+    }
+
+    .travel-story .source-caption {
+      color: rgba(243, 239, 227, .72);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    .travel-story > :last-child {
+      margin-bottom: 0;
+    }
+
+    .family-tree-panel {
+      display: block;
+    }
+
+    .family-tree {
+      width: 100%;
+      max-width: none;
+      padding: clamp(24px, 4vw, 46px);
+    }
+
+    .family-tree-intro {
+      max-width: 720px;
+      margin: 0 auto 30px;
+      text-align: center;
+    }
+
+    .family-tree-intro h3 {
+      margin: 0 0 12px;
+      color: var(--paper);
+      font: 400 clamp(30px, 4vw, 46px)/1.15 var(--serif);
+      letter-spacing: -.025em;
+    }
+
+    .family-tree-intro p:last-child {
+      margin-bottom: 0;
+      color: rgba(243, 239, 227, .82);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .family-sides {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+      gap: 18px;
+    }
+
+    .family-side {
+      min-width: 0;
+      padding: 20px;
+      border: 1px solid rgba(243, 239, 227, .22);
+      background: rgba(3, 26, 52, .48);
+    }
+
+    .family-side h4,
+    .descendant-family h4 {
+      margin: 0 0 18px;
+      color: var(--paper);
+      font: 400 24px/1.2 var(--serif);
+    }
+
+    .family-tree .generation-label {
+      margin: 18px 0 9px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .family-grandparents {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .family-couple {
+      min-width: 0;
+      padding: 11px;
+      border: 1px solid rgba(243, 239, 227, .2);
+      background: rgba(18, 57, 97, .58);
+      text-align: center;
+    }
+
+    .family-couple-label {
+      display: block;
+      margin-bottom: 9px;
+      color: rgba(243, 239, 227, .65);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .family-person {
+      display: block;
+      color: var(--paper);
+    }
+
+    .family-person strong {
+      display: block;
+      font: 400 13px/1.35 var(--serif);
+      overflow-wrap: anywhere;
+    }
+
+    .family-person small {
+      display: block;
+      margin-top: 2px;
+      color: rgba(243, 239, 227, .7);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    .couple-plus {
+      display: block;
+      margin: 5px 0;
+      color: var(--gold);
+      font: 14px/1 var(--serif);
+    }
+
+    .family-line {
+      width: 1px;
+      height: 22px;
+      margin: 0 auto;
+      background: rgba(215, 189, 133, .7);
+    }
+
+    .family-siblings {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .family-sibling {
+      flex: 1 1 110px;
+      min-width: 0;
+      padding: 8px 9px;
+      border: 1px solid rgba(243, 239, 227, .2);
+      background: rgba(18, 57, 97, .42);
+      color: var(--paper);
+      font-size: 11px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .family-sibling small {
+      display: block;
+      color: rgba(243, 239, 227, .68);
+      font-size: 10px;
+    }
+
+    .family-note {
+      display: grid;
+      min-height: 100%;
+      place-content: center;
+      border-style: dashed;
+      color: var(--paper);
+      font: 13px/1.5 var(--serif);
+    }
+
+    .family-note small {
+      display: block;
+      color: rgba(243, 239, 227, .68);
+      font: 10px/1.5 var(--sans);
+    }
+
+    .family-union {
+      max-width: 800px;
+      margin: 0 auto 30px;
+      text-align: center;
+    }
+
+    .family-union .generation-label {
+      margin-top: 0;
+    }
+
+    .main-couple {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    .main-couple .family-person {
+      padding: 13px;
+      border: 1px solid rgba(215, 189, 133, .65);
+      background: rgba(18, 57, 97, .7);
+    }
+
+    .main-couple .family-person strong {
+      font-size: 16px;
+    }
+
+    .main-couple .family-person small {
+      font-size: 11px;
+    }
+
+    .couple-symbol {
+      color: var(--gold);
+      font: 22px var(--serif);
+    }
+
+    .family-children {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .family-children .family-sibling {
+      display: grid;
+      align-content: center;
+      min-height: 66px;
+      border-color: rgba(215, 189, 133, .3);
+      font-size: 12px;
+    }
+
+    .extended-family {
+      max-width: 920px;
+      margin: 32px auto 0;
+      padding-top: 22px;
+      border-top: 1px solid rgba(243, 239, 227, .18);
+    }
+
+    .extended-family > .generation-label {
+      text-align: center;
+    }
+
+    .descendant-families {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .descendant-family {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid rgba(243, 239, 227, .18);
+      background: rgba(3, 26, 52, .34);
+    }
+
+    .descendant-family h4 {
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .descendant-family .family-partners {
+      margin: 0 0 10px;
+      color: rgba(243, 239, 227, .72);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .descendant-family ul {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .descendant-family li {
+      padding: 5px 7px;
+      border: 1px solid rgba(243, 239, 227, .18);
+      color: rgba(243, 239, 227, .86);
+      font-size: 10px;
+    }
+
+    @media (max-width: 700px) {
+      .page-header {
+        padding-top: 34px;
+      }
+
+      .blueprint-frame {
+        width: calc(100% - 18px);
+      }
+
+      .room-label {
+        display: none;
+      }
+
+      .room-panel,
+      .room-panel.no-photo {
+        grid-template-columns: 1fr;
+      }
+
+      .family-sides {
+        grid-template-columns: 1fr;
+      }
+
+      .family-children {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .travel-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .descendant-families {
+        grid-template-columns: 1fr;
+      }
+
+      .room-copy {
+        padding: 28px 24px 38px;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .page-header {
+        padding-inline: 12px;
+      }
+
+      h1 {
+        font-size: clamp(30px, 9vw, 42px);
+        letter-spacing: .08em;
+      }
+
+      .tagline {
+        letter-spacing: .07em;
+      }
+
+      .blueprint-frame {
+        width: 100%;
+        border-inline: 0;
+      }
+
+      .room-dialog {
+        width: 100%;
+        max-height: 100dvh;
+        height: 100dvh;
+        border: 0;
+        border-radius: 0;
+      }
+
+      .dialog-bar {
+        min-height: 64px;
+        padding: 11px 15px;
+      }
+
+      .dialog-bar h2 {
+        font-size: 21px;
+      }
+
+      .dialog-close {
+        padding: 9px 10px;
+      }
+
+      .room-copy h3 {
+        font-size: 32px;
+      }
+
+      .room-copy p {
+        font-size: 14px;
+      }
+
+      .family-tree {
+        padding: 24px 18px;
+      }
+
+      .family-side {
+        padding: 15px;
+      }
+
+      .family-grandparents {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <p class="eyebrow">A family home, held in memory</p>
+    <h1>House of Hedaux</h1>
+    <p class="tagline">A digital sanctuary of legacy and wonder</p>
+  </header>
+
+  <main>
+    <p class="instruction">Choose a room on the blueprint or select its name to step inside.</p>
+
+    <div class="blueprint-frame" aria-label="Interactive House of Hedaux floor plan">
+      <img class="blueprint-image" src="assets/HoH-Blueprint-V4.png" alt="The House of Hedaux mansion blueprint">
+
+      <svg class="room-map" viewBox="0 0 1536 1024" role="group" aria-label="Click a room to open its memories">
+        <a class="room-hit" href="#room-garden" data-room="garden" aria-label="Enter the Garden">
+          <polygon points="304,72 324,96 342,82 354,98 375,87 381,108 401,102 407,124 429,117 430,141 451,144 444,164 468,173 460,192 484,202 475,219 512,226 490,241 516,245 488,258 494,274 465,277 465,297 438,294 436,316 410,314 400,337 379,333 366,356 346,350 329,375 311,364 298,401 282,374 266,384 255,361 235,359 231,337 212,340 205,316 185,320 187,297 165,300 169,277 147,282 152,258 128,266 136,244 103,250 117,229 95,222 121,208 104,195 129,185 120,165 144,162 136,145 160,146 158,125 181,131 186,110 209,120 220,100 242,112 252,90 273,106 282,82 300,104"></polygon>
+        </a>
+        <a class="room-hit" href="#room-garage" data-room="garage" aria-label="Enter the Garage">
+          <polygon points="1141,106 1372,106 1372,414 1141,414 1141,375 1087,375 1087,278 1141,278 1141,240 1087,240 1087,143 1141,143"></polygon>
+        </a>
+        <a class="room-hit" href="#room-travel" data-room="travel" aria-label="Enter Travel">
+          <polygon points="1214,417 1337,417 1337,501 1214,501"></polygon>
+        </a>
+        <a class="room-hit" href="#room-gamesroom" data-room="gamesroom" aria-label="Enter the Games Room">
+          <polygon points="132,504 272,504 272,681 132,681"></polygon>
+        </a>
+        <a class="room-hit" href="#room-study" data-room="study" aria-label="Enter the Study">
+          <polygon points="278,504 408,504 408,681 278,681"></polygon>
+        </a>
+        <a class="room-hit" href="#room-library" data-room="library" aria-label="Enter the Library">
+          <polygon points="414,504 550,504 550,681 414,681"></polygon>
+        </a>
+        <a class="room-hit" href="#room-foyer" data-room="foyer" aria-label="Enter the Foyer">
+          <polygon points="555,440 800,440 800,590 703,590 703,595 651,595 651,590 555,590"></polygon>
+        </a>
+        <a class="room-hit" href="#room-abi" data-room="abi" aria-label="Enter Bedroom 2, Abi's room">
+          <polygon points="801,504 922,504 922,681 801,681"></polygon>
+        </a>
+        <a class="room-hit" href="#room-pets" data-room="pets" aria-label="Enter the Pet Zone">
+          <polygon points="927,410 1040,410 1040,501 927,501"></polygon>
+        </a>
+        <a class="room-hit" href="#room-phoebe" data-room="phoebe" aria-label="Enter Bedroom 5, Phoebe's room">
+          <polygon points="1042,504 1168,504 1168,681 1042,681"></polygon>
+        </a>
+        <a class="room-hit" href="#room-josh" data-room="josh" aria-label="Enter Bedroom 3, Josh's room">
+          <polygon points="1217,507 1400,507 1400,678 1217,678"></polygon>
+        </a>
+        <a class="room-hit" href="#room-skywatch" data-room="skywatch" aria-label="Enter the Observatory">
+          <polygon points="132,729 334,729 334,903 132,903"></polygon>
+        </a>
+        <a class="room-hit" href="#room-conservatory" data-room="conservatory" aria-label="Enter the Conservatory">
+          <polygon points="335,729 552,729 552,903 335,903"></polygon>
+        </a>
+        <a class="room-hit" href="#room-kitchen" data-room="kitchen" aria-label="Enter the Kitchen">
+          <polygon points="555,594 800,594 800,839 555,839"></polygon>
+        </a>
+        <a class="room-hit" href="#room-pergola" data-room="pergola" aria-label="Enter the Pergola">
+          <polygon points="577,846 776,846 776,973 577,973"></polygon>
+        </a>
+        <a class="room-hit" href="#room-masterbedroom" data-room="masterbedroom" aria-label="Enter the Master Bedroom">
+          <polygon points="801,729 1128,729 1128,903 801,903"></polygon>
+        </a>
+        <a class="room-hit" href="#room-aaron" data-room="aaron" aria-label="Enter Bedroom 4, Aaron's room">
+          <polygon points="1217,732 1400,732 1400,900 1217,900"></polygon>
+        </a>
+      </svg>
+
+      <span class="room-label" style="--x:20%;--y:23%">Garden</span>
+      <span class="room-label" style="--x:82%;--y:25%">Garage</span>
+      <span class="room-label" style="--x:83%;--y:45%">Travel</span>
+      <span class="room-label" style="--x:13%;--y:59%">Games Room</span>
+      <span class="room-label" style="--x:22%;--y:59%">Study</span>
+      <span class="room-label" style="--x:31.5%;--y:59%">Library</span>
+      <span class="room-label" style="--x:44%;--y:54%">Foyer</span>
+      <span class="room-label" style="--x:56%;--y:59%">Bedroom 2</span>
+      <span class="room-label" style="--x:64%;--y:44.5%">Pet Zone</span>
+      <span class="room-label" style="--x:72%;--y:59%">Bedroom 5</span>
+      <span class="room-label" style="--x:84%;--y:59%">Bedroom 3</span>
+      <span class="room-label" style="--x:15%;--y:80%">Observatory</span>
+      <span class="room-label" style="--x:29%;--y:80%">Conservatory</span>
+      <span class="room-label" style="--x:44%;--y:72%">The Kitchen</span>
+      <span class="room-label" style="--x:44%;--y:90%">Pergola</span>
+      <span class="room-label" style="--x:63%;--y:80%">Master Bedroom</span>
+      <span class="room-label" style="--x:83%;--y:80%">Bedroom 4</span>
+    </div>
+
+    <section class="room-index" aria-label="Browse all rooms">
+      <p class="room-index-title">Room names</p>
+      <ul class="room-index-list">
+        <li>Garden</li>
+        <li>Foyer</li>
+        <li>Garage</li>
+        <li>Study</li>
+        <li>Library</li>
+        <li>Bedroom 2</li>
+        <li>Bedroom 3</li>
+        <li>Bedroom 4</li>
+        <li>Bedroom 5</li>
+        <li>Pergola</li>
+        <li>Travel</li>
+        <li>Conservatory</li>
+        <li>Master Bedroom</li>
+        <li>Games Room</li>
+        <li>The Kitchen</li>
+        <li>Pet Zone</li>
+        <li>Observatory</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    © 2026 Nathan Hedaux · House of Hedaux™ is a personal archive and creative concept.
+  </footer>
+
+  <dialog class="room-dialog" id="room-dialog" aria-labelledby="room-dialog-title">
+    <header class="dialog-bar">
+      <div>
+        <p class="dialog-brand">House of Hedaux · Room</p>
+        <h2 id="room-dialog-title">A room</h2>
+      </div>
+      <button class="dialog-close" type="button">← Back to blueprint</button>
+    </header>
+    <div class="dialog-content">
+      <article class="room-panel no-photo family-tree-panel" id="room-garden" data-room-panel="garden" data-room-title="Garden" hidden>
+        <div class="family-tree">
+          <header class="family-tree-intro">
+            <p class="room-kicker">Family roots</p>
+            <h3>The Hedaux &amp; White family</h3>
+            <p>The known branches so far, joined by Nathan and Hayley. More ancestors can be added as their stories come together.</p>
+          </header>
+
+          <section class="family-union" aria-labelledby="family-union-title">
+            <p class="generation-label" id="family-union-title">Nathan &amp; Hayley</p>
+            <div class="main-couple">
+              <span class="family-person"><strong>Nathan A Hedaux</strong><small>1978–Living</small></span>
+              <span class="couple-symbol" aria-hidden="true">&amp;</span>
+              <span class="family-person"><strong>Hayley S White</strong><small>1981–Living</small></span>
+            </div>
+            <div class="family-line" aria-hidden="true"></div>
+            <p class="generation-label">Their children</p>
+            <div class="family-children">
+              <span class="family-sibling">Abigail Tia Hedaux<small>2002–Living</small></span>
+              <span class="family-sibling">Joshua S Hedaux<small>2004–Living</small></span>
+              <span class="family-sibling">Aaron Jake Hedaux<small>2008–Living</small></span>
+              <span class="family-sibling">Phoebe C Hedaux<small>2009–Living</small></span>
+            </div>
+          </section>
+
+          <div class="family-sides">
+            <section class="family-side" aria-labelledby="nathan-branch-title">
+              <h4 id="nathan-branch-title">Nathan's side</h4>
+              <p class="generation-label">Grandparents</p>
+              <div class="family-grandparents">
+                <div class="family-couple">
+                  <span class="family-couple-label">Parents of Leslie</span>
+                  <span class="family-person"><strong>Ellen Amelia Evans</strong><small>1910–1980</small></span>
+                  <span class="couple-plus" aria-hidden="true">+</span>
+                  <span class="family-person"><strong>Robert E Hedaux</strong><small>1913–2005</small></span>
+                </div>
+                <div class="family-couple">
+                  <span class="family-couple-label">Parents of Stephanie</span>
+                  <span class="family-person"><strong>Stanley HT Brookes</strong><small>1925–2007</small></span>
+                  <span class="couple-plus" aria-hidden="true">+</span>
+                  <span class="family-person"><strong>Elizabeth A Dove</strong><small>1929–2018</small></span>
+                </div>
+              </div>
+              <div class="family-line" aria-hidden="true"></div>
+              <p class="generation-label">Parents</p>
+              <div class="family-couple parent-couple">
+                <span class="family-person"><strong>Leslie F Hedaux</strong><small>1951–2021</small></span>
+                <span class="couple-plus" aria-hidden="true">+</span>
+                <span class="family-person"><strong>Stephanie M Hedaux</strong><small>1953–Living</small></span>
+              </div>
+              <div class="family-line" aria-hidden="true"></div>
+              <p class="generation-label">Nathan's siblings</p>
+              <div class="family-siblings">
+                <span class="family-sibling">Daniel Mark Hedaux<small>1976–Living</small></span>
+                <span class="family-sibling">Daisy A Hedaux<small>1993–Living</small></span>
+              </div>
+            </section>
+
+            <section class="family-side" aria-labelledby="hayley-branch-title">
+              <h4 id="hayley-branch-title">Hayley's side</h4>
+              <p class="generation-label">Grandparents</p>
+              <div class="family-grandparents">
+                <div class="family-couple">
+                  <span class="family-couple-label">Parents of Andrew</span>
+                  <span class="family-person"><strong>Charles Eric Frederick White</strong><small>1923–2013</small></span>
+                  <span class="couple-plus" aria-hidden="true">+</span>
+                  <span class="family-person"><strong>Joyce Hart</strong><small>1929–2017</small></span>
+                </div>
+                <div class="family-couple family-note">
+                  <span class="family-couple-label">Parents of Beatrice</span>
+                  <span class="family-person"><strong>Jacques Blancher</strong><small>–2012</small></span>
+                  <small>Her mother's details to add</small>
+                </div>
+              </div>
+              <div class="family-line" aria-hidden="true"></div>
+              <p class="generation-label">Parents</p>
+              <div class="family-couple parent-couple">
+                <span class="family-person"><strong>Andrew Christopher White</strong><small>1955–Living</small></span>
+                <span class="couple-plus" aria-hidden="true">+</span>
+                <span class="family-person"><strong>Beatrice Blancher</strong><small>1956–Living</small></span>
+              </div>
+              <div class="family-line" aria-hidden="true"></div>
+              <p class="generation-label">Hayley's sister</p>
+              <div class="family-siblings">
+                <span class="family-sibling">Nathalie Alexander White<small>Born 1988 · no children</small></span>
+              </div>
+            </section>
+          </div>
+
+          <section class="extended-family" aria-labelledby="extended-family-title">
+            <p class="generation-label" id="extended-family-title">Nathan's siblings &amp; their families</p>
+            <div class="descendant-families">
+              <section class="descendant-family">
+                <h4>Daniel &amp; Lisa</h4>
+                <p class="family-partners">Daniel Mark Hedaux (1976–Living) · Lisa J Bowers (Living)</p>
+                <ul>
+                  <li>Daniel Hedaux</li>
+                  <li>Kelly Hedaux</li>
+                  <li>Aimee Hedaux · 2002</li>
+                </ul>
+              </section>
+              <section class="descendant-family">
+                <h4>Daisy &amp; Benjamin</h4>
+                <p class="family-partners">Daisy A Hedaux (1993–Living) · Benjamin J Cunnington (1989–Living)</p>
+                <ul>
+                  <li>Lenny Cunnington</li>
+                  <li>Primrose Cunnington</li>
+                </ul>
+              </section>
+            </div>
+          </section>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-foyer" data-room-panel="foyer" data-room-title="Foyer" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">Welcome to the house</p>
+          <h3>A sanctuary of memory, and a blueprint of becoming.</h3>
+          <p>House of Hedaux was built to honour my father’s legacy and explore the fragments of my own. Every room holds a piece of me — some polished, some still in progress.</p>
+          <p>The blueprint is a metaphor: modular, expandable, and deeply intentional. The past is honoured, the present is documented, and the future is invited to keep building.</p>
+          <p>One day, this mansion will outlive me. That is the hope: a place for my children, and their children, to wander, contribute, and expand.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Step inside the House of Hedaux. This is the Foyer—a quiet introduction to the soul of the mansion. Here you'll meet Nathan, the architect of this digital sanctuary, and trace the roots of a family whose stories echo through every room. From childhood memories to the blueprint of future dreams, this space invites you to pause, reflect, and begin.</p>
+            <p>I built this mansion to honor my father’s legacy and explore the fragments of my own. Every room holds a piece of me—some polished, some still in progress.</p>
+            <p>House of Hedaux is more than a website. It’s a sanctuary of memory, a blueprint of becoming. I’ve blended technology, storytelling, and personal history to create a space where the past and future meet in quiet conversation.</p>
+            <p>The blueprint itself is my metaphor: modular, expandable, and deeply intentional. Each room represents a facet of my life—bonsai seedlings in the Conservatory, skywatching in the Observatory, family roots in the Library. You’re invited to wander, pause, and reflect.</p>
+            <p>The floorplan evolves as I do. One day, it may host new wings, new stories, new echoes. But the foundation remains the same: curiosity, legacy, and the quiet joy of building something that lasts.</p>
+            <p>One day, this mansion will outlive me. That’s the hope. I’ve laid its foundations not just for myself, but for my children—and their children—to wander, contribute, and expand. New rooms will be built, old ones restored, stories added like bricks. House of Hedaux is more than memory; it’s inheritance. A place where the past is honored, the present is documented, and the future is invited to keep building.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel" id="room-garage" data-room-panel="garage" data-room-title="Garage" hidden>
+        <img class="room-photo" src="assets/Tesla1.jpg" alt="Nathan's Tesla Model 3" loading="lazy">
+        <div class="room-copy">
+          <p class="room-kicker">Motion, ambition, electric dreams</p>
+          <h3>A long-awaited drive into the future.</h3>
+          <p>For years, Tesla was a vision I followed from a distance. The first drive changed that: smooth, silent, and alive with technology. Before long, I was driving my own Model 3 Long Range.</p>
+          <p>It has carried us across the country and down to the South of France, often with Phoebe in the back seat on the way to dance competitions. For me, it is more than a car — it is a symbol of possibility, progress, and electric dreams made real.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Welcome to the Garage—a gallery of motion, ambition, and electric dreams. This space celebrates the revolutionary spirit of Tesla, the cosmic aspirations of SpaceX, and the mind behind it all: Elon Musk. From road to orbit, here lies the pulse of progress.</p>
+            <p>Before I ever touched the wheel, I was already in love. Tesla wasn’t just a car brand—it was a vision I’d been quietly orbiting for years. I watched the reviews, studied the specs, imagined the feel of the drive. But deep down, I never believed it would be achievable. It felt like something reserved for someone else’s future.</p>
+            <p>Then one day, a colleague offered me the chance to take the wheel. That first drive was transformative. Smooth, silent, and alive with intelligence. The tech, the safety, the power, the minimalism—it wasn’t just a vehicle, it was a companion. A brain on wheels. I knew instantly: I had to have one.</p>
+            <p>I visited the local dealer, ran the numbers, and made it work. Before I knew it, I was driving my own Tesla Model 3 Long Range. All the anxiety I used to feel about long-distance drives in an ICE car vanished. The Tesla met every expectation I’d built from years of YouTube deep dives—and then exceeded them. It’s a joy to look at, a pleasure to clean, and a privilege to care for.</p>
+            <p>Since then, my Tesla has become part of my life’s rhythm. I’ve driven from one end of the country to the other, often with Phoebe in the back seat, en route to dance competitions. Last year, we cruised to the South of France—and we’re doing it again this Tuesday. I can’t wait.</p>
+            <p>Owning a Tesla isn’t just about driving. It’s about believing in a future that’s smarter, cleaner, and more connected. Elon Musk’s vision resonates deeply with me—not just the cars, but the cosmic ambition, the refusal to settle, the relentless push toward progress. I admire it all.</p>
+            <p>In the Garage of my digital mansion, Tesla lives as more than a machine. It’s a symbol of possibility. Of motion. Of electric dreams made real.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-study" data-room-panel="study" data-room-title="Study" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">A working life</p>
+          <h3>A winding road to the right place.</h3>
+          <p>I began at Southend Airport, dreaming of becoming an airline pilot. The theory was tough, money was tight, and life took a different turn. That change brought me to Hayley and to the family we built together.</p>
+          <p>After casino work, I moved with my family from Essex to Lincolnshire. At Bakkavor, formerly Geest, I spent 18 years in business planning, learning the rhythms of supply chain, commercial, and finance.</p>
+          <p>Technology had always been a passion. Now it is my work — a path shaped by resilience, gratitude, and the joy of finding where I belong.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Step deeper into the House of Hedaux. This is the Study—a chamber of quiet ambition and earned wisdom. Here, the story of Nathan’s working life unfolds across time: from dreams of flight to the grounded joy of fatherhood, from casino nights to factory days, and finally, to the luminous world of IT where passion and purpose align.</p>
+            <p>The Study is more than a résumé. It’s a testament to adaptability, grit, and the kind of success that isn’t measured in titles, but in transformation. Each entry is a page from a life reimagined—proof that even detours can lead to destiny.</p>
+            <p>This room invites you to trace the arc of a career built not just on skill, but on love, sacrifice, and the quiet thrill of finding where you truly belong.</p>
+            <blockquote class="room-quote">I didn’t take the straight path. I took the one with turbulence, detours, and unexpected beauty.</blockquote>
+            <figure class="study-clipping">
+              <img src="assets/License.jpg" alt="Newspaper clipping showing teenage Nathan with his flying licence beside a small plane" loading="lazy">
+              <figcaption class="source-caption">Newspaper clipping: “Sky’s the limit for birthday boy.”</figcaption>
+            </figure>
+            <p>When I left school, I stepped into the world of aviation—Southend Airport, a flying school, and a dream to become an airline pilot. But life had other plans. The theory was tough, the finances tighter, and circumstances shifted. That dream slipped through my fingers… and handed me something far greater. Had I taken flight, I might never have met my wife, never held my four children in my arms. Fate, it seems, knows how to reroute us toward what truly matters.</p>
+            <p>From the skies to the casino floor, I dealt cards and met my soulmate. Together, we left Essex behind and followed my parents to Lincolnshire, seeking a safer, steadier life for our growing family.</p>
+            <p>Then came the factory years—Bakkavor, once Geest. I climbed the ranks, learned the rhythm of fresh food manufacturing, and spent 18 years as a business planner. Supply chain, commercial, finance—I absorbed it all. But behind the spreadsheets and shift patterns, a quiet passion stirred: IT. A lifelong hobby, waiting patiently in the wings.</p>
+            <p>Now, I work in tech. And I’ve never felt more at home.</p>
+            <p>The Study is where I archive this journey. Not just the roles I’ve held, but the lessons they taught me. It’s a room built on resilience, gratitude, and the thrill of finding purpose in unexpected places.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel" id="room-library" data-room-panel="library" data-room-title="Library" hidden>
+        <img class="room-photo" src="assets/Dadv2.JPG" alt="A family photograph of Leslie Hedaux" loading="lazy">
+        <div class="room-copy">
+          <p class="room-kicker">The Hedaux Tome · Tribute to Dad</p>
+          <h3>My father was my compass.</h3>
+          <p>Leslie Hedaux was an explorer, a tinkerer, and a man overflowing with love for his family. He travelled with the navy, earned his private pilot’s licence, and passed his fascination with aircraft on to me. I had my first flying lesson at twelve.</p>
+          <p>Our memories are full of motocross weekends, fishing trips, canal journeys, family holidays in France, and evenings spent gaming together. He was generous with his time and always ready to help someone in need.</p>
+          <p>He lived with curiosity and heart. I still see him in the sky, in the stories we tell, and in the way I build this house.</p>
+          <blockquote class="room-quote">He gave us more than memories — he gave us momentum.</blockquote>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Tribute to Dad</p>
+            <h4>My Father, My Compass</h4>
+            <p>My father, Leslie Hedaux, was a man of many hobbies and ever-changing interests—a restless explorer of the world and of himself. Born and raised in East London, he carried with him stories of resilience, like the time he was bullied on his way to school and had his lunch money taken. He could be tough, too—I remember hearing how his own father once chopped up his bike after he'd upset him. But beneath that steel was a man overflowing with love for his wife, my mum, and for his children and grandchildren.</p>
+            <p>Before family life, he travelled the world with the navy. I don't know much about those years, but I do know he met my mum in Stanford-le-Hope in the 1970s, where they worked together. They wrote letters while he sailed—pages of longing and devotion. They moved to South Africa for a time, where my brother Dan was born in 1976. Homesick, they returned to Essex, and I was born in Orsett in 1978. Dad had so much time for us boys. It felt like he was living the childhood he never had—through us. Most weekends were spent racing motocross around the country. He gave us an upbringing other kids could only dream of: skiing, go-karting, and summers in Carlucet, South of France. He adored the culture, the food—especially Rocamadour Cabecous and smoked duck.</p>
+            <p>We fished together often, searching for the perfect lake, casting lines for carp, trout, and salmon. I remember wrapping ourselves in black bin bags in the Scottish rain, laughing through the discomfort. We took narrowboat trips through English canals, navigating locks and tunnels, fishing off the side. He'd take me to Grays to buy stamps, always making it feel like it was for me, though I knew it was for him.</p>
+            <p>He earned his private pilot's license and took us flying to different airfields. He loved aircraft, and he passed that love on to me. I had my first flying lesson at twelve. We flew in formation with a group called the Seaweeds, from Southend to North Weald.</p>
+            <p>He introduced me to the casino. Our first night, we won on roulette—pure beginner's luck. The second night, we lost it all. That was part of the lesson, too. We often talked about gambling, not just the games but the psychology, the stories, the odds. At home, we'd host our own casino nights with a proper setup: green baize, weighted chips, and official blackjack cards. It wasn't about money. It was about theatre, strategy, and laughter. He loved the ritual of it all, and I loved sharing it with him.</p>
+            <p>In his forties, cancer arrived. He sold his share in the fabrication business he'd built—a hard decision, but one made for his health. He and Mum moved to Lincolnshire for a quieter life. I'd visit and find him on his PC, immersed in flight simulators and virtual air traffic control. He kept busy—driving the Spalding river taxi, selling seed at the Deeping St. Nicholas farm shop.</p>
+            <p>Later, we discovered World of Tanks. We played for hours. He wasn't very good—his gun often pointed skyward—but he loved it. Eventually, his grandson Josh joined us, and the three of us played together. Dad looked to the sky, just like I do. He tinkered with telescopes, collected stamps and coins, and wore beautiful watches—Rolex, Breitling, and others. When we visited, he'd be on his computer, quiet but comforted by our presence. He'd slice biltong, mussels, smoked duck, urging us to try.</p>
+            <img class="room-story-photo" src="assets/Dad1.jpg" alt="Leslie Hedaux holding a large prawn at a family meal, with a small white dog peeking up nearby" loading="lazy">
+            <p class="source-caption">Dad, sharing one more memorable meal.</p>
+            <p>In the end, the cancer returned—faster, stronger. Yet he still cared for others, travelling any distance to help someone in need. He never asked for money. He gave from the heart. In his final months, I'd drive him to hospital for treatment, and even then, he couldn't help but nag about my driving. It was his way of staying engaged, of still being my dad. Teaching me, correcting me, loving me—right to the very end.</p>
+            <p>Leslie was a man of motion—always learning, always tinkering, always giving. He lived with intensity and heart, pouring his energy into his family, his passions, and the skies above. Whether flying planes, racing bikes, collecting stamps, or fishing lochs in bin bags, he made life feel like an adventure. He gave us more than memories—he gave us momentum. And though he's gone, the echo of his curiosity, generosity, and quiet strength still guides me. I see him in the sky, in the coins I inherited, in the way I build this mansion. He was my compass. He still is.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel" id="room-abi" data-room-panel="abi" data-room-title="Bedroom 2" hidden>
+        <img class="room-photo" src="assets/Abi1.jpg" alt="Abi in the family archive" loading="lazy">
+        <div class="room-copy">
+          <p class="room-kicker">Bedroom 2 · Abi</p>
+          <h3>An eye for the world in her own colours.</h3>
+          <p>From the moment she could hold a pencil, Abi was drawing. Sketchbooks, cameras, and creative experiments became her way of seeing and recording the world.</p>
+          <p>Her path has taken her through new friendships, a university chapter in Newcastle, and work back home. She continues to find her own voice and make a life that feels like hers.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Abi was the first light in the House of Hedaux—a child who didn’t just see the world, she interpreted it.</p>
+            <h4>Chapter I: The First Spark</h4>
+            <p>From early on, she wielded pencils and cameras like instruments of truth, capturing the world not as it was, but as it could be. Her creativity wasn’t just a hobby—it was a language, fluent and fierce. Childhood dramas? There were a few. From the moment she could grip a crayon (or as she called it, bardy), she was drawing her way into our hearts. “Bardy” became her first artistic declaration—a baby-word that somehow captured the essence of creativity before she even knew the word for it. If she was quiet, you could bet she was scribbling, smudging, or arranging colours with the focus of a tiny curator. We’d ask her simple things, like “What colour is this?” and she’d reply with philosophical certainty: “It’s a colour.” “Yes, but what colour?” “It’s a colour.” And that was that. The world didn’t need labels—it just needed hues. Her early years were a collage of sketchbooks, glitter spills, and photo experiments. She didn’t just draw — she documented. But through it all, Abi remained a seeker—of beauty, of belonging, of her own voice. Her bedroom walls were less decoration, more declaration: “I am here, and I see things differently.”</p>
+            <p class="source-caption">Toothbrush Tango</p>
+            <h4>Chapter II: The Social Bloom</h4>
+            <p>At eighteen, the world cracked open. Abi embraced the freedom with gusto—nights out, laughter spilling over cocktails, and friendships forged in the fire of shared experience. She was magnetic, a storyteller in motion, always ready to toast to the moment.</p>
+            <img class="room-story-photo" src="assets/Abi2.jpg" alt="Abi smiling with her arms outstretched on a city walkway" loading="lazy">
+            <p class="source-caption">Abi, Queen of the Pavement Parade</p>
+            <h4>Chapter III: The Pandemic Pause</h4>
+            <p>Covid brought a strange interlude. As a warden at Gousto, she stood at the threshold of responsibility and restlessness. It wasn’t a role she loved, but it was a chapter she lived—proof of her grit when the world felt uncertain.</p>
+            <h4>Chapter IV: The Newcastle Experiment</h4>
+            <p>University in Newcastle was meant to be a canvas of creativity and connection. Media creation called to her, but the dorm walls echoed with tension. Her flatmates made life difficult, and the dream dimmed. Yet even in retreat, Abi chose herself—returning to Lincolnshire not in defeat, but in quiet defiance.</p>
+            <h4>Chapter V: The Vodafone Interlude</h4>
+            <p>Back home, she stepped into the world of retail, selling phones in her auntie’s store. It was here she met her partner—a serendipitous spark in a setting she didn’t love. The job may not have thrilled her, but the connection did.</p>
+            <h4>Chapter VI: The Present Pulse</h4>
+            <p>Now at Nationwide, Abi continues to navigate adulthood with a blend of practicality and passion. The bank may not be her final destination, but it’s a stepping stone—a place where she’s learning, earning, and still dreaming.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel" id="room-josh" data-room-panel="josh" data-room-title="Bedroom 3" hidden>
+        <img class="room-photo" src="assets/Josh1.JPG" alt="Josh in the family archive" loading="lazy">
+        <div class="room-copy">
+          <p class="room-kicker">Bedroom 3 · Josh</p>
+          <h3>All energy, with a caring heart.</h3>
+          <p>Josh has always been restless, mischievous, and full of life. Beneath the chaos is a thoughtful young man who checks in on the people around him and shows up when it matters.</p>
+          <p>He took on paper rounds in all weathers and found his direction in the electrical trade. After years of hard work as an apprentice, he is building a future with skill, care, and determination.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Josh’s room hums with energy. Not the gentle kind that flickers like candlelight, but the kind that zips through wires, rattles the floorboards, and makes you check twice if the fuse box is still intact. From the moment he arrived, Josh was a force—restless, relentless, and impossible to ignore.</p>
+            <h4>Chapter I: A Force From the Start</h4>
+            <p>As a baby, he came with quirks: a heart murmur that faded with time, and a stomach that rejected every feed with dramatic flair—until junior Gaviscon became the unsung hero of every bottle. Sleep? That was optional. He’d bounce, wriggle, and defy gravity rather than lie still. We joked about ADHD, but never chased a diagnosis. He was simply Josh: untamed, unfiltered, and full of life.</p>
+            <img class="room-story-photo" src="assets/Josh2.jpg" alt="A close-up childhood portrait of Josh" loading="lazy">
+            <p class="source-caption">Before the circuits and sunrise paper rounds—just Josh, a garden explorer with curls full of mischief.</p>
+            <h4>Chapter II: The Scotland Expedition</h4>
+            <p>At two years old, on a family trip to Scotland, we left him in Nan’s capable hands while Hayley and I hiked a mountain. Josh had other plans. He staged his own solo expedition, sending Nan into a panic and proving early on that adventure was in his bones. He was found, of course—but not before leaving a trail of worry and wide-eyed stories.</p>
+            <h4>Chapter III: Mischief and Manners</h4>
+            <p>Josh mastered the art of sibling mischief. If there was an argument, he was likely at the center, winding up his brother and sisters with precision. Yet, at school, he was a paradox. Teachers sang his praises—hardworking, polite, a model student. We’d sit at parents’ evenings bewildered, clutching photos to confirm they had the right child. At home, he was chaos wrapped in charm.</p>
+            <p class="source-caption">The thinker behind the chaos—Josh, mid-mischief break, plotting his next move.</p>
+            <h4>Chapter IV: The Sunrise Paper Rounds</h4>
+            <p>He tried football, but the cold was unforgiving. Tikwando came and went, more about mates than martial arts. But when it came to responsibility, Josh showed up. He took on paper rounds in the dark, in the rain, in the frost—never complained, just did the job. Until one Christmas, during the first wave of COVID, the shop owner withheld his pay and tips while he isolated. That betrayal stung. We never went back.</p>
+            <h4>Chapter V: The Quiet Carer</h4>
+            <p>Beneath the mischief, Josh has always been a worrier. A quiet carer. He checks in, keeps tabs, makes sure everyone’s okay. After Dad passed, he moved in with Mum for a while—offering company, comfort, and proximity to his chosen path: becoming an electrician.</p>
+            <h4>Chapter VI: Building With Care</h4>
+            <p>Ben, my sister’s partner, ran a one-man electrical business until Josh joined as an apprentice. Now, four years in, Josh is on the cusp of completing his AM2 performance assessment. He’s worked hard, learned deeply, and grown into a man who balances spark with substance.</p>
+            <p>This room is wired with memory. The tantrums, the triumphs, the hikes gone rogue. It’s a tribute to the boy who couldn’t sit still, and the man who now builds circuits with care and precision. Josh makes me proud—not just for what he’s achieved, but for the heart he’s always carried beneath the storm.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-aaron" data-room-panel="aaron" data-room-title="Bedroom 4" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">Bedroom 4 · Aaron</p>
+          <h3>A world of his own, quietly and completely.</h3>
+          <p>Aaron moves through life at his own pace: observant, calm, and content in his own orbit. His interests run deep, from fashion and Pokémon to speed cubes, gaming, anime, and Japan.</p>
+          <p>Animals seem to understand him instinctively. He loves long walks, hot food, and the small details that others might miss. His future is still unwritten — and unmistakably his.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <h4>Chapter I: The Gentle Arrival</h4>
+            <p>Born on 10 January 2006, Aaron was due on New Year’s Day but chose comfort over punctuality. That unhurried entrance set the tone. He didn’t rush then, and he doesn’t rush now. Aaron moves through life at his own pace—quiet, observant, content in his own orbit.</p>
+            <p>He was never one for noise. While others clamoured for attention, Aaron built worlds in silence. A child of quiet corners and solo adventures, he found joy in the details others missed. His room reflects that: soft lighting, curated shelves, and a sense of calm that feels earned.</p>
+            <h4>Chapter II: The Fashion Frequency</h4>
+            <p>Aaron’s eye for fashion arrived early. Hats, accessories, layered textures—he didn’t follow trends, he created them. His wardrobe was never about fitting in. It was about feeling right. A feathered cap here, a bold pendant there. He dressed like someone who understood that style is a language, and he spoke it fluently. Even now, his outfits are statements. Not loud, but deliberate. A quiet rebellion against the ordinary.</p>
+            <h4>Chapter III: The Obsession Engine</h4>
+            <p>Aaron’s mind is a museum of obsessions. Cars. Mario. Pokémon. Not just casual interests—encyclopedic knowledge. He could name every Pokémon, their traits, their generations, without blinking. His room holds shelves of figures, cards, and plushes, each positioned with precision. Nothing out of place. Then came the cubes. Rubik’s, speed cubes, 7x7 monsters. He solves them in under a minute, casually. His collection is displayed like art—symmetrical, spotless, sacred. It’s not just about solving. It’s about understanding.</p>
+            <h4>Chapter IV: The Animal Whisperer</h4>
+            <p>Animals love Aaron. Always have. Scooby the dog would melt under his touch. Fudge the rabbit won’t budge when Aaron’s nearby. Even Jody the parrot—famously selective—bows his head for Aaron’s scratches. There’s something in his energy. A softness. A frequency only animals seem to hear. Maybe he’ll work with them one day. Maybe he already does, in ways we don’t see.</p>
+            <h4>Chapter V: The Digital Den</h4>
+            <p>Aaron’s PC is his kingdom. Valorant is the battlefield. He rages, strategizes, learns. Tournaments play in the background, feeding his gameplay with tips and tactics. His setup glows with RGB pulses, matching his mood. It’s not just a hobby—it’s a craft. Anime plays on the second screen. Thousands of episodes consumed. Characters memorized. Arcs dissected. His love for Japan runs deep—Nintendo, retro consoles, joypads, language. He plans to visit. Not as a tourist, but as someone returning to a place he’s always felt connected to.</p>
+            <h4>Chapter VI: The Walks and the Walls</h4>
+            <p>Aaron walks.</p>
+            <p>Maybe for fitness. Not for errands. Just walks. Sometimes for hours. No destination, no explanation. He slips out quietly, returns just as quietly. You ask where he went—he shrugs. You ask what he saw—“Not much.” But something always shifts in him after. Like the world outside helped him rearrange something inside. His walks are part ritual, part retreat. A way to reset. To think. Or maybe not to think at all.</p>
+            <p>Conversation with Aaron is minimal. “How was your day?” earns a “Sure.” But when the mood is right—when the stars align or the drink flows—he opens. And there he is. Dry wit, sharp timing, a sense of humour that catches you off guard. It’s like finding a secret room behind a bookshelf. You didn’t know it was there, but now you never want to leave.</p>
+            <p>Aaron is a mystery. Not because he hides, but because he doesn’t explain. His room reflects that. It doesn’t offer answers. It offers space. And sometimes, that’s more revealing than words.</p>
+            <h4>Chapter VII: The Heat of It All</h4>
+            <p>Aaron loves food. Not just any food—the hotter the better. Curries that make your eyes water. Noodles that bite back. He’s drawn to spice like it’s a challenge, a thrill, a flavour that matches his quiet intensity. His room has a tucked-away drawer of hot sauces, ramen packets, and mystery snacks with labels in Japanese. It’s not a shrine—it’s a stash. And it’s sacred. Food, like fashion, is another way Aaron expresses himself. Quietly. Boldly. Without compromise.</p>
+            <h4>Chapter VIII: The Mystery Drawer</h4>
+            <p>There’s a drawer in Aaron’s room. Locked. No key. No clues. Maybe it holds the answer to what he’ll become. Maybe it’s just a metaphor. Either way, it belongs there. Aaron’s future is unwritten. Full of mystery. But if his past is anything to go by, it’ll be something great. Something different. Something unmistakably Aaron.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-phoebe" data-room-panel="phoebe" data-room-title="Bedroom 5" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">Bedroom 5 · Phoebe</p>
+          <h3>Dance, light, and motion.</h3>
+          <p>Phoebe’s creative journey has its own home, where movement and expression take centre stage.</p>
+          <p><a href="https://phoebedance.com" target="_blank" rel="noopener noreferrer">Visit Phoebe Dance ↗</a></p>
+          <details class="room-original-story" open>
+            <summary>Original room text</summary>
+            <p>Phoebe</p>
+            <p>Coming Soon</p>
+            <h4>A glimpse into Phoebe’s world</h4>
+            <p>Dance, light, and motion — explore her creative journey.</p>
+            <p><a href="https://phoebedance.com" target="_blank" rel="noopener noreferrer">Visit PhoebeDance.com</a></p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-pergola" data-room-panel="pergola" data-room-title="Pergola" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">The Hedaux table-tennis league</p>
+          <h3>Rallies, rivalries, and family laughter.</h3>
+          <p>Table tennis was once a holiday treat. Now the family has a table of its own — a place for longer rallies, sharper spins, and memories with every match.</p>
+          <ul>
+            <li>Nathan — The Unyielding King</li>
+            <li>Aaron — The Strategist</li>
+            <li>Josh — Spin Master</li>
+            <li>Phoebe — Kick Smash</li>
+            <li>Hayley — Queen of the Rally</li>
+            <li>Chloe — The Iron Rally</li>
+            <li>Abi &amp; Jake — The Wild Cards</li>
+          </ul>
+          <p>The next chapter: the Saint Ives Invitational.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Welcome to the back garden battleground where legends are made and laughter reigns supreme. For years, table tennis was a holiday treat—casual rallies on borrowed tables, cheeky tuition from schoolmates and work colleagues, and the occasional surprise spin that left us grinning. Hayley’s grandma and grandad were the original champions, hosting garden matches that echoed with joy and the clatter of paddles. The kids played under their watchful eyes, learning the rhythm of the game and the rhythm of family.</p>
+            <p>And now, at last, we have our very own table. A place not just for play, but for memory-making. The rallies are longer, the spins sharper, and the laughter louder. This is where the Hedaux league begins.</p>
+            <img class="room-story-photo room-story-photo-wide" src="assets/tabletennis.png" alt="The family table-tennis table set up in the garden beneath the pergola" loading="lazy">
+            <p class="source-caption">Our very own court—where the Hedaux league begins.</p>
+            <h4>🏓 Garden Games: The Hedaux Table Tennis League</h4>
+            <h4>👑 Nathan – The Unyielding King</h4>
+            <p>Undefeated. Tactical. Regal. Rallies with precision and rules the court with calm authority.</p>
+            <h4>🎯 Aaron – The Strategist</h4>
+            <p>Grammar school finesse and cool-headed plays. Always one rally away from the crown.</p>
+            <h4>🌀 Josh – Spin Master</h4>
+            <p>Deceptive curves and unpredictable angles. A magician with the paddle.</p>
+            <h4>💥 Phoebe – Kick Smash</h4>
+            <p>Power-packed shots and surprise moves. Fearless and full of flair.</p>
+            <h4>🎈 Hayley – Queen of the Rally</h4>
+            <p>Endurance and elegance. Racks up the 100s until laughter breaks the streak.</p>
+            <h4>🧱 Chloe – The Iron Rally</h4>
+            <p>Unshakable focus and relentless consistency. She plays with quiet determination, holding the line even when the pressure mounts. Hard on herself, but never easy on her opponent.</p>
+            <h4>🌊 Abi &amp; Jake – The Wild Cards</h4>
+            <p>Saint Ives storm incoming. Their debut could shake the leaderboard!</p>
+            <h4>📅 Upcoming: Saint Ives Invitational</h4>
+            <p>Brackets to be drawn, titles to be claimed.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-travel" data-room-panel="travel" data-room-title="Travel" hidden>
+        <div class="room-copy travel-archive">
+          <p class="room-kicker">The travel log room</p>
+          <h3>Journeys to remember.</h3>
+          <p>France, full of detours and good stories. Choose a holiday to explore its story; more trips can be added as the archive grows.</p>
+          <div class="travel-grid" aria-label="Holiday stories">
+            <details class="travel-card">
+              <summary>
+                <span class="travel-card-label">France · Summer 2026</span>
+                <span class="travel-card-title">Perpignan</span>
+                <span class="travel-card-teaser">Lightning over the Mediterranean, fireworks on the beach, long conversations, and the warmth of southern France.</span>
+              </summary>
+              <div class="travel-story">
+                <h4>Perpignan, France - Summer 2026</h4>
+                <p>Every great holiday has a beginning that feels completely endless.</p>
+                <p>For us, Summer 2026 started with the long journey south through France. Mile after mile stretched ahead of us, the sat-nav estimating ever more hours before arrival. By the time we reached our overnight stop at a B&amp;B Hotel, the day had become something of an adventure in itself. Arriving late, tired but relieved, we found ourselves standing outside figuring out the PIN-entry system and wondering if we'd actually get inside. Thankfully we cracked the code, quite literally, and enjoyed a well-earned night's sleep before continuing towards the Mediterranean.</p>
+                <p>The drive itself became a reminder of just how much travelling has changed since switching to electric. Supercharger after Supercharger guided us south, each one clean, reliable and placed exactly where we needed us. What once would have been diesel fumes, fuel receipts and range anxiety was replaced with coffee stops, spotless facilities and the quiet satisfaction of knowing we no longer had an ageing combustion engine demanding attention. Once again, Tesla's charging network proved itself to be one of the unsung heroes of the trip.</p>
+                <p>Arriving in Perpignan felt like stepping into another world. We were immediately greeted by temperatures hovering around 40°C and an electrical storm unlike anything we had seen before. Throughout the evenings, lightning illuminated the sky so frequently that darkness barely existed. At times the horizon lit up almost like daylight, nature putting on a spectacle that rivalled anything man-made.</p>
+                <p>And yet man-made spectacle arrived too.</p>
+                <p>One evening we wandered down to the beach to watch the fireworks. As bursts of colour exploded across the Mediterranean sky and lightning flickered beyond the clouds, it genuinely felt as though the entire display had been organised especially for us. The combination of fireworks, warm air, distant thunder and the sea rolling onto the shore created one of those rare moments where everything feels perfectly timed.</p>
+                <p>The following day brought another adventure as we set out to collect Andy from Carcassonne Airport. In my mind it had seemed much closer than it actually was, but any excuse for another drive through southern France in the Tesla wasn't exactly a hardship. Before long he was settled in and our holiday gained its fifth member.</p>
+                <p>As always, Andy brought conversation.</p>
+                <p>Days drifted by effortlessly between sunshine, swimming pools, good food and long discussions about absolutely everything. One moment we would be debating fusion power, the next solar energy, engineering challenges, politics or some grand solution to a problem nobody else had thought to solve. Between the two of us we probably fixed half the world's problems from the comfort of a sun lounger, though sadly nobody was taking minutes.</p>
+                <p>Those conversations became one of the most memorable parts of the holiday. There is something uniquely enjoyable about talking with someone whose curiosity matches your own, especially when there is nowhere to be and nothing demanding your immediate attention.</p>
+                <p>Another highlight came during an evening walk into Argelès-sur-Mer. The town seemed to come alive after sunset. Shops remained open, people strolled through the warm evening air and a bustling night market offered all manner of unusual treasures that seemed impossible to find anywhere else. Every stall offered something unexpected, adding to the sense that this was somewhere entirely removed from everyday life back home.</p>
+                <p>That evening became even more memorable when we enjoyed a meal at a wonderful beachside restaurant called L'Antik. Hayley and Phoebe happily tackled mountains of mussels while the rest of us soaked up the atmosphere. What truly made the evening, however, was the waiter. Charismatic, humorous and larger than life, he transformed a simple meal into an occasion. By the time we left, we felt as though we'd been entertained as much as we had been fed.</p>
+                <p>As the holiday moved towards its conclusion, reality slowly began to cast a shadow across paradise. After returning Andy to the airport, thoughts inevitably turned towards the journey home. In fact, those thoughts became strong enough that we made the unusual decision to cut the holiday short by a night. It wasn't that we wanted to leave France. Rather, our minds had already begun shifting back towards routines, responsibilities and the familiar structure of home life.</p>
+                <p>The return journey brought its own collection of worries. I was aware that we hadn't purchased a French clean air zone pass for the car, and several routes seemed determined to funnel us through major cities, including Paris. Thankfully, despite my concerns, we completed the journey without incident or fines. As always, the drive home somehow felt significantly quicker than the drive out, despite covering exactly the same distance.</p>
+                <p>The real moment of tension came at Calais. Anyone who regularly crosses the Channel knows the feeling. Traffic slows, queues appear and uncertainty creeps in as you wonder how long you'll be waiting. This time the tailback into the port looked intimidating, but it could have been far worse. Whilst the P&amp;O side appeared heavily congested, the DFDS queue moved reasonably well and before long we were sailing home.</p>
+                <p>One final observation remained impossible to ignore. Once again, the Tesla made the entire adventure remarkably affordable. The Supercharger network performed flawlessly from start to finish, and the cost of electricity throughout such a significant journey remained astonishingly low. Ironically, the French toll roads ended up costing considerably more than the energy needed to drive across the country.</p>
+                <p>Looking back, Perpignan was never really about Perpignan.</p>
+                <p>It was about family conversations beside the pool. It was about watching lightning dance across the Mediterranean. It was about fireworks over the beach, late-night markets, mountains of mussels, engineering debates and the simple pleasure of having nowhere important to be.</p>
+                <p>For a brief period in the summer of 2026, life slowed down enough for us to appreciate it all. Those are often the holidays that leave the strongest memories, and this was certainly one of them.</p>
+                <p>A chapter of the House of Hedaux story that will be fondly remembered for many years to come.</p>
+              </div>
+            </details>
+            <details class="travel-card">
+              <summary>
+                <span class="travel-card-label">France · Summer 2025</span>
+                <span class="travel-card-title">Verdon &amp; Lac de Sainte-Croix</span>
+                <span class="travel-card-teaser">Our family road trip wound through Beaune and on to Verdon: smooth French roads, turquoise water at Lac de Sainte-Croix, campsite adventures, and days that moved at their own pace.</span>
+              </summary>
+              <div class="travel-story">
+                <h4>Verdon &amp; Lac de Sainte-Croix, France - Summer 2025</h4>
+                <p>There were airport runs, table-tennis rivalries, a foam party, and one cricket that found its way into the car. Even the long, chaotic journey home became part of the story.</p>
+                <p>We returned with the dream of going back — perhaps one day not just for a holiday, but for a new chapter.</p>
+                <p>A family adventure through France, full of laughter, tolls, tapenade, and the occasional cricket invasion.</p>
+                <h4>🚗 The Journey Begins</h4>
+                <p>We made it to Dover with one supercharge under our belt and plenty of battery to spare. Ferry crossing smooth. Spirits high. The kind of start that makes you suspicious something’s bound to go wrong later. Once on French soil, everything felt… quieter. The roads were silky smooth, the tyres practically whispering. Toll booths, however, were less poetic—€60 for the privilege of gliding along, but hey, no petrol costs, so it balanced out. Familiar scenery rolled by, though this year we took a new route down the east side: Reims, Troyes, Dijon. No family visits this time—just a fresh adventure toward Verdon near Nice. We checked into a Campanile in Beaune. All going to plan. Supercharging was seamless. The kind of efficiency that makes you feel like a travel god.</p>
+                <h4>🏡 Arrival at the Cabin</h4>
+                <p>Verdon greeted us with a digger and a giant hole outside our cabin. No water. No peace. No parking. The kind of welcome that makes you question your life choices. I went to complain while workmen wandered in and out, testing pipes and stealing power via extension leads. But credit where it’s due—the cabin was bigger than expected, clean, and once the water came back, we started to settle. Dinner that night was lovely. Phoebe disappeared with Melody, and Hayley and I sat on the balcony, soaking in the mild evening air. The kind of moment that makes the chaos worth it.</p>
+                <h4>⚡ Tesla Drama &amp; Airport Dash</h4>
+                <p>Got hit with a Tesla idle fee thanks to a faulty charger. First-time offence waived—thank you, Elon. The next morning, despite needing a lie-in, we were up early to collect Josh and Chloe from Nice Airport. What we thought was a quick trip turned into a two-hour drive: winding roads, medieval villages, stunning views, and a motorway sprint to finish. Finding the express pickup zone was like playing hide-and-seek with signage. After circling like confused pigeons, we gambled on P5 car park and won. €4 parking and a successful reunion. On the way back, a quick supercharge and a food stock-up at Aups Intermarché. That evening, campsite entertainment kicked off—staff vs vacationers. Hayley’s translations were limited to “starts at 9pm” and “it’s chilly,” which somehow became the running joke of the night. Hayley slept well for the first time in days—no headache. Phoebe and Melody were off gallivanting, likely charming the campsite boys.</p>
+                <h4>🏖️ Poolside Bliss &amp; Foam Party Madness</h4>
+                <p>The next few days were pure chill. Sunbathing by the pool, dipping in and out like lazy otters. The foam party was a blast—everyone soaked, laughing, and slightly deaf from the music. We met a father and son staying nearby. Leo, age 9, didn’t speak English but instantly bonded with Phoebe. She taught him to say “shit,” which he then repeated with glee every time we told him not to. Hayley and Chloe had a wild night—ended with Hayley being sick. Not her finest hour, but memorable nonetheless. Table tennis became a daily ritual. Josh was hooked. We all improved. Josh and I chilled with a couple of beers—stronger than expected, but we didn’t mind. He kept randomly repeating “au jordwee cest tois,” which none of us understood, and shouting “ma mare!” at full volume. No explanation, just Josh being Josh. We laughed every single time.</p>
+                <h4>🌉 Chapter: Pont du Galetas – Wonder on the Water</h4>
+                <p class="source-caption">Turquoise waters, hot sun, and cliffside courage. The kind of beauty that stays with you.</p>
+                <img class="room-story-photo" src="assets/pontdugaletas.png" alt="Small boats on turquoise water between the limestone cliffs of the Verdon Gorge" loading="lazy">
+                <p>One of the standout moments of the trip—maybe even the soul of it—was our visit to the Pont du Galetas on Lac du Sainte-Croix. The kind of place that doesn’t just impress, it humbles.</p>
+                <p>The water was impossibly turquoise, like someone had dialled up the saturation just for us. The sun was hot but generous, casting golden light across the cliffs and rippling lake. We stood on the bridge, watching the world unfold below—kayakers drifting lazily, families picnicking in the shade, and a steady stream of brave souls inching toward the edge of the rocks.</p>
+                <p>There was a quiet rhythm to it: hesitation, encouragement, a deep breath… and then the leap. Splash. Repeat. It was like watching courage in slow motion. Some jumped with wild abandon, others with careful calculation—but every single one of them wore the same grin afterwards. That post-jump glow.</p>
+                <p>We didn’t jump ourselves—just watched, soaked it in, let the beauty do its work. It was one of those rare places where time slows down and everything feels just right. No noise, no rush, just awe. The kind of moment that makes you want to bottle the feeling and carry it home.</p>
+                <h4>🛣️ The Return Odyssey</h4>
+                <p>We left late, aiming for a hotel near Saint-Dizier. Campanile claimed they were full, despite an empty car park. Ibis was ruled out due to a crowd outside. We kept driving, hoping Reims would deliver. It didn’t. Hotels were either full or charging €129 per room at 11pm. So we pushed on to Calais. Tired but determined. Customs took an hour, but had we stuck to our original ferry slot, the wait would’ve been even longer. €69 for the crossing—cheaper than two hotel rooms and a win in disguise. Earlier in Lyon, we’d stopped for a supercharge and Burger King. As we pulled away, a cricket flew into the car. Hayley panicked. Phoebe Googled whether crickets bite. I pulled over and evicted the intruder. Chaos, laughter, and a new story for the mansion. Back in the UK, the roads were loud, bumpy, and full of traffic. Fifteen minutes from home, we ignored Tessies route suggestion and paid the price—closed A16, closed Crowland bypass, single-lane farm tracks, and diverted traffic all trying to squeeze through. It was like the universe saying, “You thought you were done? Not yet.” Eventually, we made it. Unloaded. Grabbed supplies. Collapsed into rest.</p>
+                <h4>🧳 Back to Reality</h4>
+                <p>Now the dust has settled, reality’s creeping back in. Work is calling. Daily routines resume. Eat, sleep, work, repeat. The hum of normal life replacing the buzz of campsite foam parties and winding French roads. But somewhere in the back of our minds, the dream lingers—of one day making it work. Moving to France. Slowing down. Savoring the scenery, the food, the rhythm. Not just a holiday… but a new chapter.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-conservatory" data-room-panel="conservatory" data-room-title="Conservatory" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">A room in progress</p>
+          <h3>Small beginnings, quiet growth.</h3>
+          <p>The Conservatory is under construction. Bonsai seedlings and quiet reflections will take root here soon.</p>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-masterbedroom" data-room-panel="masterbedroom" data-room-title="Master Bedroom" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">A private corner of the house</p>
+          <h3>Some memories take their time.</h3>
+          <p>This room is part of the family archive. Its story will be added here when it is ready.</p>
+          <details class="room-original-story" open>
+            <summary>Original room captions</summary>
+            <p class="source-caption">Pilot's license</p>
+            <p class="source-caption">Motocross</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-gamesroom" data-room-panel="gamesroom" data-room-title="Games Room" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">Nostalgia, creativity, and pixels</p>
+          <h3>From BASIC lines to building new worlds.</h3>
+          <p>It began with the Commodore 64: copying code from a manual just to make a short sound. The Amiga, PC games, and shared adventures with Hayley and Dad opened up whole new worlds.</p>
+          <p>Today, this room is also a workshop. Unreal Engine, HTML, and Python are tools for making things — and the next project is designed to let visitors play through a little piece of that history.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Welcome to the Games Room—a chamber of nostalgia, creativity, and quiet obsession. This is where my journey into digital realms began, long before the internet was fast or the graphics were smooth. It started with the Commodore 64, where I painstakingly copied lines of BASIC code from the user manual just to hear a short wave sound. I watched Dad conjure a race car on screen, dodging obstacles with a flick of the joystick, and something clicked: this wasn’t just play—it was creation.</p>
+            <p>From the Amiga’s hypnotic soundtracks to the golden age of PC gaming in the '90s, each system became a stepping stone. World of Warcraft became a shared universe for Hayley and me, a place where quests and companionship intertwined. Simulators drew me in deeper—more than just games, they were systems to understand, tweak, and master. Realm Royale and World of Tanks brought Dad back into the fold, our battles echoing across generations.</p>
+            <p>Today, the Games Room is also a workshop. I tinker with Unreal Engine, sculpting levels, animating characters, and building mechanics like inventory systems and player stats. HTML and Python have become tools in my digital toolkit, helping me evolve projects that blur the line between hobby and craft.</p>
+            <p>And soon, this room will become interactive. I’m building a mini-game to embed right here—a playable homage to the early days, where dodging pixelated obstacles feels like time travel. Alongside it, a retro HTML adventure will unfold: part memoir, part mystery, part love letter to the era that shaped me. Visitors won’t just read about the Games Room—they’ll play through it.</p>
+            <p>This room isn’t just about games—it’s about the joy of making, the thrill of learning, and the stories coded into every pixel. It’s a tribute to the worlds I’ve explored, the ones I’ve built, and the ones still waiting to be born.</p>
+          </details>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-kitchen" data-room-panel="kitchen" data-room-title="The Kitchen" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">A room in progress</p>
+          <h3>The heart of the house.</h3>
+          <p>The Kitchen is under construction. Recipes and stories from the heart of the house are on their way.</p>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-pets" data-room-panel="pets" data-room-title="Pet Zone" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">A room in progress</p>
+          <h3>Meet the residents.</h3>
+          <p>Scooby, Fudge, Jody, and friends will be introduced here soon.</p>
+        </div>
+      </article>
+
+      <article class="room-panel no-photo" id="room-skywatch" data-room-panel="skywatch" data-room-title="Observatory" hidden>
+        <div class="room-copy">
+          <p class="room-kicker">The Observatory</p>
+          <h3>A quiet moment of wonder.</h3>
+          <p>Skywatch gathers images from a Raspberry Pi setup and sorts them with the help of AI into categories that reflect the sky’s shifting stories: drifting clouds, passing planes, and birds in flight.</p>
+          <p>A space for reflection, automation, and the joy of noticing what often goes unseen.</p>
+          <details class="room-original-story" open>
+            <summary>Original room story</summary>
+            <p>Every image captured here is a quiet moment of wonder—whether it's a drifting cloud, a passing plane, or the fleeting silhouette of a bird in flight. This project blends automation and curiosity: photos are collected from my Raspberry Pi setup and sorted with the help of AI into categories that reflect the skies' shifting stories. Skywatch is a space for reflection, observation, and the joy of noticing what often goes unseen.</p>
+          </details>
+        </div>
+      </article>
+    </div>
+  </dialog>
+
+  <script>
+    const roomDialog = document.querySelector("#room-dialog");
+    const dialogTitle = document.querySelector("#room-dialog-title");
+    const dialogContent = document.querySelector(".dialog-content");
+    const roomPanels = [...document.querySelectorAll("[data-room-panel]")];
+    const roomTriggers = document.querySelectorAll("[data-room]");
+
+    function enterRoom(roomName) {
+      const selectedPanel = roomPanels.find((panel) => panel.dataset.roomPanel === roomName);
+      if (!selectedPanel) {
+        return;
+      }
+
+      roomPanels.forEach((panel) => {
+        panel.hidden = panel !== selectedPanel;
+      });
+      dialogTitle.textContent = selectedPanel.dataset.roomTitle;
+      dialogContent.scrollTop = 0;
+      roomDialog.showModal();
+    }
+
+    roomTriggers.forEach((trigger) => {
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        enterRoom(trigger.dataset.room);
+      });
+    });
+
+    document.querySelector(".dialog-close").addEventListener("click", () => {
+      roomDialog.close();
+    });
+
+    roomDialog.addEventListener("click", (event) => {
+      if (event.target === roomDialog) {
+        roomDialog.close();
+      }
+    });
+  </script>
+</body>
+</html>
