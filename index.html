@@ -498,6 +498,386 @@
       margin-bottom: 0;
     }
 
+    .observatory-hub.room-copy {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      align-self: start;
+    }
+
+    .observatory-hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(22px, 4vw, 42px);
+      border: 1px solid rgba(215, 189, 133, .4);
+      background:
+        radial-gradient(circle at 88% 18%, rgba(215, 189, 133, .12), transparent 16rem),
+        radial-gradient(circle at 78% 72%, rgba(78, 132, 180, .2), transparent 22rem),
+        linear-gradient(135deg, #0b3156, var(--blue-deep) 75%);
+    }
+
+    .observatory-hero::after {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(243, 239, 227, .65) 1px, transparent 1.5px),
+        radial-gradient(circle, rgba(215, 189, 133, .5) 1px, transparent 1.5px);
+      background-position: 0 0, 24px 32px;
+      background-size: 58px 58px, 83px 83px;
+      content: "";
+      opacity: .18;
+      pointer-events: none;
+    }
+
+    .observatory-hero > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .observatory-hero .room-kicker {
+      margin-bottom: 12px;
+    }
+
+    .observatory-hero h3 {
+      max-width: 740px;
+      margin-bottom: 12px;
+    }
+
+    .observatory-hero p:last-child {
+      max-width: 760px;
+      margin-bottom: 0;
+    }
+
+    .observatory-feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 20px 0 42px;
+    }
+
+    .observatory-feature-card {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 20px;
+      border: 1px solid rgba(243, 239, 227, .23);
+      background: rgba(3, 26, 52, .68);
+      color: var(--paper);
+      text-decoration: none;
+      transition: border-color .18s ease, background .18s ease, transform .18s ease;
+    }
+
+    .observatory-feature-card:hover,
+    .observatory-feature-card:focus-visible {
+      border-color: rgba(215, 189, 133, .78);
+      background: rgba(18, 57, 97, .68);
+      outline: none;
+      transform: translateY(-2px);
+    }
+
+    .observatory-feature-icon {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      margin-bottom: 18px;
+      place-items: center;
+      border: 1px solid rgba(215, 189, 133, .42);
+      border-radius: 50%;
+      background: rgba(215, 189, 133, .08);
+      font-size: 20px;
+    }
+
+    .observatory-feature-label,
+    .observatory-section-kicker {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .observatory-feature-title {
+      display: block;
+      margin-bottom: 8px;
+      font: 400 22px/1.2 var(--serif);
+    }
+
+    .observatory-feature-description {
+      display: block;
+      margin-bottom: 18px;
+      color: rgba(243, 239, 227, .76);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .observatory-feature-link {
+      margin-top: auto;
+      color: #e8d39e;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .05em;
+    }
+
+    .observatory-section {
+      padding-top: 32px;
+      border-top: 1px solid rgba(243, 239, 227, .22);
+      scroll-margin-top: 20px;
+    }
+
+    .observatory-section + .observatory-section {
+      margin-top: 38px;
+    }
+
+    .observatory-section-header {
+      max-width: 760px;
+      margin-bottom: 22px;
+    }
+
+    .observatory-section-header h4 {
+      margin: 0 0 10px;
+      color: var(--paper);
+      font: 400 clamp(26px, 3.4vw, 36px)/1.2 var(--serif);
+    }
+
+    .observatory-section-header p:last-child {
+      margin-bottom: 0;
+    }
+
+    .observatory-section-header h4 span {
+      font-family: var(--sans);
+      font-size: .72em;
+    }
+
+    .observatory-back-link {
+      display: inline-block;
+      margin-top: 20px;
+      font-size: 11px;
+      letter-spacing: .04em;
+    }
+
+    .case-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 22px 0 14px;
+    }
+
+    .case-filter-button {
+      padding: 8px 11px;
+      border: 1px solid rgba(243, 239, 227, .28);
+      border-radius: 2px;
+      background: transparent;
+      color: rgba(243, 239, 227, .82);
+      cursor: pointer;
+      font-size: 11px;
+      transition: border-color .18s ease, background .18s ease, color .18s ease;
+    }
+
+    .case-filter-button:hover,
+    .case-filter-button:focus-visible,
+    .case-filter-button[aria-pressed="true"] {
+      border-color: var(--gold);
+      background: rgba(215, 189, 133, .12);
+      color: var(--paper);
+      outline: none;
+    }
+
+    .case-card {
+      padding: clamp(18px, 3vw, 28px);
+      border: 1px solid rgba(215, 189, 133, .54);
+      border-left: 4px solid var(--gold);
+      background:
+        linear-gradient(115deg, rgba(215, 189, 133, .08), transparent 48%),
+        rgba(3, 26, 52, .66);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .16);
+    }
+
+    .case-card[hidden],
+    .case-empty[hidden] {
+      display: none !important;
+    }
+
+    .case-card-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .case-card-status {
+      margin: 0 0 8px !important;
+      color: var(--gold) !important;
+      font-size: 10px !important;
+      font-weight: 600;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .case-card-heading h5 {
+      margin: 0;
+      color: var(--paper);
+      font: 400 clamp(22px, 3vw, 30px)/1.2 var(--serif);
+    }
+
+    .case-card-date {
+      flex: 0 0 auto;
+      padding: 7px 9px;
+      border: 1px solid rgba(243, 239, 227, .2);
+      color: rgba(243, 239, 227, .84);
+      font-size: 11px;
+      letter-spacing: .03em;
+    }
+
+    .case-card-summary {
+      max-width: 780px;
+      margin: 18px 0 !important;
+    }
+
+    .case-record {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .case-record div {
+      padding: 12px;
+      border: 1px solid rgba(243, 239, 227, .14);
+      background: rgba(243, 239, 227, .025);
+    }
+
+    .case-record dt {
+      margin-bottom: 5px;
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .case-record dd {
+      margin: 0;
+      color: rgba(243, 239, 227, .84);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .case-tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .case-tag-list li {
+      padding: 5px 8px;
+      border: 1px solid rgba(243, 239, 227, .2);
+      color: rgba(243, 239, 227, .8);
+      font-size: 10px;
+    }
+
+    .case-filter-note,
+    .case-empty {
+      margin: 12px 0 0 !important;
+      color: rgba(193, 202, 212, .82) !important;
+      font-size: 12px !important;
+    }
+
+    .skywatch-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .skywatch-card {
+      min-width: 0;
+      padding: 19px;
+      border: 1px solid rgba(243, 239, 227, .19);
+      background: rgba(3, 26, 52, .54);
+    }
+
+    .skywatch-card:last-child {
+      grid-column: 1 / -1;
+      border-color: rgba(215, 189, 133, .34);
+      background: linear-gradient(125deg, rgba(18, 57, 97, .58), rgba(3, 26, 52, .64));
+    }
+
+    .skywatch-card h5,
+    .starship-card h5 {
+      margin: 0 0 9px;
+      color: var(--paper);
+      font: 400 21px/1.25 var(--serif);
+    }
+
+    .skywatch-card p,
+    .starship-card p {
+      margin: 0;
+      color: rgba(243, 239, 227, .8);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .skywatch-card ul {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: rgba(243, 239, 227, .8);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .skywatch-card .vision-label {
+      display: inline-block;
+      margin: 0 0 12px;
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .vision-categories {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .vision-categories span {
+      padding: 5px 8px;
+      border: 1px solid rgba(215, 189, 133, .28);
+      color: rgba(243, 239, 227, .86);
+      font-size: 10px;
+    }
+
+    .starship-card-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .starship-card {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid rgba(243, 239, 227, .19);
+      background:
+        linear-gradient(150deg, rgba(18, 57, 97, .52), rgba(3, 26, 52, .7) 68%),
+        radial-gradient(circle at 100% 0, rgba(215, 189, 133, .12), transparent 7rem);
+    }
+
+    .starship-card-index {
+      display: block;
+      margin-bottom: 19px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .15em;
+    }
+
     .family-tree-panel {
       display: block;
     }
@@ -798,6 +1178,19 @@
         grid-template-columns: 1fr;
       }
 
+      .observatory-feature-grid,
+      .skywatch-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .skywatch-card:last-child {
+        grid-column: auto;
+      }
+
+      .starship-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .descendant-families {
         grid-template-columns: 1fr;
       }
@@ -853,6 +1246,20 @@
 
       .room-copy p {
         font-size: 14px;
+      }
+
+      .case-card-heading {
+        display: block;
+      }
+
+      .case-card-date {
+        display: inline-block;
+        margin-top: 12px;
+      }
+
+      .case-record,
+      .starship-card-grid {
+        grid-template-columns: 1fr;
       }
 
       .family-tree {
@@ -1485,15 +1892,157 @@
       </article>
 
       <article class="room-panel no-photo" id="room-skywatch" data-room-panel="skywatch" data-room-title="Observatory" hidden>
-        <div class="room-copy">
-          <p class="room-kicker">The Observatory</p>
-          <h3>A quiet moment of wonder.</h3>
-          <p>Skywatch gathers images from a Raspberry Pi setup and sorts them with the help of AI into categories that reflect the sky’s shifting stories: drifting clouds, passing planes, and birds in flight.</p>
-          <p>A space for reflection, automation, and the joy of noticing what often goes unseen.</p>
-          <details class="room-original-story" open>
-            <summary>Original room story</summary>
-            <p>Every image captured here is a quiet moment of wonder—whether it's a drifting cloud, a passing plane, or the fleeting silhouette of a bird in flight. This project blends automation and curiosity: photos are collected from my Raspberry Pi setup and sorted with the help of AI into categories that reflect the skies' shifting stories. Skywatch is a space for reflection, observation, and the joy of noticing what often goes unseen.</p>
-          </details>
+        <div class="room-copy observatory-hub" id="observatory-start">
+          <header class="observatory-hero">
+            <p class="room-kicker">The Observatory · Exploration &amp; discovery</p>
+            <h3>A room for looking closer.</h3>
+            <p>A personal research archive for unusual reports, sky monitoring, and the engineering story of Starship. Curiosity leads; evidence and careful notes keep the record grounded.</p>
+          </header>
+
+          <nav class="observatory-feature-grid" aria-label="Observatory sections">
+            <a class="observatory-feature-card" href="#observatory-paranormal">
+              <span class="observatory-feature-icon" aria-hidden="true">👻</span>
+              <span class="observatory-feature-label">Case files</span>
+              <strong class="observatory-feature-title">Paranormal Archive</strong>
+              <span class="observatory-feature-description">A thoughtful record of unusual reports, documented without jumping to conclusions.</span>
+              <span class="observatory-feature-link">Browse investigations <span aria-hidden="true">→</span></span>
+            </a>
+            <a class="observatory-feature-card" href="#observatory-skywatch">
+              <span class="observatory-feature-icon" aria-hidden="true">🛸</span>
+              <span class="observatory-feature-label">Sky monitoring</span>
+              <strong class="observatory-feature-title">SkyWatch</strong>
+              <span class="observatory-feature-description">Follow the Raspberry Pi project from image capture toward careful AI-assisted identification.</span>
+              <span class="observatory-feature-link">Explore the project <span aria-hidden="true">→</span></span>
+            </a>
+            <a class="observatory-feature-card" href="#observatory-starship">
+              <span class="observatory-feature-icon" aria-hidden="true">🚀</span>
+              <span class="observatory-feature-label">Aerospace notes</span>
+              <strong class="observatory-feature-title">Starship Watch</strong>
+              <span class="observatory-feature-description">A personal archive of flight tests, engineering milestones, and ambitions for Mars.</span>
+              <span class="observatory-feature-link">View the archive <span aria-hidden="true">→</span></span>
+            </a>
+          </nav>
+
+          <section class="observatory-section" id="observatory-paranormal" aria-labelledby="paranormal-title">
+            <header class="observatory-section-header">
+              <span class="observatory-section-kicker">01 · Investigation archive</span>
+              <h4 id="paranormal-title">Paranormal Archive <span aria-hidden="true">👻</span></h4>
+              <p>Case files preserve what was reported, when it happened, and what is still unknown. Categories describe the subject of a report, not a proven explanation.</p>
+            </header>
+            <div class="case-filters" role="group" aria-label="Filter investigation cases">
+              <button class="case-filter-button" type="button" data-case-filter="all" aria-pressed="true" aria-controls="case-results">All cases</button>
+              <button class="case-filter-button" type="button" data-case-filter="unexplained" aria-pressed="false" aria-controls="case-results">Unexplained</button>
+              <button class="case-filter-button" type="button" data-case-filter="explained" aria-pressed="false" aria-controls="case-results">Explained</button>
+              <button class="case-filter-button" type="button" data-case-filter="electrical" aria-pressed="false" aria-controls="case-results">Electrical</button>
+              <button class="case-filter-button" type="button" data-case-filter="physical" aria-pressed="false" aria-controls="case-results">Physical</button>
+              <button class="case-filter-button" type="button" data-case-filter="witness-reports" aria-pressed="false" aria-controls="case-results">Witness Reports</button>
+            </div>
+            <div id="case-results" aria-live="polite">
+              <article class="case-card" data-case-card data-case-categories="unexplained electrical witness-reports">
+                <header class="case-card-heading">
+                  <div>
+                    <p class="case-card-status">Featured investigation · Open file</p>
+                    <h5>The Early-Hours Stair &amp; TV Activation</h5>
+                  </div>
+                  <time class="case-card-date" datetime="2026-07-07">7 July 2026</time>
+                </header>
+                <p class="case-card-summary">A record of the reported early-hours stair event and television activation. The entry stays close to the observation; no cause or interpretation has been assigned.</p>
+                <dl class="case-record">
+                  <div>
+                    <dt>Record status</dt>
+                    <dd>Initial case entry</dd>
+                  </div>
+                  <div>
+                    <dt>Interpretation</dt>
+                    <dd>Unresolved; further notes may be added</dd>
+                  </div>
+                </dl>
+                <ul class="case-tag-list" aria-label="Case categories">
+                  <li>Unexplained</li>
+                  <li>Electrical report</li>
+                  <li>Witness report</li>
+                </ul>
+              </article>
+              <p class="case-empty" data-case-empty hidden>No cases are filed under this category yet. New entries can be added as reports are documented.</p>
+            </div>
+            <p class="case-filter-note">Filters group reports by subject; they do not establish a cause.</p>
+            <a class="observatory-back-link" href="#observatory-start">↑ Observatory overview</a>
+          </section>
+
+          <section class="observatory-section" id="observatory-skywatch" aria-labelledby="skywatch-title">
+            <header class="observatory-section-header">
+              <span class="observatory-section-kicker">02 · Raspberry Pi project</span>
+              <h4 id="skywatch-title">SkyWatch <span aria-hidden="true">🛸</span></h4>
+              <p>A sky-monitoring project built around image capture, observation, and a growing archive of what passes overhead.</p>
+            </header>
+            <div class="skywatch-grid">
+              <article class="skywatch-card">
+                <h5>Project Origin</h5>
+                <p>Every image captured here is a quiet moment of wonder—whether it's a drifting cloud, a passing plane, or the fleeting silhouette of a bird in flight. This project blends automation and curiosity: photos are collected from my Raspberry Pi setup and sorted with the help of AI into categories that reflect the skies' shifting stories. SkyWatch is a space for reflection, observation, and the joy of noticing what often goes unseen.</p>
+              </article>
+              <article class="skywatch-card">
+                <h5>Hardware</h5>
+                <p>The current project is based on a Raspberry Pi image-capture setup. As the build evolves, this archive can record the confirmed camera, mounting, power, storage, and software choices.</p>
+                <ul>
+                  <li>Raspberry Pi for capture and automation</li>
+                  <li>A camera and a sky-facing view</li>
+                  <li>Image storage for review and learning</li>
+                </ul>
+              </article>
+              <article class="skywatch-card">
+                <h5>Goals</h5>
+                <p>Build a reliable visual record of the sky, make images easier to browse, and keep enough context around each capture to understand it later.</p>
+              </article>
+              <article class="skywatch-card">
+                <h5>Lessons Learned</h5>
+                <p>Useful observations need context as well as an image. Time, camera position, clarity, weather, and a consistent capture routine can all help make later identification more meaningful.</p>
+              </article>
+              <article class="skywatch-card">
+                <span class="vision-label">Future AI Vision</span>
+                <h5>From captures to careful identification</h5>
+                <p>The next step is to explore AI image recognition that can suggest likely subjects while keeping uncertain results open for review. Unknown captures should remain visible as unknowns rather than being forced into a confident label.</p>
+                <div class="vision-categories" aria-label="Future identification categories">
+                  <span>Aircraft</span>
+                  <span>Birds</span>
+                  <span>Weather events</span>
+                  <span>Satellites</span>
+                  <span>Unknown captures</span>
+                </div>
+              </article>
+            </div>
+            <a class="observatory-back-link" href="#observatory-start">↑ Observatory overview</a>
+          </section>
+
+          <section class="observatory-section" id="observatory-starship" aria-labelledby="starship-title">
+            <header class="observatory-section-header">
+              <span class="observatory-section-kicker">03 · Aerospace archive</span>
+              <h4 id="starship-title">Starship Watch <span aria-hidden="true">🚀</span></h4>
+              <p>I've followed SpaceX Starship since its earliest test flights. This is a personal research archive for the vehicle's test history, engineering progress, and long-range ambitions.</p>
+            </header>
+            <div class="starship-card-grid">
+              <article class="starship-card">
+                <span class="starship-card-index">01 · TEST PROGRAMME</span>
+                <h5>Flight History</h5>
+                <p>A chronological record of test flights, what each set out to learn, and how the programme evolves through iteration.</p>
+              </article>
+              <article class="starship-card">
+                <span class="starship-card-index">02 · VEHICLE DESIGN</span>
+                <h5>Engineering Milestones</h5>
+                <p>Track reusable vehicle development, heat-shield learning, propulsion, and the engineering changes that shape each generation.</p>
+              </article>
+              <article class="starship-card">
+                <span class="starship-card-index">03 · RECOVERY SYSTEMS</span>
+                <h5>Catch Tower Technology</h5>
+                <p>Explore the launch tower's booster-catch concept, its test milestones, and the practical challenges of recovering a returning vehicle.</p>
+              </article>
+              <article class="starship-card">
+                <span class="starship-card-index">04 · LONG-TERM VISION</span>
+                <h5>Future Mars Missions</h5>
+                <p>Consider how reusable launch and landing systems could support cargo, infrastructure, and eventually human missions to Mars—a long-term ambition, not a timetable.</p>
+              </article>
+            </div>
+            <a class="observatory-back-link" href="#observatory-start">↑ Observatory overview</a>
+          </section>
         </div>
       </article>
     </div>
@@ -1505,6 +2054,9 @@
     const dialogContent = document.querySelector(".dialog-content");
     const roomPanels = [...document.querySelectorAll("[data-room-panel]")];
     const roomTriggers = document.querySelectorAll("[data-room]");
+    const caseFilterButtons = [...document.querySelectorAll("[data-case-filter]")];
+    const caseCards = [...document.querySelectorAll("[data-case-card]")];
+    const caseEmptyState = document.querySelector("[data-case-empty]");
 
     function enterRoom(roomName) {
       const selectedPanel = roomPanels.find((panel) => panel.dataset.roomPanel === roomName);
@@ -1519,6 +2071,27 @@
       dialogContent.scrollTop = 0;
       roomDialog.showModal();
     }
+
+    caseFilterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = button.dataset.caseFilter;
+        let visibleCount = 0;
+
+        caseCards.forEach((card) => {
+          const categories = card.dataset.caseCategories.split(/\s+/);
+          const matches = filter === "all" || categories.includes(filter);
+          card.hidden = !matches;
+          if (matches) {
+            visibleCount += 1;
+          }
+        });
+
+        caseEmptyState.hidden = visibleCount > 0;
+        caseFilterButtons.forEach((filterButton) => {
+          filterButton.setAttribute("aria-pressed", String(filterButton === button));
+        });
+      });
+    });
 
     roomTriggers.forEach((trigger) => {
       trigger.addEventListener("click", (event) => {
