@@ -1,12 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Skywatch Gallery | House of Hedaux</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% extends 'base.html' %}
+
+{% block head_extra %}
   <style>
-    /* Gallery styles (same as before) */
     .gallery-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -88,23 +83,58 @@
     @media (max-width: 600px) {
       .gallery-thumb img { height: 90px; }
     }
+    @media (max-width: 480px) {
+      .gallery-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.75rem;
+        padding: 0 0.5rem;
+      }
+      .gallery-thumb img { height: 80px; }
+      .category-selector {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0 0.5rem;
+      }
+      .category-link {
+        margin: 0.25rem;
+        font-size: 0.85rem;
+      }
+      .category-link.active {
+        font-size: 1.1rem;
+      }
+      .gallery-description {
+        font-size: 0.95rem;
+        padding: 0 0.5rem;
+      }
+      .lightbox-content img {
+        max-height: 70vh;
+        border-radius: 0.5rem;
+      }
+      .lightbox-close {
+        top: -40px;
+        font-size: 2rem;
+      }
+    }
   </style>
-</head>
-<body>
-  <div class="site-header">
-    <a href="/skywatch" title="Back to Skywatch Home" class="back-to-house">&#8592;</a>
-    <div class="site-title">Skywatch Gallery</div>
-    <div class="site-subtitle">Captured Moments from Above</div>
-    <nav class="skywatch-nav">
-      <a href="/skywatch" class="nav-link {% if active_page == 'skywatch' %}active{% endif %}">Home</a>
-      <a href="/swgallery" class="nav-link {% if active_page == 'swgallery.html' %}active{% endif %}">Gallery</a>
-      <a href="#" class="nav-link">Live Feed</a>
-      <a href="#" class="nav-link">Logbook</a>
-    </nav>
-  </div>
+{% endblock %}
 
+{% block header %}
+  <a href="/skywatch" title="Back to Skywatch Home" class="back-to-house">&#8592;</a>
+  <div class="site-title">Skywatch Gallery</div>
+  <div class="site-subtitle">Captured Moments from Above</div>
+  <nav class="skywatch-nav">
+    <a href="/skywatch" class="nav-link {% if active_page == 'skywatch' %}active{% endif %}">Home</a>
+    <a href="/swgallery" class="nav-link {% if active_page == 'swgallery' %}active{% endif %}">Gallery</a>
+    <a href="#" class="nav-link">Live Feed</a>
+    <a href="#" class="nav-link">Logbook</a>
+  </nav>
+{% endblock %}
+
+{% block main %}
 <div class="gallery-description">
-  Step into the Observatory wing of the House of Hedaux, where the Raspberry Pi keeps watch over the skies. This gallery showcases fleeting moments—clouds, birds, planes, and mysteries—captured in real time.  
+  Step into the Observatory wing of the House of Hedaux, where the Raspberry Pi keeps watch over the skies. This gallery showcases fleeting moments—clouds, birds, planes, and mysteries—captured in real time.
   <br><br>
   The AI curator is still learning its way around the skies, so some images may be misfiled. Consider this room under gentle renovation. Check back often as the system improves and the view becomes clearer.
   <br><br>
@@ -145,8 +175,8 @@
 {% else %}
   <p class="gallery-description">No images found. The sky might be quiet today, or the sync pipeline needs a check.</p>
 {% endif %}
-</body>
-<footer style="text-align: center; font-size: 0.9em; color: #ffffff; margin-top: 40px; padding: 20px 0;">
+{% endblock %}
+
+{% block footer %}
   Skywatch V1.0 &nbsp;|&nbsp; Last updated {{ last_updated }} &nbsp;|&nbsp; House of Hedaux
-</footer>
-</html>
+{% endblock %}

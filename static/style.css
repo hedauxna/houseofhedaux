@@ -404,3 +404,238 @@ body {
   color: #666;
   margin-top: 8px;
 }
+
+/* ============================================
+   Responsive Breakpoints
+   Tablet (≤768px), Mobile (≤480px), Small (≤360px)
+   ============================================ */
+
+/* --- Tablet: ≤768px --- */
+@media screen and (max-width: 768px) {
+  .site-title {
+    font-size: 3rem;
+  }
+
+  .site-subtitle {
+    font-size: 1.2rem;
+  }
+
+  .blueprint-container {
+    width: 95vw;
+  }
+
+  /* Scale down hotspots to fit proportionally */
+  .zone {
+    width: 44px;
+    height: 44px;
+  }
+
+  .zone-label {
+    font-size: 0.85rem;
+    bottom: -22px;
+  }
+
+  .skywatch-intro,
+  .skywatch-main {
+    max-width: 600px;
+    font-size: 1.1rem;
+    padding: 1.5rem;
+  }
+
+  .skywatch-nav .nav-link {
+    margin: 0 0.8rem;
+    font-size: 1rem;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+
+  .gallery-description {
+    font-size: 1.1rem;
+    padding: 0 1rem;
+  }
+
+  .back-to-house {
+    font-size: 1.6rem;
+  }
+}
+
+/* --- Mobile: ≤480px --- */
+@media screen and (max-width: 480px) {
+  .site-header {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0 0.5rem;
+  }
+
+  .site-title {
+    font-size: 2rem;
+    letter-spacing: 2px;
+  }
+
+  .site-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .back-to-house {
+    font-size: 1.4rem;
+    padding-left: 0.5rem;
+  }
+
+  .blueprint-container {
+    width: 100vw;
+  }
+
+  /* On very small screens, enlarge hotspots for touch targets */
+  .zone {
+    width: 48px;
+    height: 48px;
+  }
+
+  .zone-label {
+    font-size: 0.75rem;
+    bottom: -20px;
+  }
+
+  .skywatch-intro,
+  .skywatch-main {
+    max-width: 100%;
+    margin: 1rem auto;
+    font-size: 1rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+  }
+
+  .skywatch-nav {
+    margin-top: 1rem;
+  }
+
+  .skywatch-nav nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .skywatch-nav .nav-link {
+    margin: 0.25rem;
+    font-size: 0.9rem;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    padding: 0 0.5rem;
+  }
+
+  .gallery-thumb img {
+    height: 100px;
+  }
+
+  .gallery-description {
+    font-size: 0.95rem;
+    margin: 1rem auto;
+    padding: 0 0.5rem;
+  }
+
+  .category-selector {
+    margin: 1rem auto;
+  }
+
+  .category-link {
+    display: inline-block;
+    margin: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  .category-link.active {
+    font-size: 1.1rem;
+  }
+
+  .pergola-image {
+    border-radius: 8px;
+  }
+
+  #garden-games {
+    padding: 1rem;
+  }
+
+  #garden-games h2 {
+    font-size: 1.3rem;
+  }
+
+  .champion, .contenders h3, .next-match h4 {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.95rem;
+  }
+
+  .lightbox-content img {
+    max-height: 70vh;
+    border-radius: 0.5rem;
+  }
+
+  .lightbox-close {
+    top: -40px;
+    font-size: 2rem;
+  }
+
+  footer {
+    padding: 15px 10px !important;
+    font-size: 0.8em !important;
+  }
+}
+
+/* --- Small mobile: ≤360px --- */
+@media screen and (max-width: 360px) {
+  .site-title {
+    font-size: 1.6rem;
+    letter-spacing: 1px;
+  }
+
+  .site-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .zone {
+    width: 40px;
+    height: 40px;
+  }
+
+  .zone-label {
+    font-size: 0.65rem;
+    bottom: -18px;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .gallery-thumb img {
+    height: 80px;
+  }
+}
+
+/* --- Landscape on mobile --- */
+@media screen and (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .site-header {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .site-title {
+    font-size: 2rem;
+  }
+
+  .site-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .skywatch-intro,
+  .skywatch-main {
+    margin: 0.5rem auto;
+    padding: 1rem;
+  }
+}
