@@ -2,45 +2,34 @@
 
 {% block header %}
   <a href="{{ url_for('home') }}" class="back-to-house">&#8592;</a>
-
-
   <div class="site-title">Phoebe</div>
   <div class="site-subtitle">Coming Soon</div>
   <div class="phoebe-intro" style="text-align: center; margin-top: 40px;">
-  <h2 style="font-family: 'Georgia', serif; font-size: 1.8em; color: #d8d8d8;">A glimpse into Phoebe’s world</h2>
-  <p style="font-size: 1em; color: #c7c7c7; margin-bottom: 20px;">
-    Dance, light, and motion — explore her creative journey.
-  </p>
-  <img src="static/images/phoebedance-banner.jpg" alt="PhoebeDance Hero Banner" style="
-    width: 90%;
-    max-width: 800px;
-    border-radius: 12px;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    margin-bottom: 30px;
-  ">
-  <div>
-    <a href="https://phoebedance.com" target="_blank" style="
-      display: inline-block;
-      padding: 14px 28px;
-      font-size: 1.2em;
-      background-color: #c00086;
-      color: white;
-      text-decoration: none;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      transition: background-color 0.3s ease;
-    " onmouseover="this.style.backgroundColor='#ff85c1'" onmouseout="this.style.backgroundColor='#ff69b4'">
-      Visit PhoebeDance.com
-    </a>
-  </div>
-</div>
-{% endblock %}
-
-{% block main %}
-  <div class="skywatch-intro">
-
-  </div>
-  <div class="skywatch-main">
-
+    <h2 style="font-family: 'Georgia', serif; font-size: 1.8em; color: #d8d8d8;">A glimpse into Phoebe’s world</h2>
+    <p style="font-size: 1em; color: #c7c7c7; margin-bottom: 20px;">
+      Dance, light, and motion — explore her creative journey.
+    </p>
+    <img src="static/images/phoebedance-banner.jpg" alt="PhoebeDance Hero Banner" style="
+      width: 90%;
+      max-width: 800px;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+      margin-bottom: 30px;
+    ">
+    <div>
+      <a href="https://phoebedance.com" target="_blank" rel="noopener" style="
+        display: inline-block;
+        padding: 14px 28px;
+        font-size: 1.2em;
+        background-color: #c00086;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: background-color 0.3s ease;
+      " onmouseover="this.style.backgroundColor='#ff85c1'" onmouseout="this.style.backgroundColor='#ff69b4'">
+        Visit PhoebeDance.com
+      </a>
+    </div>
   </div>
 {% endblock %}
