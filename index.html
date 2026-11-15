@@ -269,11 +269,16 @@
     .dialog-content {
       min-height: 0;
       overflow: auto;
+      scroll-behavior: auto;
       overscroll-behavior: contain;
       background: linear-gradient(145deg, rgba(18, 57, 97, .68), var(--blue-deep) 72%);
     }
 
     .room-panel[hidden] {
+      display: none !important;
+    }
+
+    .observatory-page[hidden] {
       display: none !important;
     }
 
@@ -2432,38 +2437,40 @@
       </article>
 
       <article class="room-panel no-photo" id="room-skywatch" data-room-panel="skywatch" data-room-title="Observatory" hidden>
-        <div class="room-copy observatory-hub" id="observatory-start">
-          <header class="observatory-hero">
-            <p class="room-kicker">The Observatory · Exploration &amp; discovery</p>
-            <h3>A room for looking closer.</h3>
-            <p>A personal research archive for unusual reports, sky monitoring, and the engineering story of Starship. Curiosity leads; evidence and careful notes keep the record grounded.</p>
-          </header>
+        <div class="room-copy observatory-hub">
+          <div class="observatory-page" id="observatory-start" data-observatory-page="portal" data-observatory-title="Observatory">
+            <header class="observatory-hero">
+              <p class="room-kicker">The Observatory · Exploration &amp; discovery</p>
+              <h3>A room for looking closer.</h3>
+              <p>A personal research archive for unusual reports, sky monitoring, and the engineering story of Starship. Curiosity leads; evidence and careful notes keep the record grounded.</p>
+            </header>
 
-          <nav class="observatory-feature-grid" aria-label="Observatory sections">
-            <a class="observatory-feature-card" href="#observatory-paranormal">
-              <span class="observatory-feature-icon" aria-hidden="true">👻</span>
-              <span class="observatory-feature-label">Case files</span>
-              <strong class="observatory-feature-title">Paranormal Archive</strong>
-              <span class="observatory-feature-description">A thoughtful record of unusual reports, documented without jumping to conclusions.</span>
-              <span class="observatory-feature-link">Browse investigations <span aria-hidden="true">→</span></span>
-            </a>
-            <a class="observatory-feature-card" href="#observatory-skywatch">
-              <span class="observatory-feature-icon" aria-hidden="true">🛸</span>
-              <span class="observatory-feature-label">Sky monitoring</span>
-              <strong class="observatory-feature-title">SkyWatch</strong>
-              <span class="observatory-feature-description">Follow the Raspberry Pi project from image capture toward careful AI-assisted identification.</span>
-              <span class="observatory-feature-link">Explore the project <span aria-hidden="true">→</span></span>
-            </a>
-            <a class="observatory-feature-card" href="#observatory-starship">
-              <span class="observatory-feature-icon" aria-hidden="true">🚀</span>
-              <span class="observatory-feature-label">Aerospace notes</span>
-              <strong class="observatory-feature-title">Starship Watch</strong>
-              <span class="observatory-feature-description">A personal archive of flight tests, engineering milestones, and ambitions for Mars.</span>
-              <span class="observatory-feature-link">View the archive <span aria-hidden="true">→</span></span>
-            </a>
-          </nav>
+            <nav class="observatory-feature-grid" aria-label="Observatory sections">
+              <a class="observatory-feature-card" href="#observatory-paranormal">
+                <span class="observatory-feature-icon" aria-hidden="true">👻</span>
+                <span class="observatory-feature-label">Case files</span>
+                <strong class="observatory-feature-title">Paranormal Archive</strong>
+                <span class="observatory-feature-description">A thoughtful record of unusual reports, documented without jumping to conclusions.</span>
+                <span class="observatory-feature-link">Browse investigations <span aria-hidden="true">→</span></span>
+              </a>
+              <a class="observatory-feature-card" href="#observatory-skywatch">
+                <span class="observatory-feature-icon" aria-hidden="true">🛸</span>
+                <span class="observatory-feature-label">Sky monitoring</span>
+                <strong class="observatory-feature-title">SkyWatch</strong>
+                <span class="observatory-feature-description">Follow the Raspberry Pi project from image capture toward careful AI-assisted identification.</span>
+                <span class="observatory-feature-link">Explore the project <span aria-hidden="true">→</span></span>
+              </a>
+              <a class="observatory-feature-card" href="#observatory-starship">
+                <span class="observatory-feature-icon" aria-hidden="true">🚀</span>
+                <span class="observatory-feature-label">Aerospace notes</span>
+                <strong class="observatory-feature-title">Starship Watch</strong>
+                <span class="observatory-feature-description">A personal archive of flight tests, engineering milestones, and ambitions for Mars.</span>
+                <span class="observatory-feature-link">View the archive <span aria-hidden="true">→</span></span>
+              </a>
+            </nav>
+          </div>
 
-          <section class="observatory-section" id="observatory-paranormal" aria-labelledby="paranormal-title">
+          <section class="observatory-section observatory-page" id="observatory-paranormal" data-observatory-page="paranormal" data-observatory-title="Observatory · Paranormal Archive" aria-labelledby="paranormal-title" hidden>
             <header class="observatory-section-header">
               <span class="observatory-section-kicker">01 · Investigation archive</span>
               <h4 id="paranormal-title">Paranormal Archive <span aria-hidden="true">👻</span></h4>
@@ -2973,7 +2980,7 @@
             <a class="observatory-back-link" href="#observatory-start">↑ Observatory overview</a>
           </section>
 
-          <section class="observatory-section" id="observatory-skywatch" aria-labelledby="skywatch-title">
+          <section class="observatory-section observatory-page" id="observatory-skywatch" data-observatory-page="skywatch" data-observatory-title="Observatory · SkyWatch" aria-labelledby="skywatch-title" hidden>
             <header class="observatory-section-header">
               <span class="observatory-section-kicker">02 · Raspberry Pi project</span>
               <h4 id="skywatch-title">SkyWatch <span aria-hidden="true">🛸</span></h4>
@@ -3017,7 +3024,7 @@
             <a class="observatory-back-link" href="#observatory-start">↑ Observatory overview</a>
           </section>
 
-          <section class="observatory-section" id="observatory-starship" aria-labelledby="starship-title">
+          <section class="observatory-section observatory-page" id="observatory-starship" data-observatory-page="starship" data-observatory-title="Observatory · Starship Watch" aria-labelledby="starship-title" hidden>
             <header class="observatory-section-header">
               <span class="observatory-section-kicker">03 · Aerospace archive</span>
               <h4 id="starship-title">Starship Watch <span aria-hidden="true">🚀</span></h4>
@@ -3057,6 +3064,7 @@
     const dialogTitle = document.querySelector("#room-dialog-title");
     const dialogContent = document.querySelector(".dialog-content");
     const roomPanels = [...document.querySelectorAll("[data-room-panel]")];
+    const observatoryPages = [...document.querySelectorAll("[data-observatory-page]")];
     const roomTriggers = document.querySelectorAll("[data-room]");
     const caseFilterButtons = [...document.querySelectorAll("[data-case-filter]")];
     const caseCards = [...document.querySelectorAll("[data-case-card]")];
@@ -3085,10 +3093,39 @@
       roomPanels.forEach((panel) => {
         panel.hidden = panel !== selectedPanel;
       });
+      observatoryPages.forEach((page) => {
+        page.hidden = page.dataset.observatoryPage !== "portal";
+      });
       dialogTitle.textContent = selectedPanel.dataset.roomTitle;
       dialogContent.scrollTop = 0;
+      dialogContent.scrollLeft = 0;
       roomDialog.showModal();
+      dialogContent.scrollTop = 0;
+      dialogContent.scrollLeft = 0;
     }
+
+    dialogContent.addEventListener("click", (event) => {
+      const link = event.target instanceof Element
+        ? event.target.closest('a[href^="#observatory-"]')
+        : null;
+      if (!link || !dialogContent.contains(link)) {
+        return;
+      }
+
+      const pageId = link.getAttribute("href").slice(1);
+      const selectedPage = observatoryPages.find((page) => page.id === pageId);
+      if (!selectedPage) {
+        return;
+      }
+
+      event.preventDefault();
+      observatoryPages.forEach((page) => {
+        page.hidden = page !== selectedPage;
+      });
+      dialogTitle.textContent = selectedPage.dataset.observatoryTitle;
+      dialogContent.scrollTop = 0;
+      dialogContent.scrollLeft = 0;
+    });
 
     caseFilterButtons.forEach((button) => {
       button.addEventListener("click", () => {
