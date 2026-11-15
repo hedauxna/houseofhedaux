@@ -1176,61 +1176,12 @@
       background: rgba(3, 26, 52, .48);
     }
 
-    .teslacam-evidence > summary {
-      position: relative;
-      display: block;
-      overflow: hidden;
-      cursor: pointer;
-      list-style: none;
-    }
-
-    .teslacam-evidence > summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .teslacam-evidence > summary:focus-visible {
-      outline: 2px solid var(--gold);
-      outline-offset: -2px;
-    }
-
-    .teslacam-evidence-thumbnail {
-      display: block;
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      object-fit: cover;
-      background: #020b14;
-    }
-
-    .teslacam-evidence-caption {
-      position: absolute;
-      inset: auto 0 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 18px 14px 12px;
-      background: linear-gradient(transparent, rgba(1, 13, 27, .92));
-      color: var(--paper);
-      font-size: 11px;
-    }
-
-    .teslacam-evidence-play {
-      display: grid;
-      width: 38px;
-      height: 38px;
-      flex: 0 0 auto;
-      place-items: center;
-      border: 1px solid rgba(243, 239, 227, .72);
-      border-radius: 50%;
-      background: rgba(3, 26, 52, .72);
-      color: var(--paper);
-      font-size: 14px;
-    }
-
     .teslacam-evidence video {
       display: block;
       width: 100%;
+      aspect-ratio: 16 / 9;
       max-height: min(70vh, 600px);
+      object-fit: contain;
       background: #000;
     }
 
@@ -3001,20 +2952,13 @@
                         <h6>Summary</h6>
                         <p>A bright object described as a shooting star is visible in TeslaCam footage recorded at approximately 10:17pm on 28 February 2025. In the supplied account of the footage, its apparent motion momentarily pauses before it changes direction. A review reportedly found no dropped frames during the occurrence. These are descriptions of the recording; they do not by themselves establish the object's identity or physical motion.</p>
                         <h6>Notes</h6>
-                        <p>The MP4 is hosted with this case. The video loads when the preview below is expanded. The frame-continuity check is recorded as reported; its method, frame-by-frame measurements, camera frame rate, vehicle motion, and viewing orientation have not been independently documented here.</p>
-                        <details class="teslacam-evidence">
-                          <summary aria-label="Expand TeslaCam video preview">
-                            <img class="teslacam-evidence-thumbnail" src="assets/TeslaCamObjectHighlight-preview.jpg" alt="TeslaCam still frame showing a rural road at night" loading="lazy">
-                            <span class="teslacam-evidence-caption">
-                              <span>Play TeslaCam footage · 15 seconds</span>
-                              <span class="teslacam-evidence-play" aria-hidden="true">▶</span>
-                            </span>
-                          </summary>
+                        <p>The MP4 is hosted with this case and can be played directly in the video below. The frame-continuity check is recorded as reported; its method, frame-by-frame measurements, camera frame rate, vehicle motion, and viewing orientation have not been independently documented here.</p>
+                        <div class="teslacam-evidence">
                           <video controls preload="metadata" playsinline poster="assets/TeslaCamObjectHighlight-preview.jpg" aria-label="TeslaCam footage recorded on 28 February 2025">
                             <source src="assets/TeslaCamObjectHighlight.mp4" type="video/mp4">
                             Your browser does not support embedded video playback.
                           </video>
-                        </details>
+                        </div>
                         <h6>Possible Explanations</h6>
                         <ul>
                           <li>Perspective, camera or vehicle movement, and the object's apparent path relative to the horizon may affect perceived direction</li>
