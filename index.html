@@ -282,6 +282,10 @@
       display: none !important;
     }
 
+    .games-page[hidden] {
+      display: none !important;
+    }
+
     .room-panel {
       min-height: 100%;
       display: grid;
@@ -334,6 +338,347 @@
       align-self: center;
       max-width: 680px;
       padding: clamp(28px, 6vw, 72px);
+    }
+
+    .life-sim-panel {
+      margin: 30px 0;
+      border: 1px solid rgba(215, 189, 133, .4);
+      background: rgba(3, 26, 52, .48);
+      color: var(--paper);
+    }
+
+    .life-sim-heading {
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(243, 239, 227, .16);
+    }
+
+    .life-sim-heading .room-kicker {
+      margin-bottom: 8px;
+    }
+
+    .life-sim-heading h4 {
+      margin: 0;
+      color: var(--paper);
+      font: 400 clamp(22px, 3vw, 30px)/1.2 var(--serif);
+    }
+
+    .life-sim-placeholder {
+      padding: 18px 20px;
+      color: rgba(243, 239, 227, .82);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .life-sim-placeholder p {
+      margin: 0;
+    }
+
+    .life-sim-app[hidden] {
+      display: none !important;
+    }
+
+    .life-sim-app {
+      padding: 20px;
+    }
+
+    .life-sim-topline {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px 18px;
+      margin-bottom: 16px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .life-sim-topline p {
+      margin: 0;
+    }
+
+    .life-sim-year {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      margin: 0 0 16px;
+      color: rgba(243, 239, 227, .72);
+      font-size: 10px;
+    }
+
+    .life-sim-year progress {
+      width: 100%;
+      height: 8px;
+      accent-color: var(--gold);
+    }
+
+    .life-sim-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(190px, .8fr);
+      gap: 16px;
+    }
+
+    .life-sim-scene,
+    .life-sim-sidebar,
+    .life-sim-job-offer {
+      padding: 16px;
+      border: 1px solid rgba(243, 239, 227, .14);
+      background: rgba(243, 239, 227, .035);
+    }
+
+    .life-sim-job-offer[hidden] {
+      display: none !important;
+    }
+
+    .life-sim-scene h5,
+    .life-sim-sidebar h5,
+    .life-sim-job-offer h5 {
+      margin: 0 0 9px;
+      color: var(--gold);
+      font: 400 19px/1.3 var(--serif);
+    }
+
+    .life-sim-scene p,
+    .life-sim-job-offer p,
+    .life-sim-choice-hint,
+    .life-sim-event-empty {
+      margin: 0;
+      color: rgba(243, 239, 227, .86);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .life-sim-choice-hint {
+      margin-top: 6px;
+      color: rgba(243, 239, 227, .72);
+      font-size: 11px;
+    }
+
+    .life-sim-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .life-sim-action-button,
+    .life-sim-reset {
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid rgba(215, 189, 133, .48);
+      background: rgba(18, 57, 97, .58);
+      color: var(--paper);
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      text-align: left;
+      transition: background .18s ease, border-color .18s ease;
+    }
+
+    .life-sim-action-button:hover:not(:disabled),
+    .life-sim-action-button:focus-visible,
+    .life-sim-reset:hover,
+    .life-sim-reset:focus-visible {
+      border-color: var(--gold);
+      background: rgba(18, 57, 97, .92);
+      outline: none;
+    }
+
+    .life-sim-action-button:disabled {
+      cursor: default;
+      opacity: .56;
+    }
+
+    .life-sim-action-button {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .life-sim-action-title {
+      color: var(--paper);
+      font-weight: 600;
+    }
+
+    .life-sim-action-description {
+      color: rgba(243, 239, 227, .76);
+      font-size: 10px;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    .life-sim-routine-title {
+      margin: 18px 0 8px;
+      color: var(--paper);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .life-sim-stats {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+    }
+
+    .life-sim-stat {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4px 8px;
+      color: rgba(243, 239, 227, .86);
+      font-size: 11px;
+    }
+
+    .life-sim-stat dd {
+      margin: 0;
+      color: var(--paper);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .life-sim-stat:first-child {
+      padding: 10px 12px;
+      border: 1px solid rgba(215, 189, 133, .44);
+      background: rgba(215, 189, 133, .1);
+      color: var(--gold);
+      font-size: 13px;
+    }
+
+    .life-sim-stat:first-child dd {
+      color: var(--gold);
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .life-sim-stat dd,
+    .life-sim-stat dt {
+      min-width: 0;
+    }
+
+    .life-sim-stat meter {
+      grid-column: 1 / -1;
+      width: 100%;
+      height: 7px;
+      accent-color: var(--gold);
+    }
+
+    .life-sim-employment {
+      margin: 0;
+      color: rgba(243, 239, 227, .84);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .life-sim-collections {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .life-sim-collections li {
+      color: rgba(243, 239, 227, .78);
+      font-size: 10px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .life-sim-collections strong {
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    .life-sim-event-list {
+      display: grid;
+      gap: 8px;
+      max-height: 350px;
+      margin: 0;
+      padding: 0;
+      overflow: auto;
+      list-style: none;
+    }
+
+    .life-sim-event-list li {
+      padding-top: 8px;
+      border-top: 1px solid rgba(243, 239, 227, .12);
+      color: rgba(243, 239, 227, .82);
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    .life-sim-event-time {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+
+    .life-sim-reset {
+      margin-top: 12px;
+      border-color: rgba(243, 239, 227, .24);
+      background: transparent;
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .life-sim-game-over[hidden],
+    [data-gameplay][hidden] {
+      display: none !important;
+    }
+
+    .life-sim-game-over {
+      padding: 20px;
+    }
+
+    .life-sim-game-over h5 {
+      margin: 0 0 8px;
+      color: var(--gold);
+      font: 400 clamp(24px, 4vw, 36px)/1.2 var(--serif);
+    }
+
+    .life-sim-game-over > p {
+      margin: 0;
+      color: rgba(243, 239, 227, .86);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .life-sim-game-over dl {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0 0;
+    }
+
+    .life-sim-game-over dl div {
+      padding: 12px;
+      border: 1px solid rgba(243, 239, 227, .14);
+      background: rgba(243, 239, 227, .035);
+    }
+
+    .life-sim-game-over dt {
+      margin-bottom: 5px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .life-sim-game-over dd {
+      margin: 0;
+      color: rgba(243, 239, 227, .9);
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
     }
 
     .room-panel:not(.no-photo) > .room-copy {
@@ -558,6 +903,11 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
       margin: 20px 0 42px;
+    }
+
+    .games-feature-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-bottom: 20px;
     }
 
     .observatory-feature-card {
@@ -1691,6 +2041,18 @@
         grid-template-columns: 1fr;
       }
 
+      .life-sim-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .life-sim-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .life-sim-game-over dl {
+        grid-template-columns: 1fr;
+      }
+
       .observatory-feature-grid,
       .skywatch-grid {
         grid-template-columns: 1fr;
@@ -2430,18 +2792,98 @@
 
       <article class="room-panel no-photo" id="room-gamesroom" data-room-panel="gamesroom" data-room-title="Games Room" hidden>
         <div class="room-copy">
-          <p class="room-kicker">Nostalgia, creativity, and pixels</p>
-          <h3>From BASIC lines to building new worlds.</h3>
-          <p>It began with the Commodore 64: copying code from a manual just to make a short sound. The Amiga, PC games, and shared adventures with Hayley and Dad opened up whole new worlds.</p>
-          <p>Today, this room is also a workshop. Unreal Engine, HTML, and Python are tools for making things — and the next project is designed to let visitors play through a little piece of that history.</p>
-          <details class="room-original-story" open>
-            <summary>Original room story</summary>
-            <p>Welcome to the Games Room—a chamber of nostalgia, creativity, and quiet obsession. This is where my journey into digital realms began, long before the internet was fast or the graphics were smooth. It started with the Commodore 64, where I painstakingly copied lines of BASIC code from the user manual just to hear a short wave sound. I watched Dad conjure a race car on screen, dodging obstacles with a flick of the joystick, and something clicked: this wasn’t just play—it was creation.</p>
-            <p>From the Amiga’s hypnotic soundtracks to the golden age of PC gaming in the '90s, each system became a stepping stone. World of Warcraft became a shared universe for Hayley and me, a place where quests and companionship intertwined. Simulators drew me in deeper—more than just games, they were systems to understand, tweak, and master. Realm Royale and World of Tanks brought Dad back into the fold, our battles echoing across generations.</p>
-            <p>Today, the Games Room is also a workshop. I tinker with Unreal Engine, sculpting levels, animating characters, and building mechanics like inventory systems and player stats. HTML and Python have become tools in my digital toolkit, helping me evolve projects that blur the line between hobby and craft.</p>
-            <p>And soon, this room will become interactive. I’m building a mini-game to embed right here—a playable homage to the early days, where dodging pixelated obstacles feels like time travel. Alongside it, a retro HTML adventure will unfold: part memoir, part mystery, part love letter to the era that shaped me. Visitors won’t just read about the Games Room—they’ll play through it.</p>
-            <p>This room isn’t just about games—it’s about the joy of making, the thrill of learning, and the stories coded into every pixel. It’s a tribute to the worlds I’ve explored, the ones I’ve built, and the ones still waiting to be born.</p>
-          </details>
+          <div class="games-page" id="games-room-start" data-games-page="portal" data-games-title="Games Room">
+            <header class="observatory-hero">
+              <p class="room-kicker">Nostalgia, creativity, and pixels</p>
+              <h3>From BASIC lines to building new worlds.</h3>
+              <p>Choose a project to explore: my Unreal Engine 5 game Threadline, or A Day in the Life, a text-based life simulation.</p>
+            </header>
+            <nav class="observatory-feature-grid games-feature-grid" aria-label="Games Room projects">
+              <a class="observatory-feature-card" href="https://store.steampowered.com/app/3278870/Threadline/" target="_blank" rel="noopener noreferrer">
+                <span class="observatory-feature-icon" aria-hidden="true">🎮</span>
+                <span class="observatory-feature-label">Unreal Engine 5</span>
+                <strong class="observatory-feature-title">Threadline</strong>
+                <span class="observatory-feature-description">Visit the Steam page for my UE5 game.</span>
+                <span class="observatory-feature-link">View on Steam <span aria-hidden="true">↗</span></span>
+              </a>
+              <a class="observatory-feature-card" href="#games-life-sim">
+                <span class="observatory-feature-icon" aria-hidden="true">☀</span>
+                <span class="observatory-feature-label">Text-based life sim</span>
+                <strong class="observatory-feature-title">A Day in the Life</strong>
+                <span class="observatory-feature-description">Make everyday choices and experience a full year of life.</span>
+                <span class="observatory-feature-link">Start playing <span aria-hidden="true">→</span></span>
+              </a>
+            </nav>
+            <details class="room-original-story" open>
+              <summary>Original room story</summary>
+              <p>Welcome to the Games Room—a chamber of nostalgia, creativity, and quiet obsession. This is where my journey into digital realms began, long before the internet was fast or the graphics were smooth. It started with the Commodore 64, where I painstakingly copied lines of BASIC code from the user manual just to hear a short wave sound. I watched Dad conjure a race car on screen, dodging obstacles with a flick of the joystick, and something clicked: this wasn’t just play—it was creation.</p>
+              <p>From the Amiga’s hypnotic soundtracks to the golden age of PC gaming in the '90s, each system became a stepping stone. World of Warcraft became a shared universe for Hayley and me, a place where quests and companionship intertwined. Simulators drew me in deeper—more than just games, they were systems to understand, tweak, and master. Realm Royale and World of Tanks brought Dad back into the fold, our battles echoing across generations.</p>
+              <p>Today, the Games Room is also a workshop. I tinker with Unreal Engine, sculpting levels, animating characters, and building mechanics like inventory systems. HTML and Python have become tools in my digital toolkit, helping me evolve projects that blur the line between hobby and craft.</p>
+              <p>This room is about the joy of making, the thrill of learning, and the stories coded into every pixel—a tribute to the worlds I’ve explored, the ones I’ve built, and the ones still waiting to be born.</p>
+            </details>
+          </div>
+          <section class="games-page" id="games-life-sim" data-games-page="life-sim" data-games-title="Games Room · A Day in the Life" aria-labelledby="games-life-sim-title" hidden>
+            <header class="observatory-section-header">
+              <span class="observatory-section-kicker">Interactive life simulation</span>
+              <h4 id="games-life-sim-title">A year of everyday choices</h4>
+              <p>Shape a year through everyday choices, work, wellbeing, and relationships.</p>
+            </header>
+          <section class="life-sim-panel" data-life-sim-root aria-labelledby="life-sim-heading">
+            <header class="life-sim-heading">
+              <p class="room-kicker">Playable prototype</p>
+              <h4 id="life-sim-heading">A Day in the Life</h4>
+            </header>
+            <div class="life-sim-placeholder" data-life-sim-placeholder role="status">
+              <p>Loading the life simulation…</p>
+            </div>
+            <div class="life-sim-app" data-life-sim-app hidden>
+              <div class="life-sim-topline">
+                <p data-game-day></p>
+                <p data-game-period></p>
+              </div>
+              <section class="life-sim-game-over" data-game-over aria-live="assertive" hidden>
+                <h5 data-game-over-title></h5>
+                <p data-game-over-description></p>
+                <dl data-game-over-summary></dl>
+                <button class="life-sim-reset" type="button" data-life-sim-action="restart-year" data-life-sim-kind="action">Restart Life</button>
+              </section>
+              <div data-gameplay>
+                <div class="life-sim-year">
+                  <progress data-game-year-progress max="365" value="1" aria-label="Year progress"></progress>
+                  <span data-game-year-label></span>
+                </div>
+                <div class="life-sim-layout">
+                  <section>
+                    <div class="life-sim-scene" data-game-scene aria-live="polite">
+                      <h5 data-scene-title></h5>
+                      <p data-scene-copy></p>
+                    </div>
+                    <section class="life-sim-job-offer" data-game-job-offer aria-labelledby="life-sim-job-offer-title" hidden>
+                      <h5 id="life-sim-job-offer-title">A job offer</h5>
+                      <p data-game-job-offer-copy></p>
+                      <div class="life-sim-actions" data-game-offer-actions></div>
+                    </section>
+                    <h5 class="life-sim-routine-title" data-choices-heading></h5>
+                    <p class="life-sim-choice-hint" data-choices-hint></p>
+                    <div class="life-sim-actions" data-game-actions></div>
+                    <button class="life-sim-reset" type="button" data-life-sim-action="restart-year" data-life-sim-kind="action">Restart Year</button>
+                  </section>
+                  <aside class="life-sim-sidebar" aria-label="Character status and notable events">
+                    <h5>Current status</h5>
+                    <dl class="life-sim-stats" data-game-stats></dl>
+                    <h5 class="life-sim-routine-title">Employment</h5>
+                    <p class="life-sim-employment" data-game-employment></p>
+                    <h5 class="life-sim-routine-title">Milestones</h5>
+                    <ul class="life-sim-collections" data-game-collections></ul>
+                    <h5 class="life-sim-routine-title">Notable events</h5>
+                    <ol class="life-sim-event-list" data-game-events aria-live="polite"></ol>
+                  </aside>
+                </div>
+              </div>
+            </div>
+          </section>
+          <a class="observatory-back-link" href="#games-room-start">↑ Games Room overview</a>
+          </section>
         </div>
       </article>
 
@@ -3101,6 +3543,7 @@
     const dialogContent = document.querySelector(".dialog-content");
     const roomPanels = [...document.querySelectorAll("[data-room-panel]")];
     const observatoryPages = [...document.querySelectorAll("[data-observatory-page]")];
+    const gamesRoomPages = [...document.querySelectorAll("[data-games-page]")];
     const roomTriggers = document.querySelectorAll("[data-room]");
     const caseFilterButtons = [...document.querySelectorAll("[data-case-filter]")];
     const caseCards = [...document.querySelectorAll("[data-case-card]")];
@@ -3132,6 +3575,9 @@
       observatoryPages.forEach((page) => {
         page.hidden = page.dataset.observatoryPage !== "portal";
       });
+      gamesRoomPages.forEach((page) => {
+        page.hidden = page.dataset.gamesPage !== "portal";
+      });
       dialogTitle.textContent = selectedPanel.dataset.roomTitle;
       dialogContent.scrollTop = 0;
       dialogContent.scrollLeft = 0;
@@ -3159,6 +3605,29 @@
         page.hidden = page !== selectedPage;
       });
       dialogTitle.textContent = selectedPage.dataset.observatoryTitle;
+      dialogContent.scrollTop = 0;
+      dialogContent.scrollLeft = 0;
+    });
+
+    dialogContent.addEventListener("click", (event) => {
+      const link = event.target instanceof Element
+        ? event.target.closest('a[href^="#games-"]')
+        : null;
+      if (!link || !dialogContent.contains(link)) {
+        return;
+      }
+
+      const pageId = link.getAttribute("href").slice(1);
+      const selectedPage = gamesRoomPages.find((page) => page.id === pageId);
+      if (!selectedPage) {
+        return;
+      }
+
+      event.preventDefault();
+      gamesRoomPages.forEach((page) => {
+        page.hidden = page !== selectedPage;
+      });
+      dialogTitle.textContent = selectedPage.dataset.gamesTitle;
       dialogContent.scrollTop = 0;
       dialogContent.scrollLeft = 0;
     });
@@ -3206,6 +3675,21 @@
         roomDialog.close();
       }
     });
+  </script>
+  <script type="module">
+    const lifeSimRoot = document.querySelector("[data-life-sim-root]");
+
+    if (lifeSimRoot) {
+      import("./games/life-sim.js")
+        .then(({ mountLifeSim }) => mountLifeSim(lifeSimRoot))
+        .catch((error) => {
+          const placeholder = lifeSimRoot.querySelector("[data-life-sim-placeholder]");
+          if (placeholder) {
+            placeholder.textContent = "The life sim could not be loaded. Check the browser console for details.";
+          }
+          console.error("Could not load the local Games Room life sim.", error);
+        });
+    }
   </script>
 </body>
 </html>
