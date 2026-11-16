@@ -341,25 +341,40 @@
     }
 
     .life-sim-panel {
-      margin: 30px 0;
+      margin: 8px 0;
       border: 1px solid rgba(215, 189, 133, .4);
       background: rgba(3, 26, 52, .48);
       color: var(--paper);
     }
 
+    .room-dialog:has(#games-life-sim:not([hidden])) {
+      width: min(1380px, calc(100% - 32px));
+      max-height: min(850px, calc(100dvh - 16px));
+    }
+
+    #games-life-sim:not([hidden]) > .observatory-section-header {
+      display: none;
+    }
+
+    #room-gamesroom:has(#games-life-sim:not([hidden])) > .room-copy {
+      width: 100%;
+      max-width: none;
+      padding: 8px 18px;
+    }
+
     .life-sim-heading {
-      padding: 18px 20px;
+      padding: 10px 14px;
       border-bottom: 1px solid rgba(243, 239, 227, .16);
     }
 
     .life-sim-heading .room-kicker {
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
     .life-sim-heading h4 {
       margin: 0;
       color: var(--paper);
-      font: 400 clamp(22px, 3vw, 30px)/1.2 var(--serif);
+      font: 400 clamp(20px, 2.4vw, 25px)/1.2 var(--serif);
     }
 
     .life-sim-placeholder {
@@ -378,7 +393,7 @@
     }
 
     .life-sim-app {
-      padding: 20px;
+      padding: 8px;
     }
 
     .life-sim-topline {
@@ -386,7 +401,7 @@
       flex-wrap: wrap;
       justify-content: space-between;
       gap: 8px 18px;
-      margin-bottom: 16px;
+      margin-bottom: 6px;
       color: var(--gold);
       font-size: 10px;
       font-weight: 600;
@@ -398,12 +413,65 @@
       margin: 0;
     }
 
+    .life-sim-topline [data-game-period] {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--period-accent, var(--gold));
+      font: 600 12px/1.2 var(--sans);
+      letter-spacing: .1em;
+      transition: color .4s ease;
+    }
+
+    .life-sim-period-icon {
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .life-sim-notifications {
+      display: grid;
+      gap: 7px;
+      margin: -4px 0 10px;
+    }
+
+    .life-sim-notifications[hidden] {
+      display: none !important;
+    }
+
+    .life-sim-notification {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 9px 12px;
+      border: 1px solid rgba(215, 189, 133, .72);
+      background: rgba(3, 26, 52, .94);
+      color: var(--paper);
+      box-shadow: 0 0 18px rgba(215, 189, 133, .12);
+      font-size: 11px;
+      line-height: 1.4;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+
+    .life-sim-notification strong {
+      flex: 0 0 auto;
+      color: var(--gold);
+      font-size: 9px;
+      letter-spacing: .1em;
+    }
+
+    .life-sim-notification.is-fading {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
     .life-sim-year {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 10px;
       align-items: center;
-      margin: 0 0 16px;
+      margin: 0 0 6px;
       color: rgba(243, 239, 227, .72);
       font-size: 10px;
     }
@@ -416,16 +484,33 @@
 
     .life-sim-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(190px, .8fr);
-      gap: 16px;
+      grid-template-columns: minmax(0, 1.25fr) minmax(220px, .8fr) minmax(235px, .9fr);
+      gap: 12px;
+      align-items: start;
     }
 
     .life-sim-scene,
-    .life-sim-sidebar,
+    .life-sim-dashboard-column,
     .life-sim-job-offer {
-      padding: 16px;
+      min-width: 0;
+      padding: 12px;
       border: 1px solid rgba(243, 239, 227, .14);
       background: rgba(243, 239, 227, .035);
+    }
+
+    .life-sim-scene {
+      border-left: 2px solid var(--period-accent, var(--gold));
+      transition: border-color .4s ease;
+    }
+
+    .life-sim-dashboard-column {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .life-sim-dashboard-section {
+      min-width: 0;
     }
 
     .life-sim-job-offer[hidden] {
@@ -433,11 +518,11 @@
     }
 
     .life-sim-scene h5,
-    .life-sim-sidebar h5,
+    .life-sim-dashboard-column h5,
     .life-sim-job-offer h5 {
-      margin: 0 0 9px;
+      margin: 0 0 5px;
       color: var(--gold);
-      font: 400 19px/1.3 var(--serif);
+      font: 400 17px/1.25 var(--serif);
     }
 
     .life-sim-scene p,
@@ -451,7 +536,7 @@
     }
 
     .life-sim-choice-hint {
-      margin-top: 6px;
+      margin-top: 4px;
       color: rgba(243, 239, 227, .72);
       font-size: 11px;
     }
@@ -459,14 +544,14 @@
     .life-sim-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      margin-top: 14px;
+      gap: 7px;
+      margin-top: 10px;
     }
 
     .life-sim-action-button,
     .life-sim-reset {
-      min-height: 42px;
-      padding: 10px 12px;
+      min-height: 38px;
+      padding: 8px 9px;
       border: 1px solid rgba(215, 189, 133, .48);
       background: rgba(18, 57, 97, .58);
       color: var(--paper);
@@ -506,13 +591,13 @@
 
     .life-sim-action-description {
       color: rgba(243, 239, 227, .76);
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 400;
       line-height: 1.5;
     }
 
     .life-sim-routine-title {
-      margin: 18px 0 8px;
+      margin: 12px 0 6px;
       color: var(--paper);
       font-size: 11px;
       font-weight: 600;
@@ -522,7 +607,8 @@
 
     .life-sim-stats {
       display: grid;
-      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
       margin: 0;
       padding: 0;
     }
@@ -530,28 +616,33 @@
     .life-sim-stat {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 4px 8px;
-      color: rgba(243, 239, 227, .86);
-      font-size: 11px;
+      gap: 3px 6px;
+      padding: 6px 7px;
+      border: 1px solid rgba(243, 239, 227, .12);
+      background: rgba(3, 26, 52, .25);
+      color: var(--stat-color, rgba(243, 239, 227, .86));
+      font-size: 10px;
+      transition: color .4s ease, border-color .4s ease, background-color .4s ease;
     }
 
     .life-sim-stat dd {
       margin: 0;
-      color: var(--paper);
+      color: var(--stat-color, var(--paper));
       font-variant-numeric: tabular-nums;
     }
 
-    .life-sim-stat:first-child {
-      padding: 10px 12px;
+    .life-sim-stat--money {
+      grid-column: 1 / -1;
+      padding: 8px 10px;
       border: 1px solid rgba(215, 189, 133, .44);
       background: rgba(215, 189, 133, .1);
       color: var(--gold);
       font-size: 13px;
     }
 
-    .life-sim-stat:first-child dd {
+    .life-sim-stat--money dd {
       color: var(--gold);
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 600;
     }
 
@@ -563,8 +654,9 @@
     .life-sim-stat meter {
       grid-column: 1 / -1;
       width: 100%;
-      height: 7px;
-      accent-color: var(--gold);
+      height: 6px;
+      accent-color: var(--stat-color, var(--gold));
+      transition: accent-color .4s ease;
     }
 
     .life-sim-employment {
@@ -576,10 +668,12 @@
 
     .life-sim-collections {
       display: grid;
-      gap: 6px;
+      gap: 4px;
       margin: 0;
       padding: 0;
       list-style: none;
+      max-height: 76px;
+      overflow: auto;
     }
 
     .life-sim-collections li {
@@ -596,8 +690,8 @@
 
     .life-sim-event-list {
       display: grid;
-      gap: 8px;
-      max-height: 350px;
+      gap: 5px;
+      max-height: 96px;
       margin: 0;
       padding: 0;
       overflow: auto;
@@ -605,7 +699,7 @@
     }
 
     .life-sim-event-list li {
-      padding-top: 8px;
+      padding-top: 6px;
       border-top: 1px solid rgba(243, 239, 227, .12);
       color: rgba(243, 239, 227, .82);
       font-size: 10px;
@@ -619,6 +713,100 @@
       font-size: 9px;
       font-weight: 600;
       letter-spacing: .04em;
+    }
+
+    .life-sim-rare-events,
+    .life-sim-achievements {
+      display: grid;
+      gap: 5px;
+      max-height: 96px;
+      margin: 0;
+      padding: 0;
+      overflow: auto;
+      list-style: none;
+    }
+
+    .life-sim-achievements {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      max-height: none;
+      overflow: visible;
+    }
+
+    .life-sim-rare-event {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
+      gap: 8px;
+      padding: 7px 8px;
+      border: 1px solid rgba(215, 189, 133, .72);
+      background: rgba(215, 189, 133, .07);
+      box-shadow: 0 0 14px rgba(215, 189, 133, .1);
+      color: var(--paper);
+      font-size: 10px;
+      line-height: 1.35;
+      opacity: 1;
+      transition: opacity .5s ease, border-color .5s ease;
+    }
+
+    .life-sim-rare-event.is-fading {
+      border-color: rgba(215, 189, 133, .34);
+      opacity: .58;
+    }
+
+    .life-sim-rare-icon {
+      color: var(--gold);
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .life-sim-rare-event strong,
+    .life-sim-rare-event span {
+      display: block;
+    }
+
+    .life-sim-rare-event span {
+      margin-top: 3px;
+      color: rgba(243, 239, 227, .65);
+      font-size: 9px;
+    }
+
+    .life-sim-achievement {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
+      gap: 7px;
+      padding: 6px 7px;
+      border: 1px solid rgba(243, 239, 227, .1);
+      color: rgba(243, 239, 227, .54);
+      font-size: 9px;
+      line-height: 1.35;
+      transition: color .4s ease, border-color .4s ease, background-color .4s ease;
+    }
+
+    .life-sim-achievement.is-unlocked {
+      border-color: rgba(215, 189, 133, .48);
+      background: rgba(215, 189, 133, .09);
+      color: var(--paper);
+    }
+
+    .life-sim-achievement-icon {
+      color: rgba(215, 189, 133, .48);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .life-sim-achievement.is-unlocked .life-sim-achievement-icon,
+    .life-sim-achievement.is-unlocked strong {
+      color: var(--gold);
+    }
+
+    .life-sim-achievement strong,
+    .life-sim-achievement span {
+      display: block;
+    }
+
+    .life-sim-achievement span {
+      margin-top: 2px;
     }
 
     .life-sim-reset {
@@ -2000,6 +2188,33 @@
       font-size: 10px;
     }
 
+    @media (max-width: 1050px) and (min-width: 701px) {
+      .life-sim-layout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .life-sim-story-column,
+      .life-sim-events-column {
+        grid-column: 1 / -1;
+      }
+
+      .life-sim-events-column {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+      }
+    }
+
+    @media (max-height: 800px) and (min-width: 701px) {
+      #games-life-sim:not([hidden]) > .observatory-back-link {
+        display: none;
+      }
+
+      #room-gamesroom:has(#games-life-sim:not([hidden])) .life-sim-panel {
+        margin-bottom: 0;
+      }
+    }
+
     @media (max-width: 700px) {
       .page-header {
         padding-top: 34px;
@@ -2042,6 +2257,14 @@
       }
 
       .life-sim-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .life-sim-events-column {
+        display: flex;
+      }
+
+      .life-sim-achievements {
         grid-template-columns: 1fr;
       }
 
@@ -2839,8 +3062,12 @@
             <div class="life-sim-app" data-life-sim-app hidden>
               <div class="life-sim-topline">
                 <p data-game-day></p>
-                <p data-game-period></p>
+                <p data-game-period>
+                  <span class="life-sim-period-icon" data-game-period-icon aria-hidden="true"></span>
+                  <span data-game-period-label></span>
+                </p>
               </div>
+              <div class="life-sim-notifications" data-game-notifications role="status" aria-live="polite" hidden></div>
               <section class="life-sim-game-over" data-game-over aria-live="assertive" hidden>
                 <h5 data-game-over-title></h5>
                 <p data-game-over-description></p>
@@ -2853,7 +3080,7 @@
                   <span data-game-year-label></span>
                 </div>
                 <div class="life-sim-layout">
-                  <section>
+                  <section class="life-sim-story-column" aria-label="Story and choices">
                     <div class="life-sim-scene" data-game-scene aria-live="polite">
                       <h5 data-scene-title></h5>
                       <p data-scene-copy></p>
@@ -2868,15 +3095,33 @@
                     <div class="life-sim-actions" data-game-actions></div>
                     <button class="life-sim-reset" type="button" data-life-sim-action="restart-year" data-life-sim-kind="action">Restart Year</button>
                   </section>
-                  <aside class="life-sim-sidebar" aria-label="Character status and notable events">
-                    <h5>Current status</h5>
-                    <dl class="life-sim-stats" data-game-stats></dl>
-                    <h5 class="life-sim-routine-title">Employment</h5>
-                    <p class="life-sim-employment" data-game-employment></p>
-                    <h5 class="life-sim-routine-title">Milestones</h5>
-                    <ul class="life-sim-collections" data-game-collections></ul>
-                    <h5 class="life-sim-routine-title">Notable events</h5>
-                    <ol class="life-sim-event-list" data-game-events aria-live="polite"></ol>
+                  <aside class="life-sim-dashboard-column life-sim-status-column" aria-label="Current status">
+                    <section class="life-sim-dashboard-section">
+                      <h5>Current status</h5>
+                      <dl class="life-sim-stats" data-game-stats></dl>
+                    </section>
+                    <section class="life-sim-dashboard-section">
+                      <h5>Employment</h5>
+                      <p class="life-sim-employment" data-game-employment></p>
+                    </section>
+                  </aside>
+                  <aside class="life-sim-dashboard-column life-sim-events-column" aria-label="Notable events, rare events, achievements, and milestones">
+                    <section class="life-sim-dashboard-section">
+                      <h5>Notable events</h5>
+                      <ol class="life-sim-event-list" data-game-events aria-live="polite"></ol>
+                    </section>
+                    <section class="life-sim-dashboard-section">
+                      <h5>Rare events</h5>
+                      <ul class="life-sim-rare-events" data-game-rare-events aria-label="Recent rare events"></ul>
+                    </section>
+                    <section class="life-sim-dashboard-section">
+                      <h5>Achievements</h5>
+                      <ul class="life-sim-achievements" data-game-achievements aria-label="Achievements and progress"></ul>
+                    </section>
+                    <section class="life-sim-dashboard-section">
+                      <h5>Milestones</h5>
+                      <ul class="life-sim-collections" data-game-collections></ul>
+                    </section>
                   </aside>
                 </div>
               </div>
