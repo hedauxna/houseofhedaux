@@ -3,12 +3,13 @@ const MAX_VISIBLE_EVENTS = 30;
 const BASE_DAILY_LIVING_COST = 2;
 const DIFFICULTY_INTERVAL = 30;
 const RARE_EVENT_DISPLAY_DAYS = 5;
+const PROMOTION_REVIEW_DAYS = 7;
 let notificationSequence = 0;
 
 const PERIOD_PRESENTATION = {
-  Morning: { icon: "☀️", accent: "#d7bd85" },
-  Afternoon: { icon: "🌤", accent: "#e5d7b4" },
-  Evening: { icon: "🌅", accent: "#d39a55" },
+  Morning: { icon: "☀️", accent: "#f1b66f" },
+  Daytime: { icon: "🌤", accent: "#80c9f3" },
+  Evening: { icon: "🌅", accent: "#c5a6ed" },
   Night: { icon: "🌙", accent: "#a9bfd5" },
 };
 
@@ -16,8 +17,8 @@ const DAILY_STAGES = [
   { id: "earlyMorning", label: "Early Morning", period: "Morning", type: "choice" },
   { id: "morningRoutine", label: "Morning Routine", period: "Morning", type: "routine" },
   { id: "morningActivity", label: "Morning Activity", period: "Morning", type: "activity" },
-  { id: "afternoonRoutine", label: "Afternoon Routine", period: "Afternoon", type: "routine" },
-  { id: "afternoonActivity", label: "Afternoon Activity", period: "Afternoon", type: "activity" },
+  { id: "daytimeRoutine", label: "Daytime Routine", period: "Daytime", type: "routine" },
+  { id: "daytimeActivity", label: "Daytime Activity", period: "Daytime", type: "activity" },
   { id: "eveningRoutine", label: "Evening Routine", period: "Evening", type: "routine" },
   { id: "eveningActivity", label: "Evening Activity", period: "Evening", type: "activity" },
   { id: "night", label: "Night", period: "Night", type: "choice" },
@@ -30,7 +31,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     title: "First Job",
     description: "Accept your first job.",
     isUnlocked: (state) => Boolean(state.jobId),
-    progress: () => "Find and accept a starter role",
+    progress: () => "Find and accept a role",
   },
   {
     id: "first-friend",
@@ -76,10 +77,21 @@ const ACHIEVEMENT_DEFINITIONS = [
 
 const HUNGER_PERIOD_COSTS = {
   Morning: 10,
-  Afternoon: 15,
+  Daytime: 15,
   Evening: 15,
   Night: 10,
 };
+
+const PHASE_MEALS = { morningRoutine: "breakfast", daytimeRoutine: "lunch", eveningRoutine: "dinner" };
+const HEALTH_STRAIN_FACTORS = [
+  { stat: "fitness", max: 59 },
+  { stat: "hunger", max: 59 },
+  { stat: "stress", min: 41 },
+  { stat: "hygiene", max: 59 },
+  { stat: "happiness", max: 59 },
+  { stat: "homeCleanliness", max: 59 },
+];
+const HEALTH_STRAIN_UNITS_PER_POINT = 4;
 
 const routineDefinitions = [
   {
@@ -89,6 +101,7 @@ const routineDefinitions = [
     description: "Make a simple breakfast at home · £2.",
     effects: { health: 3, energy: 3, money: -2 },
     hungerChange: 22,
+    meal: "breakfast",
     cost: 2,
     outcome: "You made a simple breakfast at home.",
   },
@@ -99,6 +112,7 @@ const routineDefinitions = [
     description: "Pick up breakfast on the way out · £5.",
     effects: { health: 2, happiness: 7, energy: 4, money: -5 },
     hungerChange: 25,
+    meal: "breakfast",
     cost: 5,
     outcome: "You bought breakfast and enjoyed a brighter start.",
   },
@@ -113,51 +127,86 @@ const routineDefinitions = [
   },
   {
     id: "freshen-up",
-    stage: "morningRoutine",
+    stages: ["morningRoutine", "eveningRoutine"],
     name: "Freshen Up",
     description: "Wash and get ready for the day.",
-    effects: { hygiene: 20 },
+    effects: { hygiene: 20, energy: -3 },
     outcome: "You freshened up before heading out.",
   },
   {
     id: "quick-shower",
-    stage: "morningRoutine",
+    stages: ["morningRoutine", "eveningRoutine"],
     name: "Quick Shower",
     description: "Take a quick shower and feel more confident.",
-    effects: { hygiene: 50, confidence: 3, energy: -2 },
+    effects: { hygiene: 50, confidence: 3, energy: -5 },
     outcome: "A quick shower left you feeling refreshed and confident.",
   },
   {
     id: "full-self-care",
     stage: "morningRoutine",
     name: "Full Self Care Day",
-    description: "Take a little extra time to look after yourself.",
-    effects: { hygiene: 20, stress: -5, happiness: 3, energy: 4 },
-    outcome: "You made time for a full day of self-care.",
+    description: "Spend the morning and daytime recovering. Skip breakfast and both activity slots, including work; lunch is still available.",
+    effects: { hygiene: 35, health: 4, stress: -10, happiness: 6, energy: 10 },
+    selfCareDay: true,
+    outcome: "You dedicated the morning and daytime to self-care.",
+  },
+  {
+    id: "morning-stretch",
+    stage: "morningRoutine",
+    name: "Gentle Stretch",
+    description: "Ease into the day with light movement.",
+    effects: { fitness: 1, health: 1, energy: -4 },
+    outcome: "You eased into the day with a gentle stretch.",
+  },
+  {
+    id: "morning-mindfulness",
+    stage: "morningRoutine",
+    name: "Mindful Moment",
+    description: "Pause and set an intention for the day.",
+    effects: { stress: -4, happiness: 2 },
+    outcome: "A mindful moment helped you feel more settled.",
+  },
+  {
+    id: "morning-plan",
+    stage: "morningRoutine",
+    name: "Plan Your Day",
+    description: "Prepare for your next challenge.",
+    effects: { confidence: 1, intelligence: 1, energy: -2 },
+    outcome: "You took a moment to plan your day.",
+  },
+  {
+    id: "morning-ready",
+    stage: "morningRoutine",
+    name: "Get Going",
+    description: "Take an unhurried start and move on.",
+    effects: {},
+    outcome: "You got on with your morning.",
   },
   {
     id: "prepare-lunch",
-    stage: "afternoonRoutine",
+    stage: "daytimeRoutine",
     name: "Prepare Lunch",
     description: "Make a filling lunch at home · £2.",
     effects: { health: 3, energy: 3, money: -2 },
     hungerChange: 25,
+    meal: "lunch",
     cost: 2,
     outcome: "You prepared an inexpensive lunch.",
   },
   {
     id: "buy-lunch",
-    stage: "afternoonRoutine",
+    stage: "daytimeRoutine",
     name: "Buy Lunch",
     description: "Pick up something convenient · £6.",
     effects: { health: 2, happiness: 4, energy: 3, money: -6 },
     hungerChange: 28,
+    meal: "lunch",
     cost: 6,
     outcome: "You bought lunch while out.",
   },
   {
     id: "skip-lunch",
-    stage: "afternoonRoutine",
+    stage: "daytimeRoutine",
     name: "Skip Lunch",
     description: "Keep your money and push through hungry.",
     effects: { health: -5, energy: -10 },
@@ -171,6 +220,7 @@ const routineDefinitions = [
     description: "Cook a simple meal at home · £4.",
     effects: { health: 4, happiness: 3, money: -4 },
     hungerChange: 30,
+    meal: "dinner",
     cost: 4,
     outcome: "You cooked a satisfying dinner at home.",
   },
@@ -181,6 +231,7 @@ const routineDefinitions = [
     description: "Have dinner delivered · £12.",
     effects: { happiness: 7, health: 1, money: -12 },
     hungerChange: 28,
+    meal: "dinner",
     cost: 12,
     outcome: "You ordered a takeaway and enjoyed an easy evening meal.",
   },
@@ -191,6 +242,7 @@ const routineDefinitions = [
     description: "Go out for dinner · £24.",
     effects: { happiness: 12, confidence: 7, money: -24 },
     hungerChange: 30,
+    meal: "dinner",
     cost: 24,
     outcome: "You went out for dinner and enjoyed a special evening.",
   },
@@ -209,16 +261,19 @@ const STAT_DEFINITIONS = [
   { id: "money", label: "Money", type: "money" },
   { id: "health", label: "Health", type: "meter" },
   { id: "energy", label: "Energy", type: "meter" },
+  { id: "fitness", label: "Fitness", type: "meter" },
   { id: "hunger", label: "Hunger", type: "meter" },
   { id: "happiness", label: "Happiness", type: "meter" },
   { id: "stress", label: "Stress", type: "meter" },
   { id: "confidence", label: "Confidence", type: "meter" },
   { id: "intelligence", label: "Intelligence", type: "meter" },
   { id: "hygiene", label: "Hygiene", type: "meter" },
+  { id: "homeCleanliness", label: "Home Cleanliness", type: "meter" },
 ];
 
 const STARTING_STATS = {
   health: 72,
+  fitness: 65,
   stress: 38,
   money: 40,
   confidence: 42,
@@ -227,45 +282,102 @@ const STARTING_STATS = {
   happiness: 58,
   energy: 70,
   hunger: 90,
+  homeCleanliness: 70,
 };
 
-const starterJobs = [
+const jobs = [
   {
     id: "retail-assistant",
     name: "Retail Assistant",
     dailyIncome: 62,
-    energyCost: 10,
+    energyCost: 15,
     stressCost: 2,
     description: "A friendly shop-floor role with a steady pace.",
     shiftEffects: { confidence: 1 },
+    skill: "service", performanceStats: ["confidence", "happiness"],
   },
   {
     id: "warehouse-worker",
     name: "Warehouse Worker",
     dailyIncome: 78,
-    energyCost: 18,
+    energyCost: 15,
     stressCost: 3,
     description: "An active job that rewards stamina and routine.",
     shiftEffects: { health: -2 },
+    skill: "practical", performanceStats: ["fitness", "health"],
   },
   {
     id: "office-junior",
     name: "Office Junior",
     dailyIncome: 58,
-    energyCost: 8,
+    energyCost: 15,
     stressCost: 1,
     description: "A chance to learn office skills and build experience.",
     shiftEffects: { intelligence: 1 },
+    skill: "administration", performanceStats: ["intelligence", "confidence"],
+    promotionTitles: ["Office Coordinator", "Senior Office Coordinator"],
   },
   {
     id: "delivery-driver",
     name: "Delivery Driver",
     dailyIncome: 70,
-    energyCost: 12,
+    energyCost: 15,
     stressCost: 2,
     description: "A varied day on the road with plenty of stops.",
     shiftEffects: { health: -1 },
+    skill: "logistics", performanceStats: ["fitness", "confidence"],
   },
+  { id: "cafe-assistant", name: "Café Assistant", dailyIncome: 60, energyCost: 15, stressCost: 2,
+    description: "Serve customers in a busy café.", shiftEffects: { confidence: 1 },
+    skill: "service", performanceStats: ["happiness", "confidence"] },
+  { id: "care-assistant", name: "Care Assistant", dailyIncome: 68, energyCost: 15, stressCost: 3,
+    description: "Support people with their daily needs.", shiftEffects: { happiness: 1 },
+    skill: "care", performanceStats: ["happiness", "health"] },
+  { id: "junior-designer", name: "Junior Designer", dailyIncome: 70, energyCost: 15, stressCost: 2,
+    description: "Build a portfolio on a creative team.", shiftEffects: { intelligence: 1 },
+    skill: "creative", performanceStats: ["intelligence", "confidence"],
+    promotionTitles: ["Designer", "Senior Designer"],
+    conditions: { all: [{ stat: "intelligence", min: 45 }, { stat: "confidence", min: 40 }] } },
+  { id: "fitness-instructor", name: "Fitness Instructor", dailyIncome: 88, energyCost: 15, stressCost: 2,
+    description: "Help people train and stay active.", shiftEffects: { fitness: 1 },
+    skill: "fitness", performanceStats: ["fitness", "confidence"],
+    conditions: { all: [{ stat: "fitness", min: 70 }, { stat: "confidence", min: 55 }] } },
+  { id: "electrician", name: "Electrician", dailyIncome: 115, energyCost: 15, stressCost: 3,
+    description: "Apply practical training to electrical work.", shiftEffects: { intelligence: 1 },
+    skill: "practical", performanceStats: ["intelligence", "fitness"],
+    conditions: { all: [{ stat: "intelligence", min: 55 }, { skill: "practical", min: 5 }] } },
+  { id: "logistics-coordinator", name: "Logistics Coordinator", dailyIncome: 105, energyCost: 15, stressCost: 3,
+    description: "Coordinate deliveries and solve scheduling problems.", shiftEffects: { intelligence: 1 },
+    skill: "logistics", performanceStats: ["intelligence", "confidence"],
+    conditions: { all: [{ stat: "intelligence", min: 55 }, { skill: "logistics", min: 5 }] } },
+  { id: "office-manager", name: "Office Manager", dailyIncome: 120, energyCost: 15, stressCost: 4,
+    description: "Keep an office and its people organised.", shiftEffects: { confidence: 1 },
+    skill: "administration", performanceStats: ["intelligence", "confidence"],
+    conditions: { all: [{ stat: "confidence", min: 55 }, { skill: "administration", min: 5 }] } },
+  { id: "graphic-designer", name: "Graphic Designer", dailyIncome: 120, energyCost: 15, stressCost: 3,
+    description: "Create visual work for clients.", shiftEffects: { intelligence: 1 },
+    skill: "creative", performanceStats: ["intelligence", "confidence"],
+    conditions: { all: [{ stat: "intelligence", min: 60 }, { skill: "creative", min: 5 }] } },
+  { id: "nurse", name: "Nurse", dailyIncome: 140, energyCost: 15, stressCost: 4,
+    description: "Combine care experience with further study.", shiftEffects: { happiness: 1 },
+    skill: "care", performanceStats: ["health", "intelligence", "happiness"],
+    conditions: { all: [{ stat: "intelligence", min: 65 }, { skill: "care", min: 5 },
+      { collection: "qualifications", includes: "Study Skills Certificate" }] } },
+  { id: "software-developer", name: "Software Developer", dailyIncome: 150, energyCost: 15, stressCost: 4,
+    description: "Use study and technical experience to build software.", shiftEffects: { intelligence: 1 },
+    skill: "technical", performanceStats: ["intelligence", "confidence"],
+    conditions: { all: [{ stat: "intelligence", min: 70 }, { skill: "technical", min: 5 },
+      { collection: "qualifications", includes: "Study Skills Certificate" }] } },
+  { id: "researcher", name: "Researcher", dailyIncome: 160, energyCost: 15, stressCost: 4,
+    description: "Investigate questions using advanced study skills.", shiftEffects: { intelligence: 1 },
+    skill: "technical", performanceStats: ["intelligence", "happiness"],
+    conditions: { all: [{ stat: "intelligence", min: 80 }, { stat: "happiness", min: 55 },
+      { skill: "technical", min: 8 }, { collection: "qualifications", includes: "Study Skills Certificate" }] } },
+  { id: "emergency-responder", name: "Emergency Responder", dailyIncome: 145, energyCost: 15, stressCost: 5,
+    description: "Respond to demanding incidents using practical experience.", shiftEffects: { confidence: 1 },
+    skill: "practical", performanceStats: ["fitness", "health", "confidence"],
+    conditions: { all: [{ stat: "fitness", min: 75 }, { stat: "health", min: 65 },
+      { stat: "confidence", min: 60 }, { skill: "practical", min: 5 }] } },
 ];
 
 const activityDefinitions = [
@@ -274,38 +386,40 @@ const activityDefinitions = [
     name: "Stay Home",
     description: "Take a quiet day and recharge.",
     stage: "morningActivity",
-    effects: { energy: 5, hygiene: -2, happiness: -1 },
+    effects: { energy: 5, hygiene: -2, happiness: -1, fitness: -1 },
     outcome: "You stayed home for a quiet start to the day.",
   },
   {
     id: "morning-study",
     name: "Study",
-    description: "Spend focused time learning something new.",
+    description: "Spend focused time learning and build technical skill.",
     stage: "morningActivity",
-    effects: { intelligence: 7, happiness: -4, energy: -8 },
+    effects: { intelligence: 4, happiness: -2, energy: -5, fitness: -1 },
+    skillGains: { technical: 1 },
     outcome: "You put in a focused study session.",
   },
   {
     id: "visit-gym",
     name: "Visit Gym",
-    description: "Put in a workout and build confidence.",
-    stage: "morningActivity",
-    effects: { confidence: 7, health: 6, energy: -15, hygiene: -60 },
+    description: "Put in a workout and build confidence and fitness skill.",
+    stage: "morningRoutine",
+    effects: { confidence: 7, health: 6, energy: -25, hygiene: -60, fitness: 8 },
+    skillGains: { fitness: 1 },
     outcome: "You completed a gym session and felt stronger for it.",
   },
   {
     id: "take-stroll",
     name: "Take Stroll",
     description: "Get outside for some fresh air.",
-    stage: "morningActivity",
-    effects: { happiness: 7, stress: -6, energy: -8 },
+    stages: ["morningActivity", "daytimeActivity"],
+    effects: { happiness: 7, stress: -6, energy: -12, fitness: 2 },
     outcome: "A change of scenery lifted your mood.",
   },
   {
     id: "look-for-work",
     name: "Look For Work",
-    description: "Apply for an entry-level role.",
-    stage: "morningActivity",
+    description: "Apply for a role suited to your attributes and experience.",
+    stages: ["morningActivity", "daytimeActivity"],
     effects: { energy: -5, stress: 2 },
     resolver: "job-application",
     outcome: "You prepared and submitted a job application.",
@@ -321,18 +435,44 @@ const activityDefinitions = [
     outcome: "You made time to be around other people.",
   },
   {
+    id: "morning-reading",
+    name: "Read a Book",
+    description: "Enjoy a short read and build technical skill.",
+    stage: "morningActivity",
+    effects: { intelligence: 3, stress: -2, energy: -2 },
+    skillGains: { technical: 1 },
+    outcome: "You spent a quiet morning reading.",
+  },
+  {
+    id: "morning-chores",
+    name: "Household Chores",
+    description: "Clean your home and make it more comfortable.",
+    stages: ["morningActivity", "daytimeActivity"],
+    effects: { homeCleanliness: 35, stress: -3, happiness: 2, energy: -8 },
+    outcome: "You tidied up and made your home feel calmer.",
+  },
+  {
+    id: "morning-hobby",
+    name: "Enjoy a Hobby",
+    description: "Make time for something you enjoy.",
+    stages: ["morningActivity", "daytimeActivity"],
+    effects: { happiness: 5, stress: -3, energy: -5 },
+    outcome: "You made time for a favourite hobby.",
+  },
+  {
     id: "continue-studying",
-    name: "Continue Studying",
-    description: "Build on your morning's learning.",
-    stage: "afternoonActivity",
-    effects: { intelligence: 5, happiness: -3, energy: -7 },
-    outcome: "You continued studying and made steady progress.",
+    name: "Study",
+    description: "Keep learning and build technical skill.",
+    stages: ["daytimeActivity", "eveningActivity"],
+    effects: { intelligence: 5, happiness: -3, energy: -5, fitness: -1 },
+    skillGains: { technical: 1 },
+    outcome: "You studied and made steady progress.",
   },
   {
     id: "work-shift",
     name: "Work",
     description: "Put in a shift and earn your daily pay.",
-    stage: "afternoonActivity",
+    stages: ["morningActivity", "daytimeActivity"],
     effects: { hygiene: -20 },
     resolver: "job-shift",
     requiresJob: true,
@@ -342,25 +482,26 @@ const activityDefinitions = [
     id: "visit-town",
     name: "Visit Town",
     description: "Run errands and see what's happening in town.",
-    stage: "afternoonActivity",
-    effects: { happiness: 3, confidence: 2, energy: -6, money: -4 },
+    stage: "daytimeActivity",
+    effects: { happiness: 3, confidence: 2, energy: -10, money: -4 },
     cost: 4,
     outcome: "You spent some time exploring town.",
   },
   {
-    id: "afternoon-exercise",
+    id: "daytime-exercise",
     name: "Intense Workout",
-    description: "Push yourself with an intense fitness session.",
-    stage: "afternoonActivity",
-    effects: { health: 5, confidence: 3, energy: -25, hygiene: -40 },
+    description: "Push yourself and build fitness skill.",
+    stage: "daytimeActivity",
+    effects: { health: 5, confidence: 3, energy: -35, hygiene: -40, fitness: 5 },
+    skillGains: { fitness: 1 },
     outcome: "You made time for exercise.",
   },
   {
     id: "socialise",
     name: "Socialise",
     description: "Catch up with someone and enjoy their company.",
-    stage: "afternoonActivity",
-    effects: { confidence: 2, happiness: 4, energy: -5, money: -8 },
+    stage: "daytimeActivity",
+    effects: { confidence: 2, happiness: 4, energy: -8, money: -8 },
     cost: 8,
     outcome: "You spent time socialising.",
   },
@@ -368,8 +509,8 @@ const activityDefinitions = [
     id: "relax-at-home",
     name: "Relax At Home",
     description: "Take a quiet break and recharge.",
-    stage: "afternoonActivity",
-    effects: { energy: 8, stress: -4, hygiene: -2, happiness: 1 },
+    stage: "daytimeActivity",
+    effects: { energy: 8, stress: -4, hygiene: -2, happiness: 1, fitness: -1 },
     outcome: "You relaxed at home and recharged.",
   },
   {
@@ -377,15 +518,16 @@ const activityDefinitions = [
     name: "Watch TV",
     description: "Put your feet up and watch a favourite show.",
     stage: "eveningActivity",
-    effects: { happiness: 5, stress: -3, energy: -2 },
+    effects: { happiness: 5, stress: -3, energy: -2, fitness: -1 },
     outcome: "You watched television and unwound.",
   },
   {
     id: "read-book",
     name: "Read Book",
-    description: "Enjoy a book and learn something along the way.",
+    description: "Enjoy a book and build technical skill.",
     stage: "eveningActivity",
-    effects: { intelligence: 4, stress: -3, energy: -2 },
+    effects: { intelligence: 4, stress: -3, energy: -2, fitness: -1 },
+    skillGains: { technical: 1 },
     outcome: "You spent the evening reading.",
   },
   {
@@ -402,7 +544,7 @@ const activityDefinitions = [
     name: "Visit Pub",
     description: "Go out for a drink and a change of scene · £10.",
     stage: "eveningActivity",
-    effects: { happiness: 5, confidence: 2, stress: -2, money: -10, hygiene: -10 },
+    effects: { happiness: 5, confidence: 2, stress: -2, money: -10, hygiene: -10, fitness: -2 },
     cost: 10,
     outcome: "You visited the pub for a change of scene.",
   },
@@ -421,32 +563,33 @@ const activityDefinitions = [
     id: "relaxing-bath",
     name: "Relaxing Bath",
     description: "Enjoy a warm bath and let the day melt away.",
-    stage: "eveningActivity",
+    stage: "eveningRoutine",
     effects: { health: 3, stress: -6, happiness: 4, hygiene: 90, energy: -2 },
     outcome: "A relaxing bath eased your stress and refreshed you.",
   },
   {
     id: "sleep-early",
     name: "Sleep Early",
-    description: "Turn in early for a long, restorative sleep.",
-    stage: "night",
-    effects: { health: 5, energy: 38, stress: -7 },
+    description: "Turn in early for a long sleep and start the next day. Recovery depends on Stress, Hunger and Fitness.",
+    stage: "eveningActivity",
+    endsDay: true,
+    effects: { health: 5, energy: 60, stress: -7 },
     outcome: "You slept early and woke feeling well rested.",
   },
   {
     id: "go-to-bed",
     name: "Go To Bed",
-    description: "End the day with a regular night's rest.",
+    description: "End the day with a regular night's rest. Recovery depends on Stress, Hunger and Fitness.",
     stage: "night",
-    effects: { health: 4, energy: 27, stress: -5 },
+    effects: { health: 4, energy: 40, stress: -5 },
     outcome: "You went to bed and got a good night's rest.",
   },
   {
     id: "stay-up-late",
     name: "Stay Up Late",
-    description: "Enjoy a little more time before bed, at a cost tomorrow.",
+    description: "Chance of a creative idea or paid commission. Energy −14 tomorrow; sleep recovery depends on Stress, Hunger and Fitness.",
     stage: "night",
-    effects: { intelligence: 2, happiness: 2, stress: 3 },
+    effects: { energy: 20, intelligence: 2, happiness: 2, stress: 3 },
     outcome: "You stayed up later than planned.",
     nextDayEnergy: -14,
   },
@@ -465,7 +608,7 @@ const earlyMorningChoices = [
   {
     id: "stay-in-bed",
     name: "Stay In Bed",
-    description: "Rest longer, but miss the morning routine and activity.",
+    description: "Rest longer, but miss breakfast and both Morning choices.",
     effects: { energy: 5, hygiene: -5, confidence: -2, happiness: 2 },
     hungerChange: -20,
     outcome: "You stayed in bed and gave up the morning's productive time.",
@@ -507,7 +650,7 @@ const randomEventDefinitions = [
   },
   {
     id: "rare-scholarship",
-    activityIds: ["morning-study", "continue-studying", "read-book"],
+    activityIds: ["morning-study", "morning-reading", "continue-studying", "read-book"],
     chance: 0.015,
     rare: true,
     rareTitle: "Scholarship Opportunity",
@@ -555,7 +698,7 @@ const randomEventDefinitions = [
   },
   {
     id: "gym-injury",
-    activityIds: ["visit-gym", "afternoon-exercise"],
+    activityIds: ["visit-gym", "daytime-exercise"],
     chance: 0.035,
     negative: true,
     message: "You twisted an ankle during your workout and had to take it easy.",
@@ -563,7 +706,7 @@ const randomEventDefinitions = [
   },
   {
     id: "low-energy-strain",
-    activityIds: ["visit-gym", "afternoon-exercise"],
+    activityIds: ["visit-gym", "daytime-exercise"],
     chance: 0.18,
     negative: true,
     lowEnergyOnly: true,
@@ -588,7 +731,7 @@ const randomEventDefinitions = [
   },
   {
     id: "course-advertisement",
-    activityIds: ["morning-study", "continue-studying", "read-book"],
+    activityIds: ["morning-study", "morning-reading", "continue-studying", "read-book"],
     chance: 0.16,
     conditions: {
       all: [{ collection: "opportunities", excludes: "Local course" }],
@@ -599,7 +742,7 @@ const randomEventDefinitions = [
   },
   {
     id: "qualification",
-    activityIds: ["morning-study", "continue-studying", "read-book"],
+    activityIds: ["morning-study", "morning-reading", "continue-studying", "read-book"],
     chance: 0.1,
     conditions: {
       all: [
@@ -636,11 +779,20 @@ const randomEventDefinitions = [
     effects: { stress: 4, happiness: -2 },
   },
   {
+    id: "rare-late-night-commission",
+    activityIds: ["stay-up-late"],
+    chance: 0.05,
+    rare: true,
+    rareTitle: "Late-Night Commission",
+    message: "Your late-night creativity led to a paid commission worth £50.",
+    effects: { money: 50, confidence: 4, happiness: 4 },
+  },
+  {
     id: "late-night-idea",
     activityIds: ["stay-up-late"],
-    chance: 0.15,
-    message: "A late-night idea gave you something interesting to explore tomorrow.",
-    effects: { intelligence: 2, happiness: 2 },
+    chance: 0.25,
+    message: "A late-night creative breakthrough gave you something exciting to explore.",
+    effects: { intelligence: 5, happiness: 5 },
     addTo: { opportunities: ["Personal project idea"] },
   },
   {
@@ -690,10 +842,10 @@ const stateEventDefinitions = [
     message: "Day 1 of 365 begins. A whole year is ahead of you.",
   },
   {
-    id: "afternoon-arrives",
+    id: "daytime-arrives",
     repeat: "daily",
-    conditions: { all: [{ period: "afternoon" }] },
-    message: "Afternoon arrives. There is still time to shape the day.",
+    conditions: { all: [{ period: "daytime" }] },
+    message: "Daytime arrives. There is still time to shape the day.",
   },
   {
     id: "low-health",
@@ -832,6 +984,8 @@ function createInitialState() {
     jobId: null,
     pendingJobOfferId: null,
     workedToday: false,
+    workedJobIdToday: null,
+    selfCareToday: false,
     overtimeWorkedToday: false,
     stayedInBedToday: false,
     stayedHomeToday: false,
@@ -842,6 +996,7 @@ function createInitialState() {
     consecutiveWorkDays: 0,
     nextDayEnergy: 0,
     skippedMealsToday: 0,
+    healthStrainUnits: 0,
     rentSurcharge: 0,
     consecutiveHealthyDays: 0,
     stressFreeDays: 0,
@@ -852,6 +1007,12 @@ function createInitialState() {
     moneyEarned: 0,
     currentJobDays: 0,
     currentJobCountedDay: 0,
+    promotionLevel: 0,
+    promotionReviewDays: 0,
+    promotionShifts: 0,
+    promotionWellbeingDays: 0,
+    promotionPerformanceTotal: 0,
+    skills: {},
     longestJobDays: 0,
     longestJobName: "",
     gameOver: null,
@@ -874,7 +1035,7 @@ function formatMoney(value) {
   return value < 0 ? `-£${Math.abs(value)}` : `£${value}`;
 }
 
-function applyEffects(state, effects = {}) {
+function applyEffects(state, effects = {}, { sleep = state.stage === "night" } = {}) {
   Object.entries(effects).forEach(([stat, amount]) => {
     if (Object.hasOwn(state.stats, stat)) {
       let adjustedAmount = amount;
@@ -887,10 +1048,15 @@ function applyEffects(state, effects = {}) {
         const stress = state.stats.stress;
         const stressFactor = stress >= 81 ? 0.5 : stress >= 61 ? 0.7 : stress >= 31 ? 0.85 : 1;
         adjustedAmount = Math.max(1, Math.floor(amount * stressFactor * (state.stats.hygiene < 50 ? 0.8 : 1)));
-      } else if (amount > 0 && stat === "energy" && state.stage === "night") {
-        const stressFactor = state.stats.stress >= 81 ? 0.5 : state.stats.stress >= 61 ? 0.75 : 1;
-        const hungerFactor = state.stats.hunger < 15 ? 0.5 : state.stats.hunger < 30 ? 0.7 : state.stats.hunger < 50 ? 0.85 : 1;
-        adjustedAmount = Math.max(1, Math.floor(amount * stressFactor * hungerFactor));
+      } else if (amount > 0 && stat === "energy") {
+        const stressFactor = sleep
+          ? state.stats.stress >= 81 ? 0.5 : state.stats.stress >= 61 ? 0.75 : 1
+          : 1;
+        const hungerFactor = sleep
+          ? state.stats.hunger < 15 ? 0.5 : state.stats.hunger < 30 ? 0.7 : state.stats.hunger < 50 ? 0.85 : 1
+          : 1;
+        const fitnessFactor = state.stats.fitness < 30 ? 0.8 : state.stats.fitness > 80 ? 1.15 : 1;
+        adjustedAmount = Math.max(1, Math.floor(amount * stressFactor * hungerFactor * fitnessFactor));
       }
       if (stat === "money" && adjustedAmount > 0) {
         state.moneyEarned += adjustedAmount;
@@ -976,8 +1142,16 @@ function conditionMatches(state, condition) {
       return false;
     }
   }
-  if (condition.collection && state.collections[condition.collection]) {
+  if (condition.skill) {
+    const value = state.skills[condition.skill] || 0;
+    if ((condition.min !== undefined && value < condition.min)
+      || (condition.max !== undefined && value > condition.max)) {
+      return false;
+    }
+  }
+  if (condition.collection) {
     const values = state.collections[condition.collection];
+    if (!Array.isArray(values)) return false;
     if (condition.includes && !values.includes(condition.includes)) {
       return false;
     }
@@ -995,6 +1169,16 @@ function conditionsMatch(state, conditions = {}) {
     && (any.length === 0 || any.some((condition) => conditionMatches(state, condition)));
 }
 
+function getHealthStrain(state) {
+  const factors = HEALTH_STRAIN_FACTORS.filter((condition) => conditionMatches(state, condition)).length;
+  const units = state.healthStrainUnits + factors;
+  return {
+    factors,
+    loss: Math.floor(units / HEALTH_STRAIN_UNITS_PER_POINT),
+    remainingUnits: units % HEALTH_STRAIN_UNITS_PER_POINT,
+  };
+}
+
 function getApplicationChance(stats, hunger = 100) {
   const weightedScore = (stats.confidence * 0.25)
     + (stats.intelligence * 0.3)
@@ -1004,7 +1188,8 @@ function getApplicationChance(stats, hunger = 100) {
   const stressPenalty = stats.stress >= 81 ? 15 : stats.stress >= 61 ? 8 : 0;
   const hygienePenalty = stats.hygiene < 30 ? 15 : stats.hygiene < 50 ? 5 : 0;
   const hungerPenalty = hunger < 15 ? 15 : hunger < 30 ? 8 : hunger < 50 ? 4 : 0;
-  return Math.max(0, Math.min(100, Math.round(weightedScore - stressPenalty - hygienePenalty - hungerPenalty)));
+  const fitnessModifier = (stats.fitness - 50) * 0.1;
+  return Math.max(0, Math.min(100, Math.round(weightedScore + fitnessModifier - stressPenalty - hygienePenalty - hungerPenalty)));
 }
 
 function getDifficultyLevel(day) {
@@ -1017,7 +1202,7 @@ function getProgressiveChance(event, state) {
 }
 
 function isExercise(activity) {
-  return activity.id === "visit-gym" || activity.id === "afternoon-exercise";
+  return activity.id === "visit-gym" || activity.id === "daytime-exercise";
 }
 
 function getChoiceEffects(state, choice) {
@@ -1028,15 +1213,21 @@ function getChoiceEffects(state, choice) {
   if (isExercise(choice)) {
     const fatigueCost = Math.min((state.consecutiveExerciseDays + state.exerciseCountToday) * 5, 20);
     effects.energy = (effects.energy || 0) - fatigueCost;
-    if (state.stats.energy < 25) {
+    if (state.stats.energy < 25 || (choice.id === "visit-gym" && state.stats.fitness < 30)) {
+      const effectiveness = (state.stats.energy < 25 ? 0.5 : 1)
+        * (choice.id === "visit-gym" && state.stats.fitness < 30 ? 0.8 : 1);
       ["health", "confidence"].forEach((stat) => {
         if (effects[stat] > 0) {
-          effects[stat] = Math.max(1, Math.floor(effects[stat] * 0.5));
+          effects[stat] = Math.max(1, Math.floor(effects[stat] * effectiveness));
         }
+      });
+    } else if (choice.id === "visit-gym" && state.stats.fitness > 80) {
+      ["health", "confidence"].forEach((stat) => {
+        if (effects[stat] > 0) effects[stat] += 1;
       });
     }
   }
-  if (["morning-study", "continue-studying", "read-book"].includes(choice.id)
+  if (["morning-study", "morning-reading", "continue-studying", "read-book"].includes(choice.id)
     && state.stats.hunger < 50
     && effects.intelligence > 0) {
     const studyFactor = state.stats.hunger < 15 ? 0.5 : state.stats.hunger < 30 ? 0.65 : 0.8;
@@ -1109,25 +1300,88 @@ function processStateEvents(state) {
 }
 
 function getActivity(activityId) {
-  return activityDefinitions.find((activity) => activity.id === activityId);
+  return [...routineDefinitions, ...activityDefinitions].find((activity) => activity.id === activityId);
 }
 
 function getJob(jobId) {
-  return starterJobs.find((job) => job.id === jobId);
+  return jobs.find((job) => job.id === jobId);
+}
+
+function getJobTitle(state, job) {
+  if (state.promotionLevel > 0 && job.promotionTitles?.[state.promotionLevel - 1]) {
+    return job.promotionTitles[state.promotionLevel - 1];
+  }
+  const prefix = ["", "Senior ", "Lead "][state.promotionLevel];
+  return `${prefix}${job.name}`;
+}
+
+function getJobIncome(state, job) {
+  return Math.round(job.dailyIncome * (1 + state.promotionLevel * 0.25));
+}
+
+function resetPromotionReview(state) {
+  state.promotionReviewDays = 0;
+  state.promotionShifts = 0;
+  state.promotionWellbeingDays = 0;
+  state.promotionPerformanceTotal = 0;
+}
+
+function gainSkills(state, gains = {}) {
+  Object.entries(gains).forEach(([skill, amount]) => {
+    state.skills[skill] = Math.min(100, (state.skills[skill] || 0) + amount);
+  });
+}
+
+function getPromotionChance(state, job) {
+  if (!state.promotionShifts) return 0;
+  const stats = state.stats;
+  const coreStats = ["health", "fitness", "energy", "hunger", "happiness", "confidence", "intelligence", "hygiene"];
+  const lowStats = coreStats.filter((stat) => stats[stat] < 40).length + (stats.stress > 60 ? 1 : 0);
+  const allGreen = coreStats.every((stat) => stats[stat] >= 80) && stats.stress <= 20;
+  const attendance = state.promotionShifts / state.promotionReviewDays;
+  const wellbeing = state.promotionWellbeingDays / state.promotionReviewDays;
+  const performance = state.promotionPerformanceTotal / state.promotionShifts;
+  const skill = state.skills[job.skill] || 0;
+  return Math.max(0, Math.min(90, Math.round(5 + attendance * 20 + wellbeing * 15
+    + performance * 0.25 + Math.min(skill, 30) * 0.5 + (allGreen ? 10 : 0) - lowStats * 4)));
+}
+
+function reviewPromotion(state, job, random) {
+  state.promotionReviewDays += 1;
+  if (state.stats.health >= 60 && state.stats.hunger >= 50 && state.stats.hygiene >= 50
+    && state.stats.happiness >= 50 && state.stats.energy >= 40 && state.stats.stress <= 60) {
+    state.promotionWellbeingDays += 1;
+  }
+  if (state.promotionReviewDays < PROMOTION_REVIEW_DAYS) return;
+  if (state.promotionLevel < 2) {
+    const chance = getPromotionChance(state, job);
+    if (random() * 100 < chance) {
+      state.promotionLevel += 1;
+      appendEvent(state, `Promoted to ${getJobTitle(state, job)}! Pay is now £${getJobIncome(state, job)} per shift.`);
+    } else {
+      appendEvent(state, state.promotionShifts
+        ? `Promotion review: no promotion this time (${chance}% chance). Attendance, wellbeing and ${job.skill} skill affect your prospects.`
+        : "Promotion review: work shifts to become eligible for promotion.");
+    }
+  }
+  resetPromotionReview(state);
 }
 
 function isActivityAvailable(state, activity) {
-  return activity.stage === state.stage
+  return isChoiceInStage(activity, state.stage)
     && (!activity.requiresJob || Boolean(state.jobId))
     && (!activity.requiresUnemployed || !state.jobId)
-    && (!activity.requiresWorkToday || state.workedToday)
+    && (!activity.requiresWorkToday || (state.workedToday && state.workedJobIdToday === state.jobId))
     && (!activity.id || activity.id !== "work-shift" || !state.workedToday)
-    && (activity.id !== "sleep-early" || !state.overtimeWorkedToday)
     && (activity.id !== "work-overtime" || !state.overtimeWorkedToday);
 }
 
+function isChoiceInStage(choice, stage) {
+  return choice.stage === stage || Boolean(choice.stages?.includes(stage));
+}
+
 function getStageActivities(state) {
-  return activityDefinitions.filter((activity) => activity.stage === state.stage);
+  return [...routineDefinitions, ...activityDefinitions].filter((activity) => isChoiceInStage(activity, state.stage));
 }
 
 function getGameOver(state) {
@@ -1191,6 +1445,18 @@ function finishDay(state, random) {
   applyEffects(state, { hygiene: -10 });
   appendEvent(state, "Daily hygiene declined by 10.");
 
+  applyEffects(state, { homeCleanliness: -5 });
+  appendEvent(state, "Daily home cleanliness declined by 5.");
+  if (state.stats.homeCleanliness < 30) {
+    const severelyUntidy = state.stats.homeCleanliness < 15;
+    applyEffects(state, { stress: severelyUntidy ? 4 : 2, happiness: severelyUntidy ? -4 : -2 });
+    appendEvent(state, "An untidy home affected your mood and stress.");
+  }
+
+  if (state.stats.fitness > 80) {
+    applyEffects(state, { health: 1 });
+    appendEvent(state, "Good fitness supported your health. Health +1.");
+  }
   const healthConditions = [
     state.stats.stress >= 61,
     state.stats.hygiene < 30,
@@ -1203,11 +1469,14 @@ function finishDay(state, random) {
     + (activeHealthConditions === 4 ? 1 : 0)
     + (state.stats.stress >= 81 ? 2 : 0)
     + (state.stats.hunger < 15 ? 3 : state.stats.hunger < 30 ? 1 : 0)
-    + (state.stats.hygiene < 10 ? 2 : state.stats.hygiene < 20 ? 1 : 0);
+    + (state.stats.hygiene < 10 ? 2 : state.stats.hygiene < 20 ? 1 : 0)
+    + (state.stats.fitness < 30 ? 2 : 0);
   if (healthLoss > 0) {
     applyEffects(state, { health: -healthLoss });
-    appendEvent(state, `Daily health deterioration: −${healthLoss} from stress, hygiene, energy, or skipped meals.`);
+    appendEvent(state, `Daily health deterioration: −${healthLoss} from stress, hygiene, hunger, energy, fitness, or skipped meals.`);
   }
+  applyEffects(state, { fitness: -5 });
+  appendEvent(state, "Daily fitness declined by 5.");
   if (state.stats.hygiene < 20) {
     applyEffects(state, { confidence: -1 });
     appendEvent(state, "Poor hygiene affected your confidence.");
@@ -1288,8 +1557,9 @@ function finishDay(state, random) {
     state.currentJobCountedDay = state.day;
     if (state.currentJobDays > state.longestJobDays) {
       state.longestJobDays = state.currentJobDays;
-      state.longestJobName = getJob(state.jobId)?.name || "";
+      state.longestJobName = getJobTitle(state, getJob(state.jobId));
     }
+    reviewPromotion(state, getJob(state.jobId), random);
   }
   state.daysSurvived += 1;
 
@@ -1302,6 +1572,8 @@ function finishDay(state, random) {
   state.day += 1;
   state.stage = "earlyMorning";
   state.workedToday = false;
+  state.workedJobIdToday = null;
+  state.selfCareToday = false;
   state.overtimeWorkedToday = false;
   state.stayedInBedToday = false;
   state.stayedHomeToday = false;
@@ -1318,14 +1590,25 @@ function finishDay(state, random) {
   applyGameOver(state);
 }
 
-function advanceStage(state, random) {
-  if (state.stage === "night") {
+function advanceStage(state, random, endsDay = false) {
+  if (state.stage === "night" || endsDay) {
+    if (endsDay) state.stage = "night";
     finishDay(state, random);
     return;
   }
   if (state.stage === "earlyMorning" && state.stayedInBedToday) {
-    state.stage = "afternoonRoutine";
-    applyPeriodHunger(state, "Afternoon");
+    state.stage = "daytimeRoutine";
+    applyPeriodHunger(state, "Daytime");
+    return;
+  }
+  if (state.selfCareToday && state.stage === "morningRoutine") {
+    applyPeriodHunger(state, "Daytime");
+    state.stage = "daytimeRoutine";
+    return;
+  }
+  if (state.selfCareToday && state.stage === "daytimeRoutine") {
+    state.stage = "eveningRoutine";
+    applyPeriodHunger(state, "Evening");
     return;
   }
   const stageIndex = DAILY_STAGES.findIndex((stage) => stage.id === state.stage);
@@ -1340,11 +1623,18 @@ function advanceStage(state, random) {
 function resolveJobApplication(state, random) {
   const chance = getApplicationChance(state.stats, state.stats.hunger);
   if (random() * 100 < chance) {
-    const job = starterJobs[Math.floor(random() * starterJobs.length)];
+    const eligibleJobs = jobs.filter((job) => conditionsMatch(state, job.conditions));
+    if (eligibleJobs.length === 0) {
+      appendEvent(state, "Your application succeeded, but no available roles match your qualifications.");
+      queueNotification(state, "application", "NO MATCHING ROLES", "No available roles match your qualifications right now.");
+      return;
+    }
+    const job = eligibleJobs[Math.floor(random() * eligibleJobs.length)];
     state.pendingJobOfferId = job.id;
-    appendEvent(state, `Your application had a ${chance}% success chance. ${job.name} offered you a starter role.`);
+    appendEvent(state, `Your application had a ${chance}% success chance. You received an offer for ${job.name}.`);
   } else {
     appendEvent(state, `Your application had a ${chance}% success chance, but you did not receive an offer this time.`);
+    queueNotification(state, "application", "APPLICATION UNSUCCESSFUL", "No job offer this time. You can apply again.");
   }
 }
 
@@ -1353,14 +1643,19 @@ function resolveWorkShift(state) {
   if (!job) {
     return;
   }
+  const performance = job.performanceStats.reduce((sum, stat) => sum + state.stats[stat], 0) / job.performanceStats.length;
+  state.promotionPerformanceTotal += performance * getWorkPerformance(state);
+  state.promotionShifts += 1;
+  gainSkills(state, { [job.skill]: 1 });
   applyEffects(state, job.shiftEffects);
   applyEffects(state, { energy: -job.energyCost });
   const stressGain = getWorkStressGain(state, job.stressCost);
   applyEffects(state, { stress: stressGain });
-  const earnings = Math.round(job.dailyIncome * getWorkPerformance(state));
+  const earnings = Math.round(getJobIncome(state, job) * getWorkPerformance(state));
   applyEffects(state, { money: earnings });
   state.workedToday = true;
-  appendEvent(state, `${job.name} shift complete. You earned £${earnings} for the day.`);
+  state.workedJobIdToday = job.id;
+  appendEvent(state, `${getJobTitle(state, job)} shift complete. You earned £${earnings} for the day.`);
 }
 
 function resolveOvertime(state) {
@@ -1368,7 +1663,7 @@ function resolveOvertime(state) {
   if (!job) {
     return;
   }
-  const overtimePay = Math.round(job.dailyIncome * 0.5 * getWorkPerformance(state));
+  const overtimePay = Math.round(getJobIncome(state, job) * 0.5 * getWorkPerformance(state));
   applyEffects(state, { energy: -(job.energyCost + 8) });
   applyEffects(state, { stress: getWorkStressGain(state, job.stressCost + 2) });
   applyEffects(state, { money: overtimePay });
@@ -1416,17 +1711,17 @@ function resolveRandomEncounter(state, activity, random, lowEnergyExercise = fal
 
 function getStatColor(id, value) {
   if (id === "stress") {
-    if (value <= 20) return "#6eaa88";
-    if (value <= 40) return "#b5bd77";
-    if (value <= 60) return "#d6b66f";
-    if (value <= 80) return "#d28d59";
-    return "#c96868";
+    if (value <= 20) return "#4CAF50";
+    if (value <= 40) return "#8BC34A";
+    if (value <= 60) return "#FFC107";
+    if (value <= 80) return "#FF9800";
+    return "#F44336";
   }
-  if (value >= 80) return "#6eaa88";
-  if (value >= 60) return "#b5bd77";
-  if (value >= 40) return "#d6b66f";
-  if (value >= 20) return "#d28d59";
-  return "#c96868";
+  if (value >= 80) return "#4CAF50";
+  if (value >= 60) return "#8BC34A";
+  if (value >= 40) return "#FFC107";
+  if (value >= 20) return "#FF9800";
+  return "#F44336";
 }
 
 function makeButton(title, description, action, kind = "action", disabled = false) {
@@ -1452,14 +1747,19 @@ function makeStat(definition) {
   item.className = `life-sim-stat life-sim-stat--${definition.id}`;
   item.dataset.statId = definition.id;
   const name = document.createElement("dt");
-  name.textContent = definition.id === "hunger" ? "Hunger · fed" : definition.label;
+  name.textContent = definition.label;
   const amount = document.createElement("dd");
   item.append(name, amount);
 
   if (definition.type === "meter") {
-    const meter = document.createElement("meter");
-    meter.min = 0;
-    meter.max = 100;
+    const meter = document.createElement("div");
+    meter.className = "life-sim-meter";
+    meter.setAttribute("role", "meter");
+    meter.setAttribute("aria-valuemin", "0");
+    meter.setAttribute("aria-valuemax", "100");
+    const fill = document.createElement("span");
+    fill.className = "life-sim-meter-fill";
+    meter.append(fill);
     item.append(meter);
   }
   return item;
@@ -1471,11 +1771,11 @@ function updateStat(item, definition, value) {
   if (definition.type === "meter") {
     const color = getStatColor(definition.id, value);
     item.style.setProperty("--stat-color", color);
-    const meter = item.querySelector("meter");
-    meter.value = value;
-    meter.style.accentColor = color;
+    const meter = item.querySelector(".life-sim-meter");
+    meter.setAttribute("aria-valuenow", String(value));
+    meter.querySelector(".life-sim-meter-fill").style.width = `${value}%`;
     const scaleDescription = definition.id === "hunger"
-      ? "; 100 is fully fed and 0 is starving"
+      ? "; 100 is well nourished and 0 is starving"
       : "";
     meter.setAttribute("aria-label", `${definition.label}: ${value} out of 100${scaleDescription}`);
   }
@@ -1497,6 +1797,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
   const periodDisplay = app.querySelector("[data-game-period]");
   const periodLabel = app.querySelector("[data-game-period-label]");
   const periodIcon = app.querySelector("[data-game-period-icon]");
+  const phaseLabel = app.querySelector("[data-game-phase]");
   const notificationsContainer = app.querySelector("[data-game-notifications]");
   const yearProgress = app.querySelector("[data-game-year-progress]");
   const yearLabel = app.querySelector("[data-game-year-label]");
@@ -1509,7 +1810,9 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
   const offerCopy = app.querySelector("[data-game-job-offer-copy]");
   const offerActions = app.querySelector("[data-game-offer-actions]");
   const statsContainer = app.querySelector("[data-game-stats]");
+  const warningsContainer = app.querySelector("[data-game-warnings]");
   const jobStatus = app.querySelector("[data-game-employment]");
+  const quitJobButton = app.querySelector("[data-life-sim-action='quit-job']");
   const collectionsContainer = app.querySelector("[data-game-collections]");
   const rareEventsContainer = app.querySelector("[data-game-rare-events]");
   const achievementsContainer = app.querySelector("[data-game-achievements]");
@@ -1583,27 +1886,30 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     }
 
     const stage = DAILY_STAGES.find((item) => item.id === gameState.stage);
-    choicesHeading.textContent = stage.label;
+    choicesHeading.textContent = `${PERIOD_PRESENTATION[stage.period].icon} ${stage.label}`;
     choicesHint.textContent = stage.type === "routine"
-      ? "Choose one part of your routine before moving on."
-      : stage.type === "choice"
-        ? "Choose one option to move on with your day."
-        : "Choose one activity for this part of the day.";
+      ? "Choose one routine. Missing meals affects Health; two missed meals drain extra Energy and three also harm wellbeing."
+      : stage.type === "activity"
+        ? "Choose one activity for this part of the day."
+        : "Choose one option to move on with your day.";
+    const strain = getHealthStrain(gameState);
+    if (strain.factors > 0) {
+      choicesHint.textContent += strain.loss
+        ? ` Health strain from ${strain.factors} risk factor${strain.factors === 1 ? "" : "s"}: Health −${strain.loss} on this choice.`
+        : ` Health strain from ${strain.factors} risk factor${strain.factors === 1 ? "" : "s"} is accumulating.`;
+    }
 
     let choices = [];
     if (gameState.stage === "earlyMorning") {
       choices = earlyMorningChoices;
-    } else if (stage.type === "routine") {
-      choices = routineDefinitions.filter((routine) => routine.stage === gameState.stage);
     } else {
-      choices = getStageActivities(gameState)
-        .filter((activity) => activity.id !== "sleep-early" || !gameState.overtimeWorkedToday);
+      choices = getStageActivities(gameState);
     }
 
     choices.forEach((choice) => {
       let description = choice.description;
       const choiceEffects = getChoiceEffects(gameState, choice);
-      const unavailable = stage.type === "activity" && !isActivityAvailable(gameState, choice);
+      const unavailable = stage.type !== "choice" && !isActivityAvailable(gameState, choice);
       if (choiceEffects) {
         const effects = formatEffects(choiceEffects);
         if (effects) {
@@ -1615,14 +1921,21 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       } else if (choice.id === "work-shift" || choice.id === "work-overtime") {
         const job = getJob(gameState.jobId);
         if (!job) {
-          description = "Apply for a starter role with Look for Work before taking a shift.";
-        } else if (choice.id === "work-overtime" && !gameState.workedToday) {
-          description = "Work a regular shift this afternoon to unlock overtime.";
+          description = "Apply for a role with Look for Work before taking a shift.";
+        } else if (choice.id === "work-shift" && gameState.workedToday) {
+          description = "You have already worked your shift today.";
+        } else if (choice.id === "work-overtime"
+          && (!gameState.workedToday || gameState.workedJobIdToday !== gameState.jobId)) {
+          description = "Work a regular shift for this job today to unlock overtime.";
         } else {
           description = choice.id === "work-shift"
-            ? `${job.description} Earn £${job.dailyIncome} before hunger effects; ${formatEffects({ ...job.shiftEffects, ...choiceEffects, energy: -job.energyCost, stress: job.stressCost })}.`
-            : `${job.description} Earn an extra £${Math.round(job.dailyIncome * 0.5)}; ${formatEffects({ ...choiceEffects, energy: -(job.energyCost + 8), stress: job.stressCost + 2 })}.`;
+            ? `${job.description} Earn £${getJobIncome(gameState, job)} before hunger effects and gain ${job.skill} skill; ${formatEffects({ ...job.shiftEffects, ...choiceEffects, energy: -job.energyCost, stress: job.stressCost })}.`
+            : `${job.description} Earn an extra £${Math.round(getJobIncome(gameState, job) * 0.5)} before hunger effects; ${formatEffects({ ...choiceEffects, energy: -(job.energyCost + 8), stress: job.stressCost + 2 })}.`;
         }
+      }
+      const phaseMeal = PHASE_MEALS[gameState.stage];
+      if (phaseMeal && choice.meal !== phaseMeal) {
+        description += ` Miss ${phaseMeal}.`;
       }
       actionContainer.append(
         makeButton(
@@ -1703,6 +2016,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       : `Day ${gameState.day} of ${YEAR_LENGTH}`;
     periodLabel.textContent = period;
     periodIcon.textContent = presentation?.icon || "✦";
+    phaseLabel.textContent = gameState.yearComplete ? "Year complete" : stage.label;
     periodDisplay.dataset.period = period.toLowerCase();
     app.dataset.period = period.toLowerCase();
     if (presentation) {
@@ -1750,12 +2064,24 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       sceneCopy.textContent = "The alarm sounds as the first light comes through the curtains. Decide whether to get up or rest a little longer.";
     } else {
       sceneTitle.textContent = `${stage.label} · Day ${gameState.day}`;
-      sceneCopy.textContent = stage.type === "routine"
-        ? "Take care of a small everyday choice before moving on with the day."
-        : "Your choices shape your routine, relationships, and the opportunities that follow.";
+      sceneCopy.textContent = "Your choices shape your routine, relationships, and the opportunities that follow.";
     }
 
     renderChoices();
+    const warnings = [
+      { show: gameState.stats.health < 25, label: "Poor Health" },
+      { show: gameState.stats.fitness < 15, label: "Low Fitness" },
+      { show: gameState.stats.energy < 20, label: "Exhausted" },
+      { show: gameState.stats.hunger < 20, label: "Hungry" },
+      { show: gameState.stats.stress > 80, label: "Burnout Risk" },
+      { show: gameState.stats.homeCleanliness < 20, label: "Untidy Home" },
+    ].filter((warning) => warning.show);
+    warningsContainer.replaceChildren(...warnings.map((warning) => {
+      const item = document.createElement("li");
+      item.textContent = `⚠ ${warning.label}`;
+      return item;
+    }));
+    warningsContainer.hidden = warnings.length === 0;
     STAT_DEFINITIONS.forEach((definition) => {
       let item = statElements.get(definition.id);
       if (!item) {
@@ -1770,13 +2096,15 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
 
     const job = getJob(gameState.jobId);
     jobStatus.textContent = job
-      ? `${job.name} · £${job.dailyIncome} per shift · Energy −${job.energyCost} · Stress +${job.stressCost}`
-      : "No job yet";
+      ? `${getJobTitle(gameState, job)} · £${getJobIncome(gameState, job)} per shift · Energy −${job.energyCost} · Stress +${job.stressCost} · ${job.skill} skill ${gameState.skills[job.skill] || 0}${gameState.promotionLevel < 2 ? ` · Review in ${PROMOTION_REVIEW_DAYS - gameState.promotionReviewDays} day(s)` : " · Highest promotion"}`
+      : "Looking for work · Apply during Morning or Daytime Activity.";
+    quitJobButton.hidden = !job || gameState.yearComplete || Boolean(gameState.gameOver);
 
     const collectionEntries = [
       ["Qualifications", gameState.collections.qualifications],
       ["Connections", gameState.collections.relationships],
       ["Opportunities", gameState.collections.opportunities],
+      ["Skills", Object.entries(gameState.skills).map(([skill, level]) => `${skill} ${level}`)],
     ];
     collectionsContainer.replaceChildren();
     collectionEntries.forEach(([label, values]) => {
@@ -1814,8 +2142,6 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     let choice;
     if (gameState.stage === "earlyMorning") {
       choice = earlyMorningChoices.find((item) => item.id === action);
-    } else if (DAILY_STAGES.find((item) => item.id === gameState.stage)?.type === "routine") {
-      choice = routineDefinitions.find((item) => item.id === action && item.stage === gameState.stage);
     } else {
       choice = getActivity(action);
       if (!choice || !isActivityAvailable(gameState, choice)) {
@@ -1829,12 +2155,18 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
 
     const lowEnergyExercise = isExercise(choice) && gameState.stats.energy < 25;
     const effects = getChoiceEffects(gameState, choice);
-    applyEffects(gameState, effects);
-    if (["skip-breakfast", "skip-lunch", "skip-dinner"].includes(choice.id)) {
+    const strain = getHealthStrain(gameState);
+    if (choice.endsDay) applyPeriodHunger(gameState, "Night");
+    applyEffects(gameState, effects, { sleep: choice.endsDay || gameState.stage === "night" });
+    if (PHASE_MEALS[gameState.stage] && choice.meal !== PHASE_MEALS[gameState.stage]) {
       gameState.skippedMealsToday += 1;
     }
     if (choice.id === "stay-in-bed") {
       gameState.stayedInBedToday = true;
+      gameState.skippedMealsToday += 1;
+    }
+    if (choice.selfCareDay) {
+      gameState.selfCareToday = true;
     }
     if (choice.id === "stay-home" || choice.id === "relax-at-home") {
       gameState.stayedHomeToday = true;
@@ -1843,11 +2175,17 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       gameState.exercisedToday = true;
       gameState.exerciseCountToday += 1;
     }
+    gainSkills(gameState, choice.skillGains);
     if (choice.resolver) {
       activityResolvers[choice.resolver]?.(gameState, random);
     }
+    gameState.healthStrainUnits = strain.remainingUnits;
+    if (strain.loss) {
+      applyEffects(gameState, { health: -strain.loss });
+    }
     const effectSummary = formatEffects(effects);
-    appendEvent(gameState, effectSummary ? `${choice.outcome} ${effectSummary}.` : choice.outcome);
+    const strainSummary = strain.loss ? ` Health −${strain.loss} from stat strain.` : "";
+    appendEvent(gameState, `${effectSummary ? `${choice.outcome} ${effectSummary}.` : choice.outcome}${strainSummary}`);
 
     if (activityDefinitions.includes(choice)) {
       resolveRandomEncounter(gameState, choice, random, lowEnergyExercise);
@@ -1863,7 +2201,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     if (applyGameOver(gameState)) {
       return true;
     }
-    advanceStage(gameState, random);
+    advanceStage(gameState, random, choice.endsDay);
     processStateEvents(gameState);
     return true;
   }
@@ -1874,6 +2212,8 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       gameState.jobId = job.id;
       gameState.currentJobDays = 0;
       gameState.currentJobCountedDay = gameState.day - 1;
+      gameState.promotionLevel = 0;
+      resetPromotionReview(gameState);
       gameState.pendingJobOfferId = null;
       appendEvent(gameState, `You accepted the ${job.name} offer.`);
       checkAchievements(gameState);
@@ -1911,6 +2251,16 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       notificationsContainer.hidden = true;
       displayedNotificationIds.clear();
       processStateEvents(gameState);
+      render();
+      return;
+    }
+    if (action === "quit-job" && gameState.jobId && !gameState.gameOver && !gameState.yearComplete) {
+      const job = getJob(gameState.jobId);
+      appendEvent(gameState, `You quit your job as ${getJobTitle(gameState, job)} and are looking for work again.`);
+      gameState.jobId = null;
+      gameState.promotionLevel = 0;
+      gameState.currentJobDays = 0;
+      resetPromotionReview(gameState);
       render();
       return;
     }

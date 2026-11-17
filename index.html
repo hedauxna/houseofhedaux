@@ -399,21 +399,47 @@
     .life-sim-topline {
       display: flex;
       flex-wrap: wrap;
-      justify-content: space-between;
+      align-items: center;
       gap: 8px 18px;
       margin-bottom: 6px;
+      padding: 10px 14px;
+      border: 1px solid var(--period-border, rgba(215, 189, 133, .48));
+      border-left: 4px solid var(--period-accent, var(--gold));
+      background: linear-gradient(110deg, var(--period-surface, rgba(3, 26, 52, .65)), rgba(3, 26, 52, .8));
+      box-shadow: inset 0 0 22px var(--period-glow, transparent), 0 0 12px var(--period-glow, transparent);
       color: var(--gold);
       font-size: 10px;
       font-weight: 600;
       letter-spacing: .12em;
       text-transform: uppercase;
+      transition: border-color .4s ease, box-shadow .4s ease;
     }
 
-    .life-sim-topline p {
+    .room-copy .life-sim-topline p {
       margin: 0;
+      font-size: inherit;
+      line-height: 1.2;
     }
 
-    .life-sim-topline [data-game-period] {
+    .life-sim-topline-field {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+    }
+
+    .life-sim-topline-label {
+      color: rgba(243, 239, 227, .67);
+      font-size: 9px;
+      letter-spacing: .08em;
+    }
+
+    .room-copy .life-sim-topline [data-game-phase] {
+      color: var(--period-accent, var(--gold));
+      font: 600 18px/1.2 var(--serif);
+      letter-spacing: .04em;
+    }
+
+    .room-copy .life-sim-topline [data-game-period] {
       display: inline-flex;
       align-items: center;
       gap: 7px;
@@ -424,7 +450,7 @@
     }
 
     .life-sim-period-icon {
-      font-size: 15px;
+      font-size: 20px;
       line-height: 1;
     }
 
@@ -436,6 +462,12 @@
 
     .life-sim-notifications[hidden] {
       display: none !important;
+    }
+
+    .life-sim-notifications:has(.life-sim-notification--application) {
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
 
     .life-sim-notification {
@@ -459,6 +491,17 @@
       color: var(--gold);
       font-size: 9px;
       letter-spacing: .1em;
+    }
+
+    .life-sim-notification--application {
+      flex-wrap: wrap;
+      border-left: 4px solid #e6a58f;
+      background: linear-gradient(90deg, rgba(115, 51, 46, .74), rgba(3, 26, 52, .96));
+      box-shadow: 0 0 18px rgba(230, 165, 143, .25);
+    }
+
+    .life-sim-notification--application strong {
+      color: #ffd1be;
     }
 
     .life-sim-notification.is-fading {
@@ -500,6 +543,7 @@
 
     .life-sim-scene {
       border-left: 2px solid var(--period-accent, var(--gold));
+      background: linear-gradient(110deg, var(--period-surface, rgba(3, 26, 52, .45)), rgba(243, 239, 227, .035));
       transition: border-color .4s ease;
     }
 
@@ -582,6 +626,33 @@
       flex-direction: column;
       gap: 5px;
       justify-content: center;
+      border-color: var(--period-border, rgba(215, 189, 133, .48));
+      box-shadow: inset 0 0 10px var(--period-glow, transparent), 0 0 5px var(--period-glow, transparent);
+      transition: background .18s ease, border-color .4s ease, box-shadow .4s ease;
+    }
+
+    .life-sim-app[data-period="morning"] {
+      --period-border: rgba(241, 182, 111, .78);
+      --period-glow: rgba(241, 161, 85, .2);
+      --period-surface: rgba(130, 73, 35, .48);
+    }
+
+    .life-sim-app[data-period="daytime"] {
+      --period-border: rgba(128, 201, 243, .78);
+      --period-glow: rgba(79, 166, 230, .2);
+      --period-surface: rgba(28, 86, 131, .55);
+    }
+
+    .life-sim-app[data-period="evening"] {
+      --period-border: rgba(197, 166, 237, .78);
+      --period-glow: rgba(164, 129, 219, .2);
+      --period-surface: rgba(75, 52, 118, .55);
+    }
+
+    .life-sim-app[data-period="night"] {
+      --period-border: rgba(169, 191, 213, .7);
+      --period-glow: rgba(169, 191, 213, .12);
+      --period-surface: rgba(35, 54, 80, .55);
     }
 
     .life-sim-action-title {
@@ -651,12 +722,44 @@
       min-width: 0;
     }
 
-    .life-sim-stat meter {
+    .life-sim-meter {
       grid-column: 1 / -1;
       width: 100%;
-      height: 6px;
-      accent-color: var(--stat-color, var(--gold));
-      transition: accent-color .4s ease;
+      height: 4.5px;
+      border-radius: 4px;
+      background: rgba(243, 239, 227, .16);
+    }
+
+    .life-sim-meter-fill {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--stat-color);
+      box-shadow: 0 0 6px var(--stat-color);
+      transition: width .4s ease, background-color .4s ease, box-shadow .4s ease;
+    }
+
+    .room-copy .life-sim-warnings {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: 0 0 8px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .room-copy .life-sim-warnings[hidden] {
+      display: none;
+    }
+
+    .life-sim-warnings li {
+      padding: 4px 6px;
+      border: 1px solid rgba(244, 67, 54, .7);
+      background: rgba(244, 67, 54, .1);
+      color: #ffb0a7;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.3;
     }
 
     .life-sim-employment {
@@ -3062,10 +3165,17 @@
             <div class="life-sim-app" data-life-sim-app hidden>
               <div class="life-sim-topline">
                 <p data-game-day></p>
-                <p data-game-period>
-                  <span class="life-sim-period-icon" data-game-period-icon aria-hidden="true"></span>
-                  <span data-game-period-label></span>
-                </p>
+                <div class="life-sim-topline-field">
+                  <span class="life-sim-topline-label">Current time</span>
+                  <p data-game-period>
+                    <span class="life-sim-period-icon" data-game-period-icon aria-hidden="true"></span>
+                    <span data-game-period-label></span>
+                  </p>
+                </div>
+                <div class="life-sim-topline-field">
+                  <span class="life-sim-topline-label">Current phase</span>
+                  <p data-game-phase></p>
+                </div>
               </div>
               <div class="life-sim-notifications" data-game-notifications role="status" aria-live="polite" hidden></div>
               <section class="life-sim-game-over" data-game-over aria-live="assertive" hidden>
@@ -3097,12 +3207,14 @@
                   </section>
                   <aside class="life-sim-dashboard-column life-sim-status-column" aria-label="Current status">
                     <section class="life-sim-dashboard-section">
+                      <ul class="life-sim-warnings" data-game-warnings aria-label="Health and wellbeing warnings" aria-live="polite" hidden></ul>
                       <h5>Current status</h5>
                       <dl class="life-sim-stats" data-game-stats></dl>
                     </section>
                     <section class="life-sim-dashboard-section">
                       <h5>Employment</h5>
                       <p class="life-sim-employment" data-game-employment></p>
+                      <button class="life-sim-reset" type="button" data-life-sim-action="quit-job" data-life-sim-kind="employment" hidden>Quit Job</button>
                     </section>
                   </aside>
                   <aside class="life-sim-dashboard-column life-sim-events-column" aria-label="Notable events, rare events, achievements, and milestones">
