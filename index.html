@@ -464,7 +464,9 @@
       display: none !important;
     }
 
-    .life-sim-notifications:has(.life-sim-notification--application) {
+    .life-sim-notifications:has(.life-sim-notification--application),
+    .life-sim-notifications:has(.life-sim-notification--positive),
+    .life-sim-notifications:has(.life-sim-notification--negative) {
       position: sticky;
       top: 0;
       z-index: 2;
@@ -493,15 +495,28 @@
       letter-spacing: .1em;
     }
 
-    .life-sim-notification--application {
+    .life-sim-notification--application,
+    .life-sim-notification--negative {
       flex-wrap: wrap;
       border-left: 4px solid #e6a58f;
       background: linear-gradient(90deg, rgba(115, 51, 46, .74), rgba(3, 26, 52, .96));
       box-shadow: 0 0 18px rgba(230, 165, 143, .25);
     }
 
-    .life-sim-notification--application strong {
+    .life-sim-notification--application strong,
+    .life-sim-notification--negative strong {
       color: #ffd1be;
+    }
+
+    .life-sim-notification--positive {
+      flex-wrap: wrap;
+      border-left: 4px solid #9ed5a3;
+      background: linear-gradient(90deg, rgba(42, 100, 65, .82), rgba(3, 26, 52, .96));
+      box-shadow: 0 0 18px rgba(158, 213, 163, .25);
+    }
+
+    .life-sim-notification--positive strong {
+      color: #c6f2c9;
     }
 
     .life-sim-notification.is-fading {
@@ -2520,6 +2535,32 @@
 
       .family-grandparents {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (orientation: landscape) and (max-width: 1050px) and (max-height: 600px) {
+      .life-sim-layout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .life-sim-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .life-sim-story-column {
+        grid-column: 1;
+        grid-row: 1 / 3;
+      }
+
+      .life-sim-status-column {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      .life-sim-events-column {
+        display: flex;
+        grid-column: 2;
+        grid-row: 2;
       }
     }
 

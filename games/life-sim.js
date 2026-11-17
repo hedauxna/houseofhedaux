@@ -99,8 +99,8 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Make Breakfast",
     description: "Make a simple breakfast at home · £2.",
-    effects: { health: 3, energy: 3, money: -2 },
-    hungerChange: 22,
+    effects: { health: 3, energy: 3, money: -2, stress: 1, confidence: 1, hygiene: -2, homeCleanliness: -3 },
+    hungerChange: 25,
     meal: "breakfast",
     cost: 2,
     outcome: "You made a simple breakfast at home.",
@@ -110,8 +110,8 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Buy Breakfast",
     description: "Pick up breakfast on the way out · £5.",
-    effects: { health: 2, happiness: 7, energy: 4, money: -5 },
-    hungerChange: 25,
+    effects: { health: 2, happiness: 4, energy: 4, money: -5 },
+    hungerChange: 20,
     meal: "breakfast",
     cost: 5,
     outcome: "You bought breakfast and enjoyed a brighter start.",
@@ -120,8 +120,8 @@ const routineDefinitions = [
     id: "skip-breakfast",
     stage: "morningRoutine",
     name: "Skip Breakfast",
-    description: "Save money, but start the day hungry.",
-    effects: { health: -5, energy: -10 },
+    description: "Save money, but start the day hungry. A rare opportunity may turn up.",
+    effects: { health: -5, energy: -10, happiness: -10, stress: 5, confidence: -3 },
     hungerChange: -20,
     outcome: "You skipped breakfast to save money.",
   },
@@ -130,7 +130,8 @@ const routineDefinitions = [
     stages: ["morningRoutine", "eveningRoutine"],
     name: "Freshen Up",
     description: "Wash and get ready for the day.",
-    effects: { hygiene: 20, energy: -3 },
+    effects: { hygiene: 20, energy: -3, money: -1, happiness: 1, stress: -1, confidence: 1, homeCleanliness: -1 },
+    cost: 1,
     outcome: "You freshened up before heading out.",
   },
   {
@@ -138,7 +139,8 @@ const routineDefinitions = [
     stages: ["morningRoutine", "eveningRoutine"],
     name: "Quick Shower",
     description: "Take a quick shower and feel more confident.",
-    effects: { hygiene: 50, confidence: 3, energy: -5 },
+    effects: { hygiene: 50, confidence: 3, energy: -5, money: -2, health: 1, happiness: 2, stress: -5, homeCleanliness: -5 },
+    cost: 2,
     outcome: "A quick shower left you feeling refreshed and confident.",
   },
   {
@@ -146,7 +148,7 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Full Self Care Day",
     description: "Spend the morning and daytime recovering. Skip breakfast and both activity slots, including work; lunch is still available.",
-    effects: { hygiene: 35, health: 4, stress: -10, happiness: 6, energy: 10 },
+    effects: { hygiene: 35, health: 4, stress: -10, happiness: 6, energy: 10, confidence: 2, homeCleanliness: -2 },
     selfCareDay: true,
     outcome: "You dedicated the morning and daytime to self-care.",
   },
@@ -155,7 +157,7 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Gentle Stretch",
     description: "Ease into the day with light movement.",
-    effects: { fitness: 1, health: 1, energy: -4 },
+    effects: { fitness: 1, health: 1, energy: -4, hunger: -2, happiness: 2, hygiene: -5 },
     outcome: "You eased into the day with a gentle stretch.",
   },
   {
@@ -163,7 +165,7 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Mindful Moment",
     description: "Pause and set an intention for the day.",
-    effects: { stress: -4, happiness: 2 },
+    effects: { stress: -4, happiness: 5, hunger: -2, hygiene: -2 },
     outcome: "A mindful moment helped you feel more settled.",
   },
   {
@@ -171,23 +173,15 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Plan Your Day",
     description: "Prepare for your next challenge.",
-    effects: { confidence: 1, intelligence: 1, energy: -2 },
+    effects: { confidence: 2, intelligence: 2, energy: -2, hunger: -1, happiness: 1, stress: -2 },
     outcome: "You took a moment to plan your day.",
-  },
-  {
-    id: "morning-ready",
-    stage: "morningRoutine",
-    name: "Get Going",
-    description: "Take an unhurried start and move on.",
-    effects: {},
-    outcome: "You got on with your morning.",
   },
   {
     id: "prepare-lunch",
     stage: "daytimeRoutine",
     name: "Prepare Lunch",
     description: "Make a filling lunch at home · £2.",
-    effects: { health: 3, energy: 3, money: -2 },
+    effects: { health: 3, energy: 3, money: -2, stress: 1, confidence: 1, hygiene: -2, homeCleanliness: -3 },
     hungerChange: 25,
     meal: "lunch",
     cost: 2,
@@ -197,19 +191,19 @@ const routineDefinitions = [
     id: "buy-lunch",
     stage: "daytimeRoutine",
     name: "Buy Lunch",
-    description: "Pick up something convenient · £6.",
-    effects: { health: 2, happiness: 4, energy: 3, money: -6 },
+    description: "Pick up something convenient · £8.",
+    effects: { health: 2, happiness: 4, energy: 4, money: -8 },
     hungerChange: 28,
     meal: "lunch",
-    cost: 6,
+    cost: 8,
     outcome: "You bought lunch while out.",
   },
   {
     id: "skip-lunch",
     stage: "daytimeRoutine",
     name: "Skip Lunch",
-    description: "Keep your money and push through hungry.",
-    effects: { health: -5, energy: -10 },
+    description: "Keep your money and push through hungry. A rare opportunity may turn up.",
+    effects: { health: -5, energy: -10, happiness: -10, stress: 5, confidence: -3 },
     hungerChange: -25,
     outcome: "You skipped lunch and saved your money.",
   },
@@ -218,7 +212,7 @@ const routineDefinitions = [
     stage: "eveningRoutine",
     name: "Cook Dinner",
     description: "Cook a simple meal at home · £4.",
-    effects: { health: 4, happiness: 3, money: -4 },
+    effects: { health: 4, happiness: 3, money: -4, energy: 3 },
     hungerChange: 30,
     meal: "dinner",
     cost: 4,
@@ -229,7 +223,7 @@ const routineDefinitions = [
     stage: "eveningRoutine",
     name: "Order Takeaway",
     description: "Have dinner delivered · £12.",
-    effects: { happiness: 7, health: 1, money: -12 },
+    effects: { happiness: 7, health: 1, money: -12, energy: 5 },
     hungerChange: 28,
     meal: "dinner",
     cost: 12,
@@ -239,20 +233,20 @@ const routineDefinitions = [
     id: "eat-out",
     stage: "eveningRoutine",
     name: "Eat Out",
-    description: "Go out for dinner · £24.",
-    effects: { happiness: 12, confidence: 7, money: -24 },
+    description: "Go out for dinner · £30.",
+    effects: { happiness: 12, confidence: 7, money: -30, health: 2, energy: 4 },
     hungerChange: 30,
     meal: "dinner",
-    cost: 24,
+    cost: 30,
     outcome: "You went out for dinner and enjoyed a special evening.",
   },
   {
     id: "skip-dinner",
     stage: "eveningRoutine",
     name: "Skip Dinner",
-    description: "Save money, but go to bed hungry.",
-    effects: { health: -10, energy: -15 },
-    hungerChange: -35,
+    description: "Save money, but go to bed hungry. A rare opportunity may turn up.",
+    effects: { health: -10, energy: -15, happiness: -10, stress: 5, confidence: -3 },
+    hungerChange: -30,
     outcome: "You skipped dinner and saved your money.",
   },
 ];
@@ -293,7 +287,7 @@ const jobs = [
     energyCost: 15,
     stressCost: 2,
     description: "A friendly shop-floor role with a steady pace.",
-    shiftEffects: { confidence: 1 },
+    shiftEffects: { confidence: 1, fitness: 1, happiness: -1 },
     skill: "service", performanceStats: ["confidence", "happiness"],
   },
   {
@@ -303,14 +297,14 @@ const jobs = [
     energyCost: 15,
     stressCost: 3,
     description: "An active job that rewards stamina and routine.",
-    shiftEffects: { health: -2 },
+    shiftEffects: { health: -2, fitness: 3 },
     skill: "practical", performanceStats: ["fitness", "health"],
   },
   {
     id: "office-junior",
     name: "Office Junior",
     dailyIncome: 58,
-    energyCost: 15,
+    energyCost: 10,
     stressCost: 1,
     description: "A chance to learn office skills and build experience.",
     shiftEffects: { intelligence: 1 },
@@ -322,49 +316,49 @@ const jobs = [
     name: "Delivery Driver",
     dailyIncome: 70,
     energyCost: 15,
-    stressCost: 2,
+    stressCost: 3,
     description: "A varied day on the road with plenty of stops.",
-    shiftEffects: { health: -1 },
+    shiftEffects: { health: -1, fitness: 2 },
     skill: "logistics", performanceStats: ["fitness", "confidence"],
   },
   { id: "cafe-assistant", name: "Café Assistant", dailyIncome: 60, energyCost: 15, stressCost: 2,
-    description: "Serve customers in a busy café.", shiftEffects: { confidence: 1 },
+    description: "Serve customers in a busy café.", shiftEffects: { confidence: 1, fitness: 1 },
     skill: "service", performanceStats: ["happiness", "confidence"] },
-  { id: "care-assistant", name: "Care Assistant", dailyIncome: 68, energyCost: 15, stressCost: 3,
-    description: "Support people with their daily needs.", shiftEffects: { happiness: 1 },
+  { id: "care-assistant", name: "Care Assistant", dailyIncome: 68, energyCost: 20, stressCost: 3,
+    description: "Support people with their daily needs.", shiftEffects: { happiness: 1, health: -1, fitness: 3 },
     skill: "care", performanceStats: ["happiness", "health"] },
   { id: "junior-designer", name: "Junior Designer", dailyIncome: 70, energyCost: 15, stressCost: 2,
-    description: "Build a portfolio on a creative team.", shiftEffects: { intelligence: 1 },
+    description: "Build a portfolio on a creative team.", shiftEffects: { intelligence: 1, fitness: -1 },
     skill: "creative", performanceStats: ["intelligence", "confidence"],
     promotionTitles: ["Designer", "Senior Designer"],
     conditions: { all: [{ stat: "intelligence", min: 45 }, { stat: "confidence", min: 40 }] } },
-  { id: "fitness-instructor", name: "Fitness Instructor", dailyIncome: 88, energyCost: 15, stressCost: 2,
-    description: "Help people train and stay active.", shiftEffects: { fitness: 1 },
+  { id: "fitness-instructor", name: "Fitness Instructor", dailyIncome: 88, energyCost: 20, stressCost: 2,
+    description: "Help people train and stay active.", shiftEffects: { fitness: 5 },
     skill: "fitness", performanceStats: ["fitness", "confidence"],
     conditions: { all: [{ stat: "fitness", min: 70 }, { stat: "confidence", min: 55 }] } },
   { id: "electrician", name: "Electrician", dailyIncome: 115, energyCost: 15, stressCost: 3,
-    description: "Apply practical training to electrical work.", shiftEffects: { intelligence: 1 },
+    description: "Apply practical training to electrical work.", shiftEffects: { intelligence: 1, fitness: 3 },
     skill: "practical", performanceStats: ["intelligence", "fitness"],
     conditions: { all: [{ stat: "intelligence", min: 55 }, { skill: "practical", min: 5 }] } },
   { id: "logistics-coordinator", name: "Logistics Coordinator", dailyIncome: 105, energyCost: 15, stressCost: 3,
-    description: "Coordinate deliveries and solve scheduling problems.", shiftEffects: { intelligence: 1 },
+    description: "Coordinate deliveries and solve scheduling problems.", shiftEffects: { intelligence: 1, fitness: 2 },
     skill: "logistics", performanceStats: ["intelligence", "confidence"],
     conditions: { all: [{ stat: "intelligence", min: 55 }, { skill: "logistics", min: 5 }] } },
   { id: "office-manager", name: "Office Manager", dailyIncome: 120, energyCost: 15, stressCost: 4,
-    description: "Keep an office and its people organised.", shiftEffects: { confidence: 1 },
+    description: "Keep an office and its people organised.", shiftEffects: { confidence: 1, fitness: -1 },
     skill: "administration", performanceStats: ["intelligence", "confidence"],
     conditions: { all: [{ stat: "confidence", min: 55 }, { skill: "administration", min: 5 }] } },
   { id: "graphic-designer", name: "Graphic Designer", dailyIncome: 120, energyCost: 15, stressCost: 3,
-    description: "Create visual work for clients.", shiftEffects: { intelligence: 1 },
+    description: "Create visual work for clients.", shiftEffects: { intelligence: 1, fitness: -1 },
     skill: "creative", performanceStats: ["intelligence", "confidence"],
     conditions: { all: [{ stat: "intelligence", min: 60 }, { skill: "creative", min: 5 }] } },
-  { id: "nurse", name: "Nurse", dailyIncome: 140, energyCost: 15, stressCost: 4,
-    description: "Combine care experience with further study.", shiftEffects: { happiness: 1 },
+  { id: "nurse", name: "Nurse", dailyIncome: 140, energyCost: 25, stressCost: 4,
+    description: "Combine care experience with further study.", shiftEffects: { happiness: 1, fitness: 5 },
     skill: "care", performanceStats: ["health", "intelligence", "happiness"],
     conditions: { all: [{ stat: "intelligence", min: 65 }, { skill: "care", min: 5 },
       { collection: "qualifications", includes: "Study Skills Certificate" }] } },
   { id: "software-developer", name: "Software Developer", dailyIncome: 150, energyCost: 15, stressCost: 4,
-    description: "Use study and technical experience to build software.", shiftEffects: { intelligence: 1 },
+    description: "Use study and technical experience to build software.", shiftEffects: { intelligence: 1, fitness: -1 },
     skill: "technical", performanceStats: ["intelligence", "confidence"],
     conditions: { all: [{ stat: "intelligence", min: 70 }, { skill: "technical", min: 5 },
       { collection: "qualifications", includes: "Study Skills Certificate" }] } },
@@ -373,8 +367,8 @@ const jobs = [
     skill: "technical", performanceStats: ["intelligence", "happiness"],
     conditions: { all: [{ stat: "intelligence", min: 80 }, { stat: "happiness", min: 55 },
       { skill: "technical", min: 8 }, { collection: "qualifications", includes: "Study Skills Certificate" }] } },
-  { id: "emergency-responder", name: "Emergency Responder", dailyIncome: 145, energyCost: 15, stressCost: 5,
-    description: "Respond to demanding incidents using practical experience.", shiftEffects: { confidence: 1 },
+  { id: "emergency-responder", name: "Emergency Responder", dailyIncome: 145, energyCost: 20, stressCost: 5,
+    description: "Respond to demanding incidents using practical experience.", shiftEffects: { confidence: 1, fitness: 5 },
     skill: "practical", performanceStats: ["fitness", "health", "confidence"],
     conditions: { all: [{ stat: "fitness", min: 75 }, { stat: "health", min: 65 },
       { stat: "confidence", min: 60 }, { skill: "practical", min: 5 }] } },
@@ -386,7 +380,7 @@ const activityDefinitions = [
     name: "Stay Home",
     description: "Take a quiet day and recharge.",
     stage: "morningActivity",
-    effects: { energy: 5, hygiene: -2, happiness: -1, fitness: -1 },
+    effects: { energy: 5, hygiene: -2, happiness: -2, fitness: -2, hunger: -2, stress: 1, homeCleanliness: -5 },
     outcome: "You stayed home for a quiet start to the day.",
   },
   {
@@ -394,16 +388,17 @@ const activityDefinitions = [
     name: "Study",
     description: "Spend focused time learning and build technical skill.",
     stage: "morningActivity",
-    effects: { intelligence: 4, happiness: -2, energy: -5, fitness: -1 },
+    effects: { intelligence: 5, happiness: -5, energy: -5, fitness: -2, hunger: -2, stress: 5, confidence: 1, hygiene: -1, homeCleanliness: -1 },
     skillGains: { technical: 1 },
     outcome: "You put in a focused study session.",
   },
   {
     id: "visit-gym",
     name: "Visit Gym",
-    description: "Put in a workout and build confidence and fitness skill.",
+    description: "Put in a workout and build confidence and fitness skill · £10.",
     stage: "morningRoutine",
-    effects: { confidence: 7, health: 6, energy: -25, hygiene: -60, fitness: 8 },
+    effects: { confidence: 7, health: 6, energy: -25, hygiene: -40, fitness: 8, money: -10, hunger: -10, happiness: 2, stress: -5 },
+    cost: 10,
     skillGains: { fitness: 1 },
     outcome: "You completed a gym session and felt stronger for it.",
   },
@@ -412,7 +407,7 @@ const activityDefinitions = [
     name: "Take Stroll",
     description: "Get outside for some fresh air.",
     stages: ["morningActivity", "daytimeActivity"],
-    effects: { happiness: 7, stress: -6, energy: -12, fitness: 2 },
+    effects: { happiness: 7, stress: -6, energy: -12, fitness: 2, health: 2, hunger: -2, confidence: 1, hygiene: -5 },
     outcome: "A change of scenery lifted your mood.",
   },
   {
@@ -420,7 +415,7 @@ const activityDefinitions = [
     name: "Look For Work",
     description: "Apply for a role suited to your attributes and experience.",
     stages: ["morningActivity", "daytimeActivity"],
-    effects: { energy: -5, stress: 2 },
+    effects: { energy: -5, stress: 2, hunger: -2, hygiene: -2, homeCleanliness: -1 },
     resolver: "job-application",
     outcome: "You prepared and submitted a job application.",
     requiresUnemployed: true,
@@ -430,7 +425,7 @@ const activityDefinitions = [
     name: "Meet People",
     description: "Make time for conversation and connection.",
     stage: "morningActivity",
-    effects: { confidence: 2, happiness: 3, energy: -5, money: -5 },
+    effects: { confidence: 2, happiness: 4, energy: -5, money: -5, hunger: -2 },
     cost: 5,
     outcome: "You made time to be around other people.",
   },
@@ -439,16 +434,17 @@ const activityDefinitions = [
     name: "Read a Book",
     description: "Enjoy a short read and build technical skill.",
     stage: "morningActivity",
-    effects: { intelligence: 3, stress: -2, energy: -2 },
+    effects: { intelligence: 3, stress: -2, energy: -2, fitness: -2, hunger: -2, happiness: 2, confidence: 1, hygiene: -2, homeCleanliness: -1 },
     skillGains: { technical: 1 },
     outcome: "You spent a quiet morning reading.",
   },
   {
     id: "morning-chores",
     name: "Household Chores",
-    description: "Clean your home and make it more comfortable.",
+    description: "Clean your home and make it more comfortable · £3.",
     stages: ["morningActivity", "daytimeActivity"],
-    effects: { homeCleanliness: 35, stress: -3, happiness: 2, energy: -8 },
+    effects: { homeCleanliness: 50, stress: -3, happiness: 2, energy: -8, money: -3, fitness: 1, hunger: -2, confidence: 1, hygiene: -5 },
+    cost: 3,
     outcome: "You tidied up and made your home feel calmer.",
   },
   {
@@ -456,7 +452,7 @@ const activityDefinitions = [
     name: "Enjoy a Hobby",
     description: "Make time for something you enjoy.",
     stages: ["morningActivity", "daytimeActivity"],
-    effects: { happiness: 5, stress: -3, energy: -5 },
+    effects: { happiness: 5, stress: -3, energy: -5, hygiene: -2, homeCleanliness: -2 },
     outcome: "You made time for a favourite hobby.",
   },
   {
@@ -464,7 +460,7 @@ const activityDefinitions = [
     name: "Study",
     description: "Keep learning and build technical skill.",
     stages: ["daytimeActivity", "eveningActivity"],
-    effects: { intelligence: 5, happiness: -3, energy: -5, fitness: -1 },
+    effects: { intelligence: 5, happiness: -3, energy: -5, fitness: -1, confidence: 1, hygiene: -1, homeCleanliness: -1 },
     skillGains: { technical: 1 },
     outcome: "You studied and made steady progress.",
   },
@@ -473,7 +469,7 @@ const activityDefinitions = [
     name: "Work",
     description: "Put in a shift and earn your daily pay.",
     stages: ["morningActivity", "daytimeActivity"],
-    effects: { hygiene: -20 },
+    effects: { hygiene: -20, hunger: -20, happiness: -10, homeCleanliness: -1 },
     resolver: "job-shift",
     requiresJob: true,
     outcome: "You completed a work shift.",
@@ -483,16 +479,17 @@ const activityDefinitions = [
     name: "Visit Town",
     description: "Run errands and see what's happening in town.",
     stage: "daytimeActivity",
-    effects: { happiness: 3, confidence: 2, energy: -10, money: -4 },
+    effects: { happiness: 3, confidence: 2, energy: -10, money: -4, fitness: 1, hunger: -6, hygiene: -5 },
     cost: 4,
     outcome: "You spent some time exploring town.",
   },
   {
     id: "daytime-exercise",
     name: "Intense Workout",
-    description: "Push yourself and build fitness skill.",
+    description: "Push yourself and build fitness skill · £10.",
     stage: "daytimeActivity",
-    effects: { health: 5, confidence: 3, energy: -35, hygiene: -40, fitness: 5 },
+    effects: { health: 5, confidence: 3, energy: -35, hygiene: -40, fitness: 5, money: -10, hunger: -12, happiness: 2, stress: -8 },
+    cost: 10,
     skillGains: { fitness: 1 },
     outcome: "You made time for exercise.",
   },
@@ -501,7 +498,7 @@ const activityDefinitions = [
     name: "Socialise",
     description: "Catch up with someone and enjoy their company.",
     stage: "daytimeActivity",
-    effects: { confidence: 2, happiness: 4, energy: -8, money: -8 },
+    effects: { confidence: 2, happiness: 4, energy: -8, money: -8, hunger: -2, hygiene: -2 },
     cost: 8,
     outcome: "You spent time socialising.",
   },
@@ -510,7 +507,7 @@ const activityDefinitions = [
     name: "Relax At Home",
     description: "Take a quiet break and recharge.",
     stage: "daytimeActivity",
-    effects: { energy: 8, stress: -4, hygiene: -2, happiness: 1, fitness: -1 },
+    effects: { energy: 8, stress: -4, hygiene: -2, happiness: 1, fitness: -1, hunger: -2, confidence: -2 },
     outcome: "You relaxed at home and recharged.",
   },
   {
@@ -518,7 +515,7 @@ const activityDefinitions = [
     name: "Watch TV",
     description: "Put your feet up and watch a favourite show.",
     stage: "eveningActivity",
-    effects: { happiness: 5, stress: -3, energy: -2, fitness: -1 },
+    effects: { happiness: 5, stress: -3, energy: -2, fitness: -2, hunger: -2, hygiene: -2 },
     outcome: "You watched television and unwound.",
   },
   {
@@ -526,7 +523,7 @@ const activityDefinitions = [
     name: "Read Book",
     description: "Enjoy a book and build technical skill.",
     stage: "eveningActivity",
-    effects: { intelligence: 4, stress: -3, energy: -2, fitness: -1 },
+    effects: { intelligence: 3, stress: -2, energy: -2, fitness: -1, hunger: -2, happiness: 2, confidence: 1, hygiene: -2, homeCleanliness: -1 },
     skillGains: { technical: 1 },
     outcome: "You spent the evening reading.",
   },
@@ -535,8 +532,8 @@ const activityDefinitions = [
     name: "See Friends",
     description: "Spend the evening with friends.",
     stage: "eveningActivity",
-    effects: { happiness: 6, confidence: 3, energy: -6, money: -10 },
-    cost: 10,
+    effects: { happiness: 6, confidence: 3, energy: -6, money: -5, hunger: -2, hygiene: -2 },
+    cost: 5,
     outcome: "You enjoyed an evening with friends.",
   },
   {
@@ -544,7 +541,7 @@ const activityDefinitions = [
     name: "Visit Pub",
     description: "Go out for a drink and a change of scene · £10.",
     stage: "eveningActivity",
-    effects: { happiness: 5, confidence: 2, stress: -2, money: -10, hygiene: -10, fitness: -2 },
+    effects: { happiness: 5, confidence: 2, stress: -2, money: -10, hygiene: -10, fitness: -3, health: -5, energy: -8 },
     cost: 10,
     outcome: "You visited the pub for a change of scene.",
   },
@@ -553,7 +550,7 @@ const activityDefinitions = [
     name: "Work Overtime",
     description: "Stay on for extra hours and extra pay.",
     stage: "eveningActivity",
-    effects: { hygiene: -20 },
+    effects: { hygiene: -20, hunger: -20, happiness: -10 },
     resolver: "overtime",
     requiresJob: true,
     requiresWorkToday: true,
@@ -564,7 +561,7 @@ const activityDefinitions = [
     name: "Relaxing Bath",
     description: "Enjoy a warm bath and let the day melt away.",
     stage: "eveningRoutine",
-    effects: { health: 3, stress: -6, happiness: 4, hygiene: 90, energy: -2 },
+    effects: { health: 3, stress: -10, happiness: 4, hygiene: 90, energy: -2, confidence: 2, homeCleanliness: -5 },
     outcome: "A relaxing bath eased your stress and refreshed you.",
   },
   {
@@ -573,7 +570,7 @@ const activityDefinitions = [
     description: "Turn in early for a long sleep and start the next day. Recovery depends on Stress, Hunger and Fitness.",
     stage: "eveningActivity",
     endsDay: true,
-    effects: { health: 5, energy: 60, stress: -7 },
+    effects: { health: 5, energy: 80, stress: -7, hunger: -4 },
     outcome: "You slept early and woke feeling well rested.",
   },
   {
@@ -581,7 +578,7 @@ const activityDefinitions = [
     name: "Go To Bed",
     description: "End the day with a regular night's rest. Recovery depends on Stress, Hunger and Fitness.",
     stage: "night",
-    effects: { health: 4, energy: 40, stress: -5 },
+    effects: { health: 4, energy: 60, stress: -5 },
     outcome: "You went to bed and got a good night's rest.",
   },
   {
@@ -589,7 +586,7 @@ const activityDefinitions = [
     name: "Stay Up Late",
     description: "Chance of a creative idea or paid commission. Energy −14 tomorrow; sleep recovery depends on Stress, Hunger and Fitness.",
     stage: "night",
-    effects: { energy: 20, intelligence: 2, happiness: 2, stress: 3 },
+    effects: { energy: 20, intelligence: 2, happiness: 2, stress: 3, health: -1, fitness: -1, hunger: -4, homeCleanliness: -2 },
     outcome: "You stayed up later than planned.",
     nextDayEnergy: -14,
   },
@@ -602,20 +599,47 @@ const earlyMorningChoices = [
     id: "wake-up",
     name: "Wake Up",
     description: "Get up with the alarm and begin the day.",
-    effects: { energy: -2, stress: 2 },
+    effects: { energy: -2, stress: 5, fitness: 1, hunger: -2, confidence: 2, homeCleanliness: -5 },
     outcome: "You woke with the alarm and got the day underway.",
   },
   {
     id: "stay-in-bed",
     name: "Stay In Bed",
     description: "Rest longer, but miss breakfast and both Morning choices.",
-    effects: { energy: 5, hygiene: -5, confidence: -2, happiness: 2 },
+    effects: { energy: 8, hygiene: -5, confidence: -2, happiness: 2, homeCleanliness: -7 },
     hungerChange: -20,
     outcome: "You stayed in bed and gave up the morning's productive time.",
   },
 ];
 
 const randomEventDefinitions = [
+  {
+    id: "rare-breakfast-opportunity",
+    activityIds: ["skip-breakfast"],
+    chance: 0.03,
+    rare: true,
+    rareTitle: "Early Opportunity",
+    message: "The extra time led to a paid morning errand worth £35.",
+    effects: { money: 35, happiness: 4 },
+  },
+  {
+    id: "rare-lunch-opportunity",
+    activityIds: ["skip-lunch"],
+    chance: 0.03,
+    rare: true,
+    rareTitle: "Lunch Break Opportunity",
+    message: "A chance conversation during your lunch break led to a £35 paid task.",
+    effects: { money: 35, confidence: 3 },
+  },
+  {
+    id: "rare-dinner-opportunity",
+    activityIds: ["skip-dinner"],
+    chance: 0.03,
+    rare: true,
+    rareTitle: "Evening Opportunity",
+    message: "The extra evening time led to a creative commission worth £35.",
+    effects: { money: 35, happiness: 4 },
+  },
   {
     id: "rare-found-50",
     activityIds: ["take-stroll"],
@@ -971,7 +995,7 @@ const dailyRiskEvents = [
   },
 ];
 
-const eventIndex = new Map(activityIds.map((id) => [id, []]));
+const eventIndex = new Map([...routineDefinitions, ...activityDefinitions].map(({ id }) => [id, []]));
 randomEventDefinitions.forEach((event) => {
   event.activityIds.forEach((id) => eventIndex.get(id)?.push(event));
 });
@@ -1103,7 +1127,6 @@ function addRareEvent(state, event) {
   };
   state.rareEvents.unshift(rareEvent);
   state.rareEvents = state.rareEvents.slice(0, 20);
-  queueNotification(state, "rare", "RARE EVENT", rareEvent.title);
 }
 
 function applyCollections(state, additions = {}) {
@@ -1542,6 +1565,7 @@ function finishDay(state, random) {
       state.rentSurcharge += event.rentIncrease;
     }
     appendEvent(state, event.message);
+    queueNotification(state, "negative", "NEGATIVE EVENT", event.message);
   });
   const isHealthyDay = state.stats.health >= 60
     && state.stats.hunger >= 50
@@ -1703,6 +1727,9 @@ function resolveRandomEncounter(state, activity, random, lowEnergyExercise = fal
       if (event.rare) {
         addRareEvent(state, event);
       }
+      const title = event.rare ? "RARE EVENT" : event.negative ? "NEGATIVE EVENT" : "POSITIVE EVENT";
+      const message = event.rareTitle ? `${event.rareTitle}: ${event.message}` : event.message;
+      queueNotification(state, event.negative ? "negative" : "positive", title, message);
       checkAchievements(state);
       return;
     }
@@ -1929,7 +1956,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
           description = "Work a regular shift for this job today to unlock overtime.";
         } else {
           description = choice.id === "work-shift"
-            ? `${job.description} Earn £${getJobIncome(gameState, job)} before hunger effects and gain ${job.skill} skill; ${formatEffects({ ...job.shiftEffects, ...choiceEffects, energy: -job.energyCost, stress: job.stressCost })}.`
+            ? `${job.description} Earn £${getJobIncome(gameState, job)} before hunger effects and gain ${job.skill} skill; ${formatEffects({ ...choiceEffects, energy: -job.energyCost, stress: job.stressCost })}. Job effects: ${formatEffects(job.shiftEffects)}.`
             : `${job.description} Earn an extra £${Math.round(getJobIncome(gameState, job) * 0.5)} before hunger effects; ${formatEffects({ ...choiceEffects, energy: -(job.energyCost + 8), stress: job.stressCost + 2 })}.`;
         }
       }
@@ -2187,8 +2214,8 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     const strainSummary = strain.loss ? ` Health −${strain.loss} from stat strain.` : "";
     appendEvent(gameState, `${effectSummary ? `${choice.outcome} ${effectSummary}.` : choice.outcome}${strainSummary}`);
 
+    resolveRandomEncounter(gameState, choice, random, lowEnergyExercise);
     if (activityDefinitions.includes(choice)) {
-      resolveRandomEncounter(gameState, choice, random, lowEnergyExercise);
       if (choice.id === "work-shift") {
         gameState.workedToday = true;
       }
