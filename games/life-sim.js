@@ -297,17 +297,17 @@ const STAT_DEFINITIONS = [
 ];
 
 const STARTING_STATS = {
-  health: 72,
-  fitness: 65,
-  stress: 38,
-  money: 40,
-  confidence: 42,
-  intelligence: 38,
-  hygiene: 65,
-  happiness: 58,
-  energy: 70,
-  hunger: 90,
-  homeCleanliness: 70,
+  health: 95,
+  fitness: 75,
+  stress: 50,
+  money: 500,
+  confidence: 0,
+  intelligence: 10,
+  hygiene: 80,
+  happiness: 75,
+  energy: 100,
+  hunger: 50,
+  homeCleanliness: 100,
 };
 
 const jobs = [
@@ -1346,10 +1346,12 @@ function conditionsMatch(state, conditions = {}) {
 }
 
 function getHealthStrain(state) {
-  const factors = HEALTH_STRAIN_FACTORS.filter((condition) => conditionMatches(state, condition)).length;
+  const activeFactors = HEALTH_STRAIN_FACTORS.filter((condition) => conditionMatches(state, condition));
+  const factors = activeFactors.length;
   const units = state.healthStrainUnits + factors;
   return {
     factors,
+    activeFactors,
     loss: Math.floor(units / HEALTH_STRAIN_UNITS_PER_POINT),
     remainingUnits: units % HEALTH_STRAIN_UNITS_PER_POINT,
   };
@@ -2381,6 +2383,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
   const offerPanel = app.querySelector("[data-game-job-offer]");
   const offerCopy = app.querySelector("[data-game-job-offer-copy]");
   const offerActions = app.querySelector("[data-game-offer-actions]");
+  const accountContainer = app.querySelector("[data-game-account]");
   const statsContainer = app.querySelector("[data-game-stats]");
   const bankingStatus = app.querySelector("[data-game-banking]");
   const warningsContainer = app.querySelector("[data-game-warnings]");
@@ -2482,13 +2485,6 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       : stage.type === "activity"
         ? "Choose one activity for this part of the day."
         : "Choose one option to move on with your day.";
-    const strain = getHealthStrain(gameState);
-    if (strain.factors > 0) {
-      choicesHint.textContent += strain.loss
-        ? ` Health strain from ${strain.factors} risk factor${strain.factors === 1 ? "" : "s"}: Health −${strain.loss} on this choice.`
-        : ` Health strain from ${strain.factors} risk factor${strain.factors === 1 ? "" : "s"} is accumulating.`;
-    }
-
     let choices = [];
     if (gameState.stage === "earlyMorning") {
       choices = earlyMorningChoices.filter((choice) => choice.id !== "sleep-after-night-shift" || gameState.needsDaySleep);
@@ -2499,7 +2495,25 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       choices = choices.filter((choice) => ["work-shift", "unpaid-leave"].includes(choice.id));
       choicesHint.textContent = "Your employer expects you today. Attend work or report an absence.";
     }
-    choices.sort((a, b) => Number(b.id === "work-shift") - Number(a.id === "work-shift"));
+    const strain = getHealthStrain(gameState);
+    if (strain.factors > 0) {
+      const causes = strain.activeFactors.map((condition) => {
+        const label = STAT_DEFINITIONS.find((definition) => definition.id === condition.stat).label;
+        return `${condition.min === undefined ? "low" : "high"} ${label}`;
+      }).join(", ");
+      choicesHint.textContent += strain.loss
+        ? ` Health strain from ${causes}: Health −${strain.loss} on this choice.`
+        : ` Health strain from ${causes} is accumulating.`;
+    }
+    const choicePriority = (choice) => {
+      if (choice.id === "work-shift") return 0;
+      if (choice.id === "unpaid-leave") return 1;
+      if (["morning-study", "continue-studying"].includes(choice.id)) return 2;
+      if (["morning-reading", "read-book"].includes(choice.id)) return 3;
+      if (["dentist", "visit-doctor"].includes(choice.id)) return 5;
+      return 4;
+    };
+    choices.sort((a, b) => choicePriority(a) - choicePriority(b));
 
     choices.forEach((choice) => {
       if (["work-shift", "unpaid-leave"].includes(choice.id) && !hasScheduledShift(gameState)) return;
@@ -2689,7 +2703,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       if (!item) {
         item = makeStat(definition);
         statElements.set(definition.id, item);
-        statsContainer.append(item);
+        (definition.type === "money" ? accountContainer : statsContainer).append(item);
       }
       updateStat(item, definition, gameState.stats[definition.id]);
     });

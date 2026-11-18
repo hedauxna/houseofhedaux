@@ -36,7 +36,7 @@
           makeMonthlyReport, makeWeeklyReport, updateResponsibilities, finishDay, resolveWorkShift,
           createEmployment, scheduleShifts, recordShift, finishReportedAbsence, reviewEmployerResponse,
           reviewPromotion, processPaydays, getNextPayday, getHrConcernLabel, ABSENCE_REASONS,
-          getShiftGrossPence };`);
+          getShiftGrossPence, getHealthStrain };`);
 
       function employ(state, jobId) {
         const job = game.getJob(jobId);
@@ -63,6 +63,65 @@
       }
 
       const tests = [
+        ["Starting stats and account display", async () => {
+          const { root, state } = await mount();
+          const expected = { health: 95, energy: 100, fitness: 75, hunger: 50, happiness: 75,
+            stress: 50, confidence: 0, intelligence: 10, hygiene: 80, homeCleanliness: 100, money: 500 };
+          assert(Object.entries(expected).every(([stat, value]) => state.stats[stat] === value), "Starting stats are incorrect");
+          const account = root.querySelector("[data-game-account]");
+          const banking = root.querySelector("[data-game-banking]");
+          const meters = root.querySelector("[data-game-stats]");
+          assert(account.querySelector('[data-stat-id="money"] dd').textContent === "£500"
+            && account.nextElementSibling === banking && banking.nextElementSibling === meters
+            && banking.textContent.includes("Available: £1,000"), "Banking details are not directly below the account");
+          click(root, "wake-up");
+          click(root, "restart-year");
+          assert(account.querySelector('[data-stat-id="money"] dd').textContent === "£500"
+            && meters.querySelector('[data-stat-id="energy"] dd').textContent === "100/100",
+          "Restart did not restore the new starting values");
+          root.remove();
+        }],
+        ["Health strain explains current risks", async () => {
+          const { root, state } = await mount(`gameState.stage = "eveningRoutine";
+            Object.assign(gameState.stats, { health: 98, energy: 85, fitness: 100, hunger: 66,
+              happiness: 94, stress: 9, confidence: 100, intelligence: 97, hygiene: 64, homeCleanliness: 53 });`);
+          assert(game.getHealthStrain(state).factors === 1
+            && root.querySelector("[data-choices-hint]").textContent.includes("low Home Cleanliness"),
+          "Screenshot strain was not attributed to the untidy home");
+          for (let i = 0; i < 3; i += 1) {
+            const strain = game.getHealthStrain(state);
+            assert(strain.loss === 0, "A single factor caused premature health loss");
+            state.healthStrainUnits = strain.remainingUnits;
+          }
+          assert(game.getHealthStrain(state).loss === 1, "Four quarters did not accumulate to one Health loss");
+          state.stats.homeCleanliness = 60;
+          assert(game.getHealthStrain(state).factors === 0 && game.getHealthStrain(state).loss === 0,
+            "Home cleanliness threshold or carried strain is incorrect");
+          root.remove();
+          const working = await mount(`gameState.stage = "morningActivity"; gameState.jobId = "office-junior";
+            gameState.employment = createEmployment(getJob(gameState.jobId)); scheduleShifts(gameState, getJob(gameState.jobId));`);
+          assert(working.root.querySelector("[data-choices-hint]").textContent.includes("high Stress")
+            && working.root.querySelector("[data-choices-hint]").textContent.includes("low Hunger"),
+          "Scheduled work hid the active strain causes");
+          working.root.remove();
+        }],
+        ["Consistent activity ordering", async () => {
+          for (const [stage, study, reading] of [
+            ["morningActivity", "morning-study", "morning-reading"],
+            ["daytimeActivity", "continue-studying", null],
+            ["eveningActivity", "continue-studying", "read-book"],
+          ]) {
+            const { root } = await mount(`gameState.stage = "${stage}";`);
+            const actions = [...root.querySelectorAll("[data-game-actions] button")].map((button) => button.dataset.lifeSimAction);
+            assert(actions[0] === study && (!reading || actions[1] === reading), `${stage}: study or reading not first`);
+            assert(actions.slice(-2).join(",") === "dentist,visit-doctor", `${stage}: appointments not last`);
+            root.remove();
+          }
+          const night = await mount('gameState.stage = "night";');
+          const nightActions = [...night.root.querySelectorAll("[data-game-actions] button")].map((button) => button.dataset.lifeSimAction);
+          assert(nightActions.at(-1) === "visit-doctor" && nightActions[0] === "go-to-bed", "Night doctor ordering");
+          night.root.remove();
+        }],
         ["Calendar and job schedules", () => {
           assert(game.formatDate(1) === "Monday 4 January 2027", "Incorrect starting date");
           assert(game.formatDate(28) === "Sunday 31 January 2027", "Incorrect month end");
@@ -128,12 +187,13 @@
           const state = game.createInitialState();
           state.stage = "morningActivity";
           employ(state, "warehouse-worker");
+          const balance = state.stats.money;
           game.resolveWorkShift(state);
           state.jobId = null;
           state.employment = null;
           state.day = 5;
           game.processPaydays(state);
-          assert(state.stats.money > 40 && state.reports[0].title === "PAYDAY", "Wages lost after leaving");
+          assert(state.stats.money > balance && state.reports[0].title === "PAYDAY", "Wages lost after leaving");
         }],
         ["Gradual HR escalation and promotion requirements", () => {
           const state = game.createInitialState();
@@ -200,6 +260,7 @@
         }],
         ["Overdraft and monthly bills", () => {
           const state = game.createInitialState();
+          state.stats.money = 40;
           game.applyEffects(state, { money: -600 });
           assert(state.stats.money === -500 && state.arrears === 60, "Overdraft cap or arrears");
           const month = game.createInitialState();

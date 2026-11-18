@@ -697,12 +697,16 @@
       text-transform: uppercase;
     }
 
+    .life-sim-account,
     .life-sim-stats {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px;
       margin: 0;
       padding: 0;
+    }
+
+    .life-sim-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .life-sim-stat {
@@ -783,11 +787,16 @@
       line-height: 1.3;
     }
 
-    .life-sim-employment {
+    .room-copy .life-sim-employment,
+    .room-copy .life-sim-banking {
       margin: 0;
       color: rgba(243, 239, 227, .84);
       font-size: 11px;
       line-height: 1.55;
+    }
+
+    .room-copy .life-sim-banking {
+      margin: 3px 0 6px;
     }
 
     .life-sim-collections {
@@ -3256,8 +3265,9 @@
                     <section class="life-sim-dashboard-section">
                       <ul class="life-sim-warnings" data-game-warnings aria-label="Health and wellbeing warnings" aria-live="polite" hidden></ul>
                       <h5>Current status</h5>
+                      <dl class="life-sim-account" data-game-account></dl>
+                      <p class="life-sim-banking" data-game-banking></p>
                       <dl class="life-sim-stats" data-game-stats></dl>
-                      <p class="life-sim-employment" data-game-banking></p>
                     </section>
                     <section class="life-sim-dashboard-section">
                       <h5>Employment</h5>
