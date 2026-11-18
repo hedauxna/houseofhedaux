@@ -1,10 +1,54 @@
 const YEAR_LENGTH = 365;
 const MAX_VISIBLE_EVENTS = 30;
-const BASE_DAILY_LIVING_COST = 2;
 const DIFFICULTY_INTERVAL = 30;
 const RARE_EVENT_DISPLAY_DAYS = 5;
 const PROMOTION_REVIEW_DAYS = 7;
+const OVERDRAFT_LIMIT = 500;
+const START_DATE = Date.UTC(2027, 0, 4);
+const DAY_MS = 86400000;
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAY_SCHEDULE = [1, 2, 3, 4, 5];
+const JOB_SCHEDULES = {
+  "retail-assistant": [1, 2, 3, 5, 6],
+  "cafe-assistant": [0, 2, 3, 5, 6],
+  "care-assistant": [1, 2, 4, 5, 6],
+  nurse: [1, 2, 4, 5, 6],
+  "emergency-responder": [0, 1, 3, 4, 6],
+  "night-security": [0, 1, 2, 4, 5],
+};
+const ABSENCE_REASONS = [
+  { id: "doctor", label: "Doctor Appointment", supporting: ["visit-doctor"], evidence: "Medical Note" },
+  { id: "dentist", label: "Dentist Appointment", supporting: ["dentist"], evidence: "Appointment Confirmation" },
+  { id: "illness", label: "Illness", supporting: ["stay-home", "relax-at-home", "watch-tv", "read-book", "sleep-early", "go-to-bed", "sleep-after-night-shift", "visit-doctor"] },
+  { id: "mental-health", label: "Mental Health Day", supporting: ["stay-home", "relax-at-home", "take-stroll", "visit-doctor", "morning-hobby", "watch-tv", "read-book", "sleep-early", "go-to-bed"] },
+  { id: "family", label: "Family Emergency" },
+  { id: "personal", label: "Personal Day" },
+  { id: "other", label: "Other Reason" },
+];
+const QUESTIONABLE_ABSENCE_ACTIONS = ["visit-town", "socialise", "morning-meet-people", "see-friends", "visit-pub", "eat-out", "visit-gym", "daytime-exercise"];
 let notificationSequence = 0;
+
+function getDate(day) {
+  return new Date(START_DATE + (day - 1) * DAY_MS);
+}
+
+function formatDate(day) {
+  return getDate(day).toLocaleDateString("en-GB", {
+    timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric",
+  }).replace(",", "");
+}
+
+function getSchedule(job) {
+  return job.workingDays;
+}
+
+function isWorkingDay(day, job) {
+  return Boolean(job) && getSchedule(job).includes(getDate(day).getUTCDay());
+}
+
+function formatSchedule(job) {
+  return getSchedule(job).map((day) => WEEKDAYS[day].slice(0, 3)).join(", ");
+}
 
 const PERIOD_PRESENTATION = {
   Morning: { icon: "☀️", accent: "#f1b66f" },
@@ -130,8 +174,7 @@ const routineDefinitions = [
     stages: ["morningRoutine", "eveningRoutine"],
     name: "Freshen Up",
     description: "Wash and get ready for the day.",
-    effects: { hygiene: 40, energy: -3, money: -1, happiness: 2, stress: -1, confidence: 1, homeCleanliness: -1 },
-    cost: 1,
+    effects: { hygiene: 40, energy: -3, happiness: 2, stress: -1, confidence: 1, homeCleanliness: -1 },
     outcome: "You freshened up before heading out.",
   },
   {
@@ -139,8 +182,7 @@ const routineDefinitions = [
     stages: ["morningRoutine", "eveningRoutine"],
     name: "Quick Shower",
     description: "Take a quick shower and feel more confident.",
-    effects: { hygiene: 70, confidence: 3, energy: -5, money: -2, health: 1, happiness: 4, stress: -5, homeCleanliness: -5, fitness: 1 },
-    cost: 2,
+    effects: { hygiene: 70, confidence: 3, energy: -5, health: 1, happiness: 4, stress: -5, homeCleanliness: -5, fitness: 1 },
     outcome: "A quick shower left you feeling refreshed and confident.",
   },
   {
@@ -241,7 +283,7 @@ const routineDefinitions = [
 ];
 
 const STAT_DEFINITIONS = [
-  { id: "money", label: "Money", type: "money" },
+  { id: "money", label: "Current Account", type: "money" },
   { id: "health", label: "Health", type: "meter" },
   { id: "energy", label: "Energy", type: "meter" },
   { id: "fitness", label: "Fitness", type: "meter" },
@@ -315,7 +357,8 @@ const jobs = [
     skill: "service", performanceStats: ["happiness", "confidence"] },
   { id: "care-assistant", name: "Care Assistant", dailyIncome: 68, energyCost: 20, stressCost: 3,
     description: "Support people with their daily needs.", shiftEffects: { happiness: 1, health: -1, fitness: 3 },
-    skill: "care", performanceStats: ["happiness", "health"] },
+    skill: "care", performanceStats: ["happiness", "health"],
+    promotionTitles: ["Lead Care Assistant", "Senior Care Lead"] },
   { id: "junior-designer", name: "Junior Designer", dailyIncome: 70, energyCost: 15, stressCost: 2,
     description: "Build a portfolio on a creative team.", shiftEffects: { intelligence: 1, fitness: -1 },
     skill: "creative", performanceStats: ["intelligence", "confidence"],
@@ -361,7 +404,21 @@ const jobs = [
     skill: "practical", performanceStats: ["fitness", "health", "confidence"],
     conditions: { all: [{ stat: "fitness", min: 75 }, { stat: "health", min: 65 },
       { stat: "confidence", min: 60 }, { skill: "practical", min: 5 }] } },
-];
+  { id: "night-security", name: "Night Security", dailyIncome: 85, energyCost: 15, stressCost: 3,
+    description: "Keep premises safe through the evening and night.", shiftEffects: { confidence: 1 },
+    skill: "security", performanceStats: ["health", "confidence"] },
+].map((job) => ({
+  ...job,
+  workingDays: JOB_SCHEDULES[job.id] || WEEKDAY_SCHEDULE,
+  workingHours: job.id === "night-security" ? ["eveningActivity", "night"] : ["morningActivity", "daytimeActivity"],
+  payFrequency: ["retail-assistant", "warehouse-worker", "cafe-assistant"].includes(job.id) ? "weekly"
+    : ["delivery-driver", "night-security", "emergency-responder"].includes(job.id) ? "fortnightly" : "monthly",
+  annualSalary: job.id === "office-junior" ? 24000 : Math.max(23000, job.dailyIncome * 260),
+  promotionPath: job.promotionTitles || [`Senior ${job.name}`, `Lead ${job.name}`],
+  qualificationRequirements: (job.conditions?.all || []).filter((condition) => condition.collection === "qualifications")
+    .map((condition) => condition.includes),
+  promotionRequirements: { days: 30, attendance: 90, performance: 75, skill: 20 },
+}));
 
 const activityDefinitions = [
   {
@@ -384,10 +441,9 @@ const activityDefinitions = [
   {
     id: "visit-gym",
     name: "Visit Gym",
-    description: "Put in a workout and build fitness skill.",
+    description: "Put in a workout and build fitness skill. Membership is billed monthly.",
     stage: "morningRoutine",
-    effects: { confidence: 7, health: 6, energy: -25, hygiene: -40, fitness: 15, money: -10, hunger: -10, happiness: 8, stress: -5 },
-    cost: 10,
+    effects: { confidence: 7, health: 6, energy: -25, hygiene: -40, fitness: 15, hunger: -10, happiness: 8, stress: -5 },
     skillGains: { fitness: 1 },
     outcome: "You completed a gym session and felt stronger for it.",
   },
@@ -445,6 +501,32 @@ const activityDefinitions = [
     outcome: "You made time for a favourite hobby.",
   },
   {
+    id: "haircut",
+    name: "Get a Haircut",
+    description: "Make time for a haircut.",
+    stages: ["morningActivity", "daytimeActivity"],
+    effects: { money: -20, confidence: 2, happiness: 2 },
+    cost: 20,
+    outcome: "You got a haircut and felt more presentable.",
+  },
+  {
+    id: "dentist",
+    name: "Visit the Dentist",
+    description: "Arrange a routine dental check-up.",
+    stages: ["morningActivity", "daytimeActivity", "eveningActivity"],
+    effects: { money: -40, health: 2, stress: -1 },
+    cost: 40,
+    outcome: "You attended a routine dental check-up.",
+  },
+  {
+    id: "visit-doctor",
+    name: "Visit Doctor",
+    description: "Visit a doctor or an out-of-hours service.",
+    stages: ["morningActivity", "daytimeActivity", "eveningActivity", "night"],
+    effects: { health: 4, stress: -2, energy: -2 },
+    outcome: "You visited a doctor and received advice.",
+  },
+  {
     id: "continue-studying",
     name: "Study",
     description: "Keep learning and build technical skill.",
@@ -455,13 +537,22 @@ const activityDefinitions = [
   },
   {
     id: "work-shift",
-    name: "Work",
-    description: "Put in a shift and earn your daily pay.",
-    stages: ["morningActivity", "daytimeActivity"],
-    effects: { hygiene: -20, hunger: -20, happiness: -10, homeCleanliness: -1 },
+    name: "Go To Work",
+    description: "Attend your scheduled shift; wages are paid on payday.",
+    stages: ["morningActivity", "daytimeActivity", "eveningActivity", "night"],
+    effects: { hygiene: -10, hunger: -10, happiness: -5, homeCleanliness: -1 },
     resolver: "job-shift",
     requiresJob: true,
     outcome: "You completed a work shift.",
+  },
+  {
+    id: "unpaid-leave",
+    name: "Report An Absence",
+    description: "Tell your employer why you cannot attend this unpaid shift.",
+    stages: ["morningActivity", "daytimeActivity", "eveningActivity", "night"],
+    requiresJob: true,
+    effects: {},
+    outcome: "You reported an absence.",
   },
   {
     id: "visit-town",
@@ -609,6 +700,13 @@ const earlyMorningChoices = [
     effects: { energy: 8, hygiene: -5, confidence: -2, happiness: 4, homeCleanliness: -7 },
     hungerChange: -20,
     outcome: "You stayed in bed and gave up the morning's productive time.",
+  },
+  {
+    id: "sleep-after-night-shift",
+    name: "Sleep After Night Shift",
+    description: "Rest after working overnight, missing breakfast and the morning.",
+    effects: { energy: 75, health: 2, stress: -4, hunger: -10 },
+    outcome: "You slept after your night shift.",
   },
 ];
 
@@ -940,7 +1038,8 @@ const dailyRiskEvents = [
     repeat: "monthly",
     conditions: { all: [{ dayMin: 30 }] },
     message: "An unexpected household bill arrived.",
-    effects: { money: -25, stress: 3 },
+    effects: { stress: 3 },
+    electricityBill: 25,
   },
   {
     id: "phone-replacement",
@@ -959,8 +1058,8 @@ const dailyRiskEvents = [
     maxChance: 0.06,
     repeat: "once",
     conditions: { all: [{ dayMin: 60 }] },
-    message: "A rent review increased your daily living costs by £1.",
-    effects: { money: -30, stress: 3 },
+    message: "A rent review increased your monthly rent by £30.",
+    effects: { stress: 3 },
     rentIncrease: 1,
   },
   {
@@ -1003,12 +1102,19 @@ randomEventDefinitions.forEach((event) => {
 function createInitialState() {
   return {
     day: 1,
+    age: 21,
     stage: "earlyMorning",
     stats: { ...STARTING_STATS },
     jobId: null,
     pendingJobOfferId: null,
     workedToday: false,
     workedJobIdToday: null,
+    scheduledShifts: null,
+    employment: null,
+    payrollAccounts: [],
+    pendingAbsence: false,
+    reportedAbsence: null,
+    needsDaySleep: false,
     selfCareToday: false,
     overtimeWorkedToday: false,
     stayedInBedToday: false,
@@ -1030,13 +1136,16 @@ function createInitialState() {
     notifications: [],
     daysSurvived: 0,
     moneyEarned: 0,
+    arrears: 0,
+    reports: [],
+    weekReflectedDay: 0,
+    weekly: createWeeklyRecord(STARTING_STATS),
+    monthly: createMonthlyRecord(),
+    responsibilities: { appearance: 100, dental: 100, mental: 70, weight: 65, maintenance: 70 },
+    reminderDays: {},
     currentJobDays: 0,
     currentJobCountedDay: 0,
     promotionLevel: 0,
-    promotionReviewDays: 0,
-    promotionShifts: 0,
-    promotionWellbeingDays: 0,
-    promotionPerformanceTotal: 0,
     skills: {},
     longestJobDays: 0,
     longestJobName: "",
@@ -1052,15 +1161,37 @@ function createInitialState() {
   };
 }
 
+function createWeeklyRecord(stats) {
+  return {
+    startStats: { ...stats },
+    income: 0,
+    spent: 0,
+    events: [],
+    achievements: [],
+    friends: [],
+    qualifications: [],
+    promotions: [],
+  };
+}
+
+function createMonthlyRecord() {
+  return {
+    jobIncome: 0, otherIncome: 0, lifestyle: 0,
+    rent: 0, electricity: 0, water: 0, internet: 0, subscriptions: 0,
+    gym: false, freeGym: false,
+  };
+}
+
 function clampStat(id, value) {
-  return id === "money" ? Math.max(-500, Math.round(value)) : Math.max(0, Math.min(100, Math.round(value)));
+  return id === "money" ? Math.max(-OVERDRAFT_LIMIT, Math.round(value)) : Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function formatMoney(value) {
-  return value < 0 ? `-£${Math.abs(value)}` : `£${value}`;
+  const amount = Math.abs(value).toLocaleString("en-GB");
+  return value < 0 ? `-£${amount}` : `£${amount}`;
 }
 
-function applyEffects(state, effects = {}, { sleep = state.stage === "night" } = {}) {
+function applyEffects(state, effects = {}, { sleep = state.stage === "night", moneyCategory = "other" } = {}) {
   Object.entries(effects).forEach(([stat, amount]) => {
     if (Object.hasOwn(state.stats, stat)) {
       let adjustedAmount = amount;
@@ -1072,7 +1203,10 @@ function applyEffects(state, effects = {}, { sleep = state.stage === "night" } =
       } else if (amount > 0 && stat === "confidence") {
         const stress = state.stats.stress;
         const stressFactor = stress >= 81 ? 0.5 : stress >= 61 ? 0.7 : stress >= 31 ? 0.85 : 1;
-        adjustedAmount = Math.max(1, Math.floor(amount * stressFactor * (state.stats.hygiene < 50 ? 0.8 : 1)));
+        adjustedAmount = Math.max(1, Math.floor(amount * stressFactor * (state.stats.hygiene < 50 ? 0.8 : 1)
+          * (state.responsibilities.appearance < 30 ? 0.9 : 1)));
+      } else if (amount > 1 && stat === "health" && state.responsibilities.dental < 25) {
+        adjustedAmount = Math.max(1, Math.floor(amount * 0.9));
       } else if (amount > 0 && stat === "energy") {
         const stressFactor = sleep
           ? state.stats.stress >= 81 ? 0.5 : state.stats.stress >= 61 ? 0.75 : 1
@@ -1081,10 +1215,25 @@ function applyEffects(state, effects = {}, { sleep = state.stage === "night" } =
           ? state.stats.hunger < 15 ? 0.5 : state.stats.hunger < 30 ? 0.7 : state.stats.hunger < 50 ? 0.85 : 1
           : 1;
         const fitnessFactor = state.stats.fitness < 30 ? 0.8 : state.stats.fitness > 80 ? 1.15 : 1;
-        adjustedAmount = Math.max(1, Math.floor(amount * stressFactor * hungerFactor * fitnessFactor));
+        adjustedAmount = Math.max(1, Math.floor(amount * stressFactor * hungerFactor * fitnessFactor
+          * (state.responsibilities.weight < 30 ? 0.95 : 1)));
       }
-      if (stat === "money" && adjustedAmount > 0) {
-        state.moneyEarned += adjustedAmount;
+      if (stat === "money") {
+        const before = state.stats.money;
+        const after = clampStat(stat, before + adjustedAmount);
+        const actual = after - before;
+        if (adjustedAmount > 0) {
+          state.moneyEarned += actual;
+          state.weekly.income += actual;
+          if (moneyCategory === "job") state.monthly.jobIncome += actual;
+          else state.monthly.otherIncome += actual;
+        } else if (adjustedAmount < 0) {
+          state.weekly.spent -= actual;
+          if (moneyCategory !== "bill") {
+            state.monthly.lifestyle -= adjustedAmount;
+            state.arrears += Math.max(0, -adjustedAmount + actual);
+          }
+        }
       }
       state.stats[stat] = clampStat(stat, state.stats[stat] + adjustedAmount);
     }
@@ -1107,6 +1256,7 @@ function unlockAchievement(state, definition) {
   }
   const achievement = { id: definition.id, title: definition.title, day: state.day };
   state.achievements.unshift(achievement);
+  state.weekly.achievements.push(definition.title);
   appendEvent(state, `Achievement unlocked: ${definition.title}.`);
   queueNotification(state, "achievement", "ACHIEVEMENT UNLOCKED", definition.title);
 }
@@ -1138,6 +1288,8 @@ function applyCollections(state, additions = {}) {
     values.forEach((value) => {
       if (!state.collections[collection].includes(value)) {
         state.collections[collection].push(value);
+        if (collection === "relationships") state.weekly.friends.push(value);
+        if (collection === "qualifications") state.weekly.qualifications.push(value);
       }
     });
   });
@@ -1231,6 +1383,9 @@ function isExercise(activity) {
 
 function getChoiceEffects(state, choice) {
   const effects = { ...(choice.effects || {}) };
+  if (choice.id === "morning-chores" && state.responsibilities.maintenance < 30) {
+    effects.homeCleanliness -= 5;
+  }
   if (choice.hungerChange) {
     effects.hunger = choice.hungerChange;
   }
@@ -1268,19 +1423,124 @@ function getWorkStressGain(state, baseCost) {
   else if (state.stats.energy < 40) stressGain += 1;
   if (state.stats.stress >= 81) stressGain += 2;
   else if (state.stats.stress >= 61) stressGain += 1;
+  if (state.responsibilities.mental < 30) stressGain += 1;
   stressGain += Math.min(Math.floor(state.consecutiveWorkDays / 5), 4);
   return Math.max(0, stressGain);
 }
 
-function getWorkPerformance(state) {
-  if (state.stats.hunger < 15) return 0.6;
-  if (state.stats.hunger < 30) return 0.75;
-  if (state.stats.hunger < 50) return 0.9;
-  return 1;
+function accrueDailyBills(state) {
+  const date = getDate(state.day);
+  const daysInMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  state.monthly.rent += (450 + state.rentSurcharge * 30) / daysInMonth;
+  state.monthly.electricity += 30 / daysInMonth;
+  state.monthly.water += 20 / daysInMonth;
+  state.monthly.internet += 25 / daysInMonth;
+  state.monthly.subscriptions += 12 / daysInMonth;
 }
 
-function getDailyLivingCost(state) {
-  return BASE_DAILY_LIVING_COST + getDifficultyLevel(state.day) + state.rentSurcharge;
+function recordChoiceUsage(state, choice) {
+  const monthly = state.monthly;
+  if (["freshen-up", "quick-shower", "relaxing-bath", "full-self-care"].includes(choice.id)) {
+    monthly.water += choice.id === "freshen-up" ? 0.25 : choice.id === "relaxing-bath" ? 1 : 0.6;
+  }
+  if (["make-breakfast", "prepare-lunch", "cook-dinner"].includes(choice.id)) monthly.electricity += 0.5;
+  if (["watch-tv", "morning-hobby"].includes(choice.id)) monthly.electricity += 0.3;
+  if (choice.id === "visit-gym") monthly.gym = true;
+
+  const habits = state.responsibilities;
+  if (choice.id === "haircut") habits.appearance = 100;
+  if (choice.id === "dentist") habits.dental = 100;
+  if (choice.id === "morning-chores") habits.maintenance = Math.min(100, habits.maintenance + 30);
+  if (["full-self-care", "morning-mindfulness", "take-stroll", "morning-hobby", "see-friends"].includes(choice.id)) {
+    habits.mental = Math.min(100, habits.mental + 6);
+  }
+  if (isExercise(choice)) habits.weight = Math.min(100, habits.weight + 3);
+}
+
+function updateResponsibilities(state) {
+  const habits = state.responsibilities;
+  habits.appearance = Math.max(0, habits.appearance - 0.8);
+  habits.dental = Math.max(0, habits.dental - 0.3);
+  habits.maintenance = Math.max(0, habits.maintenance - 0.7);
+  habits.mental = Math.max(0, Math.min(100, habits.mental + (state.stats.stress > 60 ? -2 : state.stats.stress < 30 ? 0.5 : -0.5)));
+  habits.weight = Math.max(0, Math.min(100, habits.weight + (state.exercisedToday ? 0 : -0.3)));
+
+  const reminders = [
+    ["appearance", 40, "You should probably book a haircut."],
+    ["dental", 40, "You haven't visited a dentist in a while."],
+    ["maintenance", 35, "Your home may need some maintenance; a tidy-up could help."],
+    ["mental", 35, "You have been feeling mentally exhausted recently. Make time for a break."],
+    ["weight", 35, "A little regular movement could help you feel more energetic."],
+  ];
+  reminders.forEach(([key, threshold, message]) => {
+    if (habits[key] <= threshold && state.day - (state.reminderDays[key] || -30) >= 30) {
+      state.reminderDays[key] = state.day;
+      appendEvent(state, message);
+      queueNotification(state, "negative", "LIFE REMINDER", message);
+    }
+  });
+}
+
+function makeMonthlyReport(state) {
+  const month = state.monthly;
+  const rent = Math.round(month.rent);
+  const electricity = Math.round(month.electricity);
+  const water = Math.round(month.water);
+  const internet = Math.round(month.internet);
+  const subscriptions = Math.round(month.subscriptions);
+  const gym = month.gym && !month.freeGym ? 30 : 0;
+  const interest = Math.ceil((Math.max(0, -state.stats.money) + state.arrears) * 0.02);
+  const bills = rent + electricity + water + internet + subscriptions + gym + interest;
+  const outstanding = state.arrears + bills;
+  const paid = Math.min(outstanding, state.stats.money + OVERDRAFT_LIMIT);
+  state.arrears = outstanding - paid;
+  applyEffects(state, { money: -paid }, { moneyCategory: "bill" });
+  const income = month.jobIncome + month.otherIncome;
+  const expenses = month.lifestyle + bills;
+  const name = getDate(state.day).toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
+  const lines = [
+    `Income: ${formatMoney(income)} (job earnings ${formatMoney(month.jobIncome)}, other income ${formatMoney(month.otherIncome)})`,
+    `Rent: ${formatMoney(rent)}`,
+    `Utilities: ${formatMoney(electricity + water)} (electricity ${formatMoney(electricity)}, water ${formatMoney(water)})`,
+    `Internet: ${formatMoney(internet)}`,
+    `Subscriptions: ${formatMoney(subscriptions)}`,
+    `Gym membership: ${formatMoney(gym)}${month.freeGym && month.gym ? " (free month)" : ""}`,
+    `Lifestyle spending: ${formatMoney(month.lifestyle)}`,
+    `Overdraft interest: ${formatMoney(interest)}`,
+    `Total expenses: ${formatMoney(expenses)}`,
+    `Net profit/loss: ${formatMoney(income - expenses)}`,
+    `Current account: ${formatMoney(state.stats.money)} · overdraft limit −£${OVERDRAFT_LIMIT}`,
+    `Bills paid: ${formatMoney(paid)}${state.arrears ? ` · unpaid balance carried forward: ${formatMoney(state.arrears)}` : ""}`,
+  ];
+  state.monthly = createMonthlyRecord();
+  return { title: `${name} finance report`, day: state.day, lines };
+}
+
+function makeWeeklyReport(state) {
+  const week = state.weekly;
+  const change = (stat) => state.stats[stat] - week.startStats[stat];
+  const signed = (value) => `${value > 0 ? "+" : ""}${value}`;
+  const stats = ["health", "fitness", "happiness", "stress"];
+  const lines = [
+    `Income earned: ${formatMoney(week.income)} · Money spent: ${formatMoney(week.spent)}`,
+    ...stats.map((stat) => `${stat[0].toUpperCase() + stat.slice(1)} change: ${signed(change(stat))}`),
+    `Achievements earned: ${week.achievements.join(", ") || "None this week"}`,
+    `New friends: ${week.friends.join(", ") || "None this week"}`,
+    `Qualifications: ${week.qualifications.join(", ") || "None this week"}`,
+    `Promotions: ${week.promotions.join(", ") || "None this week"}`,
+    `Significant events and milestones: ${week.events.join(" · ") || "A week of everyday choices"}`,
+  ];
+  if (change("fitness") > 0) lines.push("Your fitness improved this week.");
+  if (change("health") > 0) lines.push("Your health improved this week.");
+  if (change("health") < 0) lines.push("Your health declined this week; recovery may help.");
+  if (change("happiness") > 0) lines.push("You found moments that improved your happiness.");
+  if (change("happiness") < 0) lines.push("Your happiness fell this week; make time for something you enjoy.");
+  if (change("stress") < 0) lines.push("You reduced your stress this week.");
+  if (state.stats.hygiene < 50) lines.push("Your hygiene needs attention.");
+  if (change("fitness") < 0) lines.push("Your fitness declined this week; consider making time for movement.");
+  if (change("stress") > 0) lines.push("Stress rose this week; consider some time to recover.");
+  state.weekly = createWeeklyRecord(state.stats);
+  return { title: `Week ${Math.ceil(state.day / 7)} reflection`, day: state.day, lines };
 }
 
 function applyPeriodHunger(state, period) {
@@ -1319,6 +1579,10 @@ function appendEvent(state, message) {
   });
 }
 
+function recordSignificantEvent(state, message) {
+  state.weekly.events.push(message);
+}
+
 function processStateEvents(state) {
   stateEventDefinitions.forEach((event) => makeInitialStateEvent(state, event));
 }
@@ -1331,23 +1595,268 @@ function getJob(jobId) {
   return jobs.find((job) => job.id === jobId);
 }
 
+function getPromotionTitle(job, level) {
+  return level > 0 ? job.promotionPath[level - 1] : job.name;
+}
+
 function getJobTitle(state, job) {
-  if (state.promotionLevel > 0 && job.promotionTitles?.[state.promotionLevel - 1]) {
-    return job.promotionTitles[state.promotionLevel - 1];
-  }
-  const prefix = ["", "Senior ", "Lead "][state.promotionLevel];
-  return `${prefix}${job.name}`;
+  return getPromotionTitle(job, state.promotionLevel);
 }
 
 function getJobIncome(state, job) {
-  return Math.round(job.dailyIncome * (1 + state.promotionLevel * 0.25));
+  return Math.round(job.annualSalary * (1 + state.promotionLevel * 0.25));
 }
 
-function resetPromotionReview(state) {
-  state.promotionReviewDays = 0;
-  state.promotionShifts = 0;
-  state.promotionWellbeingDays = 0;
-  state.promotionPerformanceTotal = 0;
+function getNextPayday(day, job) {
+  if (job.payFrequency === "weekly") {
+    return day + (5 - getDate(day).getUTCDay() + 7) % 7;
+  }
+  if (job.payFrequency === "fortnightly") {
+    return day <= 5 ? 5 : 5 + Math.ceil((day - 5) / 14) * 14;
+  }
+  const date = getDate(day);
+  for (let offset = 0; offset < 2; offset += 1) {
+    const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset + 1, 0));
+    while (!job.workingDays.includes(last.getUTCDay())) last.setUTCDate(last.getUTCDate() - 1);
+    const payday = Math.round((last.getTime() - START_DATE) / DAY_MS) + 1;
+    if (payday >= day) return payday;
+  }
+  throw new Error(`Could not calculate payday for ${job.name}.`);
+}
+
+function getShiftGrossPence(state, job) {
+  const payday = getNextPayday(state.day, job);
+  let firstDay;
+  let lastDay;
+  let periods;
+  if (job.payFrequency === "monthly") {
+    const date = getDate(state.day);
+    firstDay = Math.round((Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) - START_DATE) / DAY_MS) + 1;
+    lastDay = Math.round((Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0) - START_DATE) / DAY_MS) + 1;
+    periods = 12;
+  } else {
+    lastDay = payday;
+    firstDay = payday - (job.payFrequency === "weekly" ? 6 : 13);
+    periods = job.payFrequency === "weekly" ? 52 : 26;
+  }
+  let shifts = 0;
+  for (let day = firstDay; day <= lastDay; day += 1) {
+    if (isWorkingDay(day, job)) shifts += job.workingHours.length;
+  }
+  return Math.round(getJobIncome(state, job) * 100 / periods / shifts);
+}
+
+function createEmployment(job) {
+  return {
+    expected: 0, worked: 0, missed: 0, excused: 0,
+    performance: 70, recentPerformance: 70, daysInRole: 0, reviewDays: 0,
+    credibility: 75, trust: 75, hrConcern: 0, hrResponse: 0, lastHrResponseDay: -7,
+    absenceDays: [], unsupportedAbsences: 0, questionableAbsences: 0,
+    feedback: "Your manager is getting to know your work.",
+    payroll: { jobId: job.id, title: job.name, grossPence: 0 },
+  };
+}
+
+function scheduleShifts(state, job, fromStage = "earlyMorning") {
+  const from = DAILY_STAGES.findIndex((stage) => stage.id === fromStage);
+  const stages = {};
+  if (isWorkingDay(state.day, job)) {
+    job.workingHours.forEach((stage) => {
+      if (DAILY_STAGES.findIndex((item) => item.id === stage) >= from) stages[stage] = "pending";
+    });
+  }
+  state.scheduledShifts = { day: state.day, jobId: job.id, stages };
+}
+
+function hasScheduledShift(state, stage = state.stage) {
+  return Boolean(state.jobId && state.scheduledShifts?.day === state.day
+    && state.scheduledShifts.jobId === state.jobId && state.scheduledShifts.stages[stage] === "pending");
+}
+
+function attendancePercent(employment) {
+  return employment.expected ? employment.worked / employment.expected * 100 : 100;
+}
+
+function describeRequirements(job) {
+  const requirements = (job.conditions?.all || []).map((condition) => {
+    if (condition.stat) return `${condition.stat} ${condition.min}+`;
+    if (condition.skill) return `${condition.skill} skill ${condition.min}+`;
+    if (condition.collection === "qualifications") return condition.includes;
+    return "";
+  }).filter(Boolean);
+  return requirements.length ? requirements.join(", ") : "No qualifications required";
+}
+
+function updatePerformance(state, job, missed = false) {
+  const employment = state.employment;
+  const stats = state.stats;
+  const jobStats = job.performanceStats.reduce((sum, stat) => sum + stats[stat], 0) / job.performanceStats.length;
+  const qualified = conditionsMatch(state, job.conditions);
+  const target = attendancePercent(employment) * 0.2 + (100 - stats.stress) * 0.15
+    + stats.confidence * 0.1 + stats.happiness * 0.1 + stats.health * 0.1
+    + stats.fitness * 0.1 + employment.recentPerformance * 0.05 + (qualified ? 10 : 0)
+    + employment.credibility * 0.05 + employment.trust * 0.05;
+  employment.recentPerformance += (jobStats - employment.recentPerformance) * 0.2;
+  const change = missed ? (target - employment.performance) * 0.1 - 3
+    : 0.3 + Math.max(0, target - employment.performance) * 0.1;
+  employment.performance = Math.max(0, Math.min(100, employment.performance + change));
+}
+
+function adjustEmployerValues(employment, { credibility = 0, trust = 0, concern = 0 } = {}) {
+  employment.credibility = Math.max(0, Math.min(100, employment.credibility + credibility));
+  employment.trust = Math.max(0, Math.min(100, employment.trust + trust));
+  employment.hrConcern = Math.max(0, Math.min(100, employment.hrConcern + concern));
+}
+
+function getHrConcernLabel(value) {
+  if (value <= 20) return "No Concern";
+  if (value <= 40) return "Monitor Attendance";
+  if (value <= 60) return "Manager Discussion";
+  if (value <= 80) return "HR Counselling";
+  return "Formal Process";
+}
+
+function reviewEmployerResponse(state) {
+  const employment = state.employment;
+  if (!employment) return;
+  const steps = [
+    { concern: 21, title: "Manager Check-In", message: "Your manager checks in and offers support." },
+    { concern: 41, title: "Attendance Discussion", message: "Your manager would like to discuss attendance." },
+    { concern: 61, title: "HR Support Meeting", message: "HR would like to discuss support and attendance." },
+    { concern: 81, title: "Verbal Warning", message: "Your employer issued a verbal warning." },
+    { concern: 85, title: "Written Warning", message: "Your employer issued a written warning." },
+    { concern: 90, title: "Final Warning", message: "Your employer issued a final warning." },
+    { concern: 95, title: "Dismissal", message: "Continued attendance concerns led to dismissal." },
+  ];
+  const next = steps[employment.hrResponse];
+  if (!next || employment.hrConcern < next.concern || state.day - employment.lastHrResponseDay < 7) return;
+  if (employment.hrResponse >= 3 && employment.missed < 2 && employment.questionableAbsences < 4) return;
+  employment.hrResponse += 1;
+  employment.lastHrResponseDay = state.day;
+  employment.feedback = next.message;
+  appendEvent(state, next.message);
+  recordSignificantEvent(state, next.message);
+  queueNotification(state, "negative", next.title.toUpperCase(), next.message);
+  if (next.title === "Dismissal") {
+    state.jobId = null;
+    state.scheduledShifts = null;
+    state.reportedAbsence = null;
+    state.employment = null;
+    state.promotionLevel = 0;
+    state.currentJobDays = 0;
+  }
+}
+
+function recordShift(state, stage, result, reason = "") {
+  const reported = result === "excused" && state.scheduledShifts?.day === state.day
+    && state.scheduledShifts.jobId === state.jobId && state.scheduledShifts.stages[stage] === "reported";
+  if (!hasScheduledShift(state, stage) && !reported) return;
+  const employment = state.employment;
+  const job = getJob(state.jobId);
+  state.scheduledShifts.stages[stage] = result;
+  if (result === "excused") {
+    employment.excused += 1;
+    const message = `${reason}: your absence from ${job.name} was recorded. This shift is unpaid.`;
+    appendEvent(state, message);
+    recordSignificantEvent(state, message);
+    queueNotification(state, "positive", "ABSENCE REPORTED", message);
+    return;
+  }
+  employment.expected += 1;
+  if (result === "worked") {
+    employment.worked += 1;
+    adjustEmployerValues(employment, { credibility: 1, trust: 2, concern: -1 });
+    updatePerformance(state, job);
+    return;
+  }
+  employment.missed += 1;
+  adjustEmployerValues(employment, {
+    credibility: -2, trust: -3,
+    concern: 8 + (attendancePercent(employment) < 80 ? 2 : 0) + (employment.credibility < 30 ? 2 : 0),
+  });
+  updatePerformance(state, job, true);
+  applyEffects(state, { stress: 3 });
+  const message = `Missed a scheduled ${job.name} shift without reporting an absence.`;
+  employment.feedback = "Your manager would like you to report absences when possible.";
+  appendEvent(state, message);
+  recordSignificantEvent(state, message);
+  queueNotification(state, "negative", "EMPLOYMENT", message);
+  reviewEmployerResponse(state);
+}
+
+function finishReportedAbsence(state, choice) {
+  const report = state.reportedAbsence;
+  if (!report || report.day !== state.day || report.stage !== state.stage || report.jobId !== state.jobId) return;
+  const employment = state.employment;
+  const reason = ABSENCE_REASONS.find((item) => item.id === report.reason);
+  const supported = Boolean(reason.supporting?.includes(choice.id));
+  const questionable = ["doctor", "dentist", "illness"].includes(reason.id)
+    && QUESTIONABLE_ABSENCE_ACTIONS.includes(choice.id);
+  recordShift(state, state.stage, "excused", reason.label);
+  state.reportedAbsence = null;
+
+  employment.absenceDays = employment.absenceDays.filter((day) => state.day - day < 28);
+  const newDay = !employment.absenceDays.includes(state.day);
+  if (newDay) employment.absenceDays.push(state.day);
+  if (supported) {
+    employment.unsupportedAbsences = 0;
+    adjustEmployerValues(employment, { credibility: 2, trust: 1, concern: -1 });
+    if (reason.evidence) {
+      applyCollections(state, { opportunities: [reason.evidence] });
+      appendEvent(state, `You received ${reason.evidence === "Medical Note" ? "a medical note" : "an appointment confirmation"}.`);
+    }
+  } else if (questionable) {
+    employment.unsupportedAbsences += 1;
+    employment.questionableAbsences += 1;
+    adjustEmployerValues(employment, { credibility: -3, trust: -1, concern: employment.credibility < 30 ? 6 : 4 });
+    employment.performance = Math.max(0, employment.performance - 0.5);
+    appendEvent(state, "Your employer may question whether your activity matched the reported absence.");
+  } else if (reason.supporting) {
+    employment.unsupportedAbsences += 1;
+    if (employment.unsupportedAbsences >= 3 && employment.hrConcern < 60) {
+      employment.hrConcern = Math.min(60, employment.hrConcern + 2);
+    }
+  }
+  if (newDay && employment.absenceDays.length >= 4 && employment.hrConcern < 40) {
+    employment.hrConcern = Math.min(40, employment.hrConcern + 2);
+  }
+  reviewEmployerResponse(state);
+}
+
+function settleSkippedShifts(state, nextStage) {
+  if (!state.scheduledShifts) return;
+  const current = DAILY_STAGES.findIndex((stage) => stage.id === state.stage);
+  const next = nextStage === null ? DAILY_STAGES.length : DAILY_STAGES.findIndex((stage) => stage.id === nextStage);
+  Object.keys(state.scheduledShifts.stages).forEach((stage) => {
+    const index = DAILY_STAGES.findIndex((item) => item.id === stage);
+    if (index >= current && index < next) recordShift(state, stage, "missed");
+  });
+}
+
+function processPaydays(state) {
+  state.payrollAccounts.forEach((account) => {
+    const job = getJob(account.jobId);
+    if (account.grossPence <= 0 || getNextPayday(state.day, job) !== state.day) return;
+    const gross = Math.round(account.grossPence / 100);
+    const periods = job.payFrequency === "weekly" ? 52 : job.payFrequency === "fortnightly" ? 26 : 12;
+    const taxable = Math.max(0, gross - 12570 / periods);
+    const tax = Math.round(taxable * 0.2);
+    const nationalInsurance = Math.round(taxable * 0.08);
+    const net = gross - tax - nationalInsurance;
+    applyEffects(state, { money: net }, { moneyCategory: "job" });
+    checkAchievements(state);
+    const lines = [account.title, `Gross Pay: ${formatMoney(gross)}`, `Tax: ${formatMoney(tax)}`,
+      `National Insurance: ${formatMoney(nationalInsurance)}`, `Net Pay: ${formatMoney(net)}`,
+      "Paid into your Current Account."];
+    state.reports.push({ title: "PAYDAY", day: state.day, lines });
+    const message = `${account.title} payday: ${formatMoney(net)} paid into your Current Account.`;
+    appendEvent(state, message);
+    recordSignificantEvent(state, message);
+    queueNotification(state, "positive", "PAYDAY", message);
+    account.grossPence = 0;
+  });
+  state.payrollAccounts = state.payrollAccounts.filter((account) => account.grossPence > 0
+    || account === state.employment?.payroll);
 }
 
 function gainSkills(state, gains = {}) {
@@ -1356,48 +1865,45 @@ function gainSkills(state, gains = {}) {
   });
 }
 
-function getPromotionChance(state, job) {
-  if (!state.promotionShifts) return 0;
-  const stats = state.stats;
-  const coreStats = ["health", "fitness", "energy", "hunger", "happiness", "confidence", "intelligence", "hygiene"];
-  const lowStats = coreStats.filter((stat) => stats[stat] < 40).length + (stats.stress > 60 ? 1 : 0);
-  const allGreen = coreStats.every((stat) => stats[stat] >= 80) && stats.stress <= 20;
-  const attendance = state.promotionShifts / state.promotionReviewDays;
-  const wellbeing = state.promotionWellbeingDays / state.promotionReviewDays;
-  const performance = state.promotionPerformanceTotal / state.promotionShifts;
-  const skill = state.skills[job.skill] || 0;
-  return Math.max(0, Math.min(90, Math.round(5 + attendance * 20 + wellbeing * 15
-    + performance * 0.25 + Math.min(skill, 30) * 0.5 + (allGreen ? 10 : 0) - lowStats * 4)));
-}
-
-function reviewPromotion(state, job, random) {
-  state.promotionReviewDays += 1;
-  if (state.stats.health >= 60 && state.stats.hunger >= 50 && state.stats.hygiene >= 50
-    && state.stats.happiness >= 50 && state.stats.energy >= 40 && state.stats.stress <= 60) {
-    state.promotionWellbeingDays += 1;
+function reviewPromotion(state, job) {
+  const employment = state.employment;
+  employment.reviewDays += 1;
+  if (employment.reviewDays < PROMOTION_REVIEW_DAYS) return;
+  employment.reviewDays = 0;
+  const requirement = job.promotionRequirements;
+  if (state.promotionLevel < 2 && employment.expected > 0
+    && employment.daysInRole > requirement.days && attendancePercent(employment) > requirement.attendance
+    && employment.performance > requirement.performance && (state.skills[job.skill] || 0) >= requirement.skill
+    && employment.trust >= 40 && employment.credibility >= 40 && employment.hrConcern <= 60
+    && conditionsMatch(state, job.conditions)) {
+    state.promotionLevel += 1;
+    employment.daysInRole = 0;
+    employment.feedback = "Excellent progress; your performance earned a promotion.";
+    const title = getJobTitle(state, job);
+    employment.payroll.title = title;
+    const message = `Promoted to ${title}! Annual salary is now ${formatMoney(getJobIncome(state, job))}.`;
+    appendEvent(state, message);
+    state.weekly.promotions.push(title);
+    recordSignificantEvent(state, message);
+    queueNotification(state, "positive", "PROMOTION", message);
+  } else {
+    employment.feedback = employment.hrConcern > 40 ? "Your employer would like to discuss attendance and support."
+      : employment.trust < 40 || employment.credibility < 40 ? "Your manager would like to rebuild trust."
+        : attendancePercent(employment) < 90 ? "Attendance needs improvement."
+      : employment.performance >= 75 ? "Reliable team member with good future potential."
+        : "Keep building your skills and looking after your wellbeing.";
   }
-  if (state.promotionReviewDays < PROMOTION_REVIEW_DAYS) return;
-  if (state.promotionLevel < 2) {
-    const chance = getPromotionChance(state, job);
-    if (random() * 100 < chance) {
-      state.promotionLevel += 1;
-      appendEvent(state, `Promoted to ${getJobTitle(state, job)}! Pay is now £${getJobIncome(state, job)} per shift.`);
-    } else {
-      appendEvent(state, state.promotionShifts
-        ? `Promotion review: no promotion this time (${chance}% chance). Attendance, wellbeing and ${job.skill} skill affect your prospects.`
-        : "Promotion review: work shifts to become eligible for promotion.");
-    }
-  }
-  resetPromotionReview(state);
 }
 
 function isActivityAvailable(state, activity) {
   return isChoiceInStage(activity, state.stage)
+    && (!hasScheduledShift(state) || ["work-shift", "unpaid-leave"].includes(activity.id))
     && (!activity.requiresJob || Boolean(state.jobId))
     && (!activity.requiresUnemployed || !state.jobId)
     && (!activity.requiresWorkToday || (state.workedToday && state.workedJobIdToday === state.jobId))
-    && (!activity.id || activity.id !== "work-shift" || !state.workedToday)
-    && (activity.id !== "work-overtime" || !state.overtimeWorkedToday);
+    && (!["work-shift", "unpaid-leave"].includes(activity.id) || hasScheduledShift(state))
+    && (activity.id !== "work-overtime" || (!state.overtimeWorkedToday
+      && state.scheduledShifts?.stages[state.stage] === undefined));
 }
 
 function isChoiceInStage(choice, stage) {
@@ -1423,9 +1929,6 @@ function getGameOver(state) {
   }
   if (state.stats.happiness <= 0) {
     return { title: "LIFE ENDED", description: "You have lost all motivation to continue." };
-  }
-  if (state.stats.money <= -500) {
-    return { title: "LIFE ENDED", description: "Debt has overwhelmed your life." };
   }
   return null;
 }
@@ -1465,7 +1968,35 @@ function getAchievements(state) {
   return achievements.length ? achievements : ["No major achievements recorded"];
 }
 
+function finishEmploymentDay(state) {
+  if (!state.jobId || state.currentJobCountedDay === state.day) return;
+  const job = getJob(state.jobId);
+  state.currentJobDays += 1;
+  state.employment.daysInRole += 1;
+  state.currentJobCountedDay = state.day;
+  const strain = [state.stats.stress >= 80, state.stats.health < 30, state.stats.fitness < 20,
+    state.stats.happiness < 20, state.stats.energy < 20].filter(Boolean).length;
+  state.employment.performance = Math.max(0, state.employment.performance - Math.min(1.5, strain * 0.5));
+  reviewEmployerResponse(state);
+  if (!state.employment) return;
+  if (state.currentJobDays > state.longestJobDays) {
+    state.longestJobDays = state.currentJobDays;
+    state.longestJobName = getJobTitle(state, job);
+  }
+  reviewPromotion(state, job);
+}
+
 function finishDay(state, random) {
+  accrueDailyBills(state);
+  updateResponsibilities(state);
+  if ((state.stats.money < 0 || state.arrears > 0) && state.day % 7 === 0) {
+    const debt = Math.max(0, -state.stats.money) + state.arrears;
+    applyEffects(state, { stress: debt > 250 ? 3 : 1 });
+    appendEvent(state, debt > 250
+      ? "Your debt is creating serious financial pressure."
+      : "Your overdraft is a manageable but ongoing concern.");
+  }
+  finishEmploymentDay(state);
   applyEffects(state, { hygiene: -10 });
   appendEvent(state, "Daily hygiene declined by 10.");
 
@@ -1552,20 +2083,23 @@ function finishDay(state, random) {
   }
 
   dailyRiskEvents.forEach((event) => {
-    const interval = Math.floor((state.day - 1) / DIFFICULTY_INTERVAL);
+    const date = getDate(state.day);
+    const monthKey = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
     const eventKey = event.repeat === "once"
       ? event.id
       : event.repeat === "monthly"
-        ? `${event.id}:${interval}`
+        ? `${event.id}:${monthKey}`
         : `${event.id}:${state.day}`;
     if (state.firedStateEvents.has(eventKey) || !conditionsMatch(state, event.conditions)) return;
     if (random() >= getProgressiveChance(event, state)) return;
     state.firedStateEvents.add(eventKey);
     applyEffects(state, event.effects);
+    if (event.electricityBill) state.monthly.electricity += event.electricityBill;
     if (event.rentIncrease) {
       state.rentSurcharge += event.rentIncrease;
     }
     appendEvent(state, event.message);
+    recordSignificantEvent(state, event.message);
     queueNotification(state, "negative", "NEGATIVE EVENT", event.message);
   });
   const isHealthyDay = state.stats.health >= 60
@@ -1577,16 +2111,18 @@ function finishDay(state, random) {
   checkAchievements(state);
   if (applyGameOver(state)) return;
 
-  if (state.jobId && state.currentJobCountedDay !== state.day) {
-    state.currentJobDays += 1;
-    state.currentJobCountedDay = state.day;
-    if (state.currentJobDays > state.longestJobDays) {
-      state.longestJobDays = state.currentJobDays;
-      state.longestJobName = getJobTitle(state, getJob(state.jobId));
-    }
-    reviewPromotion(state, getJob(state.jobId), random);
-  }
   state.daysSurvived += 1;
+
+  processPaydays(state);
+  const date = getDate(state.day);
+  const nextDate = getDate(state.day + 1);
+  const isMonthEnd = date.getUTCMonth() !== nextDate.getUTCMonth();
+  const monthlyReport = isMonthEnd || state.day === YEAR_LENGTH ? makeMonthlyReport(state) : null;
+  if ((date.getUTCDay() === 0 && state.weekReflectedDay !== state.day) || state.day === YEAR_LENGTH) {
+    state.reports.push(makeWeeklyReport(state));
+    state.weekReflectedDay = state.day;
+  }
+  if (monthlyReport) state.reports.push(monthlyReport);
 
   if (state.day === YEAR_LENGTH) {
     state.yearComplete = true;
@@ -1598,6 +2134,8 @@ function finishDay(state, random) {
   state.stage = "earlyMorning";
   state.workedToday = false;
   state.workedJobIdToday = null;
+  if (state.jobId) scheduleShifts(state, getJob(state.jobId));
+  else state.scheduledShifts = null;
   state.selfCareToday = false;
   state.overtimeWorkedToday = false;
   state.stayedInBedToday = false;
@@ -1605,9 +2143,6 @@ function finishDay(state, random) {
   state.skippedMealsToday = 0;
   state.skippedDinnerToday = false;
   applyPeriodHunger(state, "Morning");
-  const livingCost = getDailyLivingCost(state);
-  applyEffects(state, { money: -livingCost });
-  appendEvent(state, `Daily living costs: −£${livingCost}.`);
   if (state.nextDayEnergy !== 0) {
     applyEffects(state, { energy: state.nextDayEnergy });
     appendEvent(state, `You felt the effects of last night's sleep. Energy ${state.nextDayEnergy > 0 ? "+" : "−"}${Math.abs(state.nextDayEnergy)}.`);
@@ -1618,28 +2153,30 @@ function finishDay(state, random) {
 
 function advanceStage(state, random, endsDay = false) {
   if (state.stage === "night" || endsDay) {
+    settleSkippedShifts(state, null);
     if (endsDay) state.stage = "night";
     finishDay(state, random);
     return;
   }
+  let nextStage;
   if (state.stage === "earlyMorning" && state.stayedInBedToday) {
-    state.stage = "daytimeRoutine";
-    applyPeriodHunger(state, "Daytime");
-    return;
-  }
-  if (state.selfCareToday && state.stage === "morningRoutine") {
-    applyPeriodHunger(state, "Daytime");
-    state.stage = "daytimeRoutine";
-    return;
-  }
-  if (state.selfCareToday && state.stage === "daytimeRoutine") {
-    state.stage = "eveningRoutine";
-    applyPeriodHunger(state, "Evening");
-    return;
+    nextStage = DAILY_STAGES.find((stage) => stage.id === "daytimeRoutine");
+  } else if (state.selfCareToday && state.stage === "morningRoutine") {
+    nextStage = DAILY_STAGES.find((stage) => stage.id === "daytimeRoutine");
+  } else if (state.selfCareToday && state.stage === "daytimeRoutine") {
+    nextStage = DAILY_STAGES.find((stage) => stage.id === "eveningRoutine");
+  } else {
+    const index = DAILY_STAGES.findIndex((stage) => stage.id === state.stage);
+    nextStage = DAILY_STAGES[index + 1];
   }
   const stageIndex = DAILY_STAGES.findIndex((stage) => stage.id === state.stage);
   const currentPeriod = DAILY_STAGES[stageIndex].period;
-  const nextStage = DAILY_STAGES[stageIndex + 1];
+  settleSkippedShifts(state, nextStage.id);
+  const job = getJob(state.jobId);
+  if (job && DAILY_STAGES.findIndex((stage) => stage.id === nextStage.id)
+    > Math.max(...job.workingHours.map((id) => DAILY_STAGES.findIndex((stage) => stage.id === id)))) {
+    finishEmploymentDay(state);
+  }
   state.stage = nextStage.id;
   if (nextStage.period !== currentPeriod) {
     applyPeriodHunger(state, nextStage.period);
@@ -1669,19 +2206,22 @@ function resolveWorkShift(state) {
   if (!job) {
     return;
   }
-  const performance = job.performanceStats.reduce((sum, stat) => sum + state.stats[stat], 0) / job.performanceStats.length;
-  state.promotionPerformanceTotal += performance * getWorkPerformance(state);
-  state.promotionShifts += 1;
   gainSkills(state, { [job.skill]: 1 });
-  applyEffects(state, job.shiftEffects);
-  applyEffects(state, { energy: -job.energyCost });
+  const shiftEffects = Object.fromEntries(Object.entries(job.shiftEffects).map(([stat, value]) => [
+    stat, Math.sign(value) * Math.ceil(Math.abs(value) / job.workingHours.length),
+  ]));
+  applyEffects(state, shiftEffects);
+  applyEffects(state, { energy: -Math.ceil(job.energyCost / job.workingHours.length) });
   const stressGain = getWorkStressGain(state, job.stressCost);
   applyEffects(state, { stress: stressGain });
-  const earnings = Math.round(getJobIncome(state, job) * getWorkPerformance(state));
-  applyEffects(state, { money: earnings });
+  const gross = getShiftGrossPence(state, job);
+  state.employment.payroll.grossPence += gross;
+  state.employment.payroll.title = getJobTitle(state, job);
+  recordShift(state, state.stage, "worked");
   state.workedToday = true;
   state.workedJobIdToday = job.id;
-  appendEvent(state, `${getJobTitle(state, job)} shift complete. You earned £${earnings} for the day.`);
+  if (state.stage === "night") state.needsDaySleep = true;
+  appendEvent(state, `${getJobTitle(state, job)} shift complete. Wages will be paid on payday.`);
 }
 
 function resolveOvertime(state) {
@@ -1689,12 +2229,13 @@ function resolveOvertime(state) {
   if (!job) {
     return;
   }
-  const overtimePay = Math.round(getJobIncome(state, job) * 0.5 * getWorkPerformance(state));
+  const overtimePay = Math.round(getShiftGrossPence(state, job) * 1.5);
   applyEffects(state, { energy: -(job.energyCost + 8) });
   applyEffects(state, { stress: getWorkStressGain(state, job.stressCost + 2) });
-  applyEffects(state, { money: overtimePay });
+  state.employment.payroll.grossPence += overtimePay;
+  state.employment.payroll.title = getJobTitle(state, job);
   state.overtimeWorkedToday = true;
-  appendEvent(state, `You earned an extra £${overtimePay} for working overtime.`);
+  appendEvent(state, "You earned extra wages for working overtime; they will be paid on payday.");
 }
 
 const activityResolvers = {
@@ -1726,6 +2267,8 @@ function resolveRandomEncounter(state, activity, random, lowEnergyExercise = fal
       applyEffects(state, event.effects);
       applyCollections(state, event.addTo);
       appendEvent(state, event.message);
+      recordSignificantEvent(state, event.message);
+      if (event.id === "rare-gym-membership") state.monthly.freeGym = true;
       if (event.rare) {
         addRareEvent(state, event);
       }
@@ -1839,6 +2382,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
   const offerCopy = app.querySelector("[data-game-job-offer-copy]");
   const offerActions = app.querySelector("[data-game-offer-actions]");
   const statsContainer = app.querySelector("[data-game-stats]");
+  const bankingStatus = app.querySelector("[data-game-banking]");
   const warningsContainer = app.querySelector("[data-game-warnings]");
   const jobStatus = app.querySelector("[data-game-employment]");
   const quitJobButton = app.querySelector("[data-life-sim-action='quit-job']");
@@ -1892,11 +2436,28 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
   function renderChoices() {
     actionContainer.replaceChildren();
     offerActions.replaceChildren();
-    offerPanel.hidden = gameState.pendingJobOfferId === null;
+    offerPanel.hidden = gameState.pendingJobOfferId === null || gameState.reports.length > 0;
+
+    if (gameState.reports.length) {
+      choicesHeading.textContent = gameState.reports[0].title;
+      choicesHint.textContent = "Take a moment to reflect before continuing.";
+      actionContainer.append(makeButton("Continue", "Return to your life.", "continue-report"));
+      return;
+    }
+
+    if (gameState.pendingAbsence) {
+      choicesHeading.textContent = "Report an absence";
+      choicesHint.textContent = "Choose a reason. This shift is unpaid and does not count against attendance.";
+      ABSENCE_REASONS.forEach((reason, index) => {
+        actionContainer.append(makeButton(reason.label, "Report this reason for the current shift.", `absence-${index}`));
+      });
+      actionContainer.append(makeButton("Cancel", "Return to your choices.", "cancel-absence"));
+      return;
+    }
 
     if (gameState.pendingJobOfferId !== null) {
       const job = getJob(gameState.pendingJobOfferId);
-      offerCopy.textContent = `${job.name} · £${job.dailyIncome} per shift · Energy −${job.energyCost} · Stress +${job.stressCost}. ${job.description}`;
+      offerCopy.textContent = `${job.name} · ${formatMoney(job.annualSalary)}/year · ${job.payFrequency} pay · ${formatSchedule(job)} · ${job.workingHours.map((id) => DAILY_STAGES.find((stage) => stage.id === id).label).join(" and ")} · Stress ${job.stressCost}. Requirements: ${describeRequirements(job)}. ${job.description}`;
       offerActions.append(
         makeButton("Accept offer", "Accept this job offer.", "accept-job", "offer"),
         makeButton("Decline", "Keep looking for another opportunity.", "decline-job", "offer"),
@@ -1930,29 +2491,40 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
 
     let choices = [];
     if (gameState.stage === "earlyMorning") {
-      choices = earlyMorningChoices;
+      choices = earlyMorningChoices.filter((choice) => choice.id !== "sleep-after-night-shift" || gameState.needsDaySleep);
     } else {
       choices = getStageActivities(gameState);
     }
+    if (hasScheduledShift(gameState)) {
+      choices = choices.filter((choice) => ["work-shift", "unpaid-leave"].includes(choice.id));
+      choicesHint.textContent = "Your employer expects you today. Attend work or report an absence.";
+    }
+    choices.sort((a, b) => Number(b.id === "work-shift") - Number(a.id === "work-shift"));
 
     choices.forEach((choice) => {
+      if (["work-shift", "unpaid-leave"].includes(choice.id) && !hasScheduledShift(gameState)) return;
+      if (choice.id === "work-overtime" && gameState.scheduledShifts?.stages[gameState.stage] !== undefined) return;
       let description = choice.description;
-      const unavailable = stage.type !== "choice" && !isActivityAvailable(gameState, choice);
+      const unavailable = gameState.stage !== "earlyMorning" && !isActivityAvailable(gameState, choice);
       if (choice.id === "look-for-work" && gameState.jobId) {
         description = "You already have a job.";
       } else if (choice.id === "work-shift" || choice.id === "work-overtime") {
         const job = getJob(gameState.jobId);
         if (!job) {
           description = "Apply for a role with Look for Work before taking a shift.";
-        } else if (choice.id === "work-shift" && gameState.workedToday) {
-          description = "You have already worked your shift today.";
         } else if (choice.id === "work-overtime"
           && (!gameState.workedToday || gameState.workedJobIdToday !== gameState.jobId)) {
           description = "Work a regular shift for this job today to unlock overtime.";
         }
       }
-      if (!unavailable && choice.cost > gameState.stats.money) {
-        description += " Not enough money.";
+      if (choice.id === "sleep-early" && hasScheduledShift(gameState, "night")) {
+        description += " Your scheduled Night shift will be missed.";
+      }
+      if (choice.id === "stay-in-bed" && hasScheduledShift(gameState, "morningActivity")) {
+        description += " Your scheduled Morning shift will be missed.";
+      }
+      if (!unavailable && choice.cost > gameState.stats.money + OVERDRAFT_LIMIT) {
+        description += " Not enough available funds.";
       }
       const phaseMeal = PHASE_MEALS[gameState.stage];
       if (phaseMeal && choice.meal !== phaseMeal) {
@@ -1966,7 +2538,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
           description,
           choice.id,
           stage.type,
-          unavailable || choice.cost > gameState.stats.money,
+          unavailable || choice.cost > gameState.stats.money + OVERDRAFT_LIMIT,
         ),
       );
     });
@@ -2032,14 +2604,14 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
 
   function render() {
     const stage = DAILY_STAGES.find((item) => item.id === gameState.stage);
+    const report = gameState.reports[0];
     const period = gameState.yearComplete ? "Year complete" : stage.period;
     const presentation = PERIOD_PRESENTATION[period];
-    dayLabel.textContent = gameState.yearComplete
-      ? `Day ${YEAR_LENGTH} of ${YEAR_LENGTH}`
-      : `Day ${gameState.day} of ${YEAR_LENGTH}`;
+    const displayDay = report ? report.day : gameState.day;
+    dayLabel.textContent = `Day ${displayDay} of ${YEAR_LENGTH} · ${formatDate(displayDay)} · Age ${gameState.age}`;
     periodLabel.textContent = period;
     periodIcon.textContent = presentation?.icon || "✦";
-    phaseLabel.textContent = gameState.yearComplete ? "Year complete" : stage.label;
+    phaseLabel.textContent = report ? report.title : gameState.yearComplete ? "Year complete" : stage.label;
     periodDisplay.dataset.period = period.toLowerCase();
     app.dataset.period = period.toLowerCase();
     if (presentation) {
@@ -2079,16 +2651,23 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
         item.append(name, detail);
         return item;
       }));
+    } else if (report) {
+      sceneTitle.textContent = report.title;
+      sceneCopy.textContent = report.lines.join("\n");
     } else if (gameState.yearComplete) {
       sceneTitle.textContent = "A year of your life";
-      sceneCopy.textContent = `You reached the end of the year with ${formatMoney(gameState.stats.money)}, ${gameState.collections.relationships.length} connections, and ${gameState.collections.qualifications.length} qualification${gameState.collections.qualifications.length === 1 ? "" : "s"}. Your choices shaped the journey.`;
+      const unpaid = gameState.payrollAccounts.reduce((total, account) => total + account.grossPence, 0);
+      sceneCopy.textContent = `You reached the end of the year with ${formatMoney(gameState.stats.money)}, ${gameState.collections.relationships.length} connections, and ${gameState.collections.qualifications.length} qualification${gameState.collections.qualifications.length === 1 ? "" : "s"}.${unpaid ? ` ${formatMoney(Math.round(unpaid / 100))} in gross wages is awaiting payday.` : ""} Your choices shaped the journey.`;
     } else if (gameState.stage === "earlyMorning" && gameState.day === 1) {
       sceneTitle.textContent = "Day 1 · A new morning";
       sceneCopy.textContent = "The alarm sounds as the first light comes through the curtains. Decide whether to get up or rest a little longer.";
     } else {
       sceneTitle.textContent = `${stage.label} · Day ${gameState.day}`;
-      sceneCopy.textContent = "Your choices shape your routine, relationships, and the opportunities that follow.";
+      sceneCopy.textContent = [0, 6].includes(getDate(gameState.day).getUTCDay())
+        ? "It's the weekend. Your work schedule and choices shape how you spend it."
+        : "Your choices shape your routine, relationships, and the opportunities that follow.";
     }
+    sceneCopy.style.whiteSpace = report ? "pre-line" : "";
 
     renderChoices();
     const warnings = [
@@ -2114,14 +2693,39 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       }
       updateStat(item, definition, gameState.stats[definition.id]);
     });
+    bankingStatus.textContent = `Overdraft limit: −£${OVERDRAFT_LIMIT} · Available: ${formatMoney(gameState.stats.money + OVERDRAFT_LIMIT)}${gameState.arrears ? ` · Unpaid bills: ${formatMoney(gameState.arrears)}` : ""}`;
     renderRareEvents();
     renderAchievements();
 
     const job = getJob(gameState.jobId);
-    jobStatus.textContent = job
-      ? `${getJobTitle(gameState, job)} · £${getJobIncome(gameState, job)} per shift · Energy −${job.energyCost} · Stress +${job.stressCost} · ${job.skill} skill ${gameState.skills[job.skill] || 0}${gameState.promotionLevel < 2 ? ` · Review in ${PROMOTION_REVIEW_DAYS - gameState.promotionReviewDays} day(s)` : " · Highest promotion"}`
-      : "Looking for work · Apply during Morning or Daytime Activity.";
-    quitJobButton.hidden = !job || gameState.yearComplete || Boolean(gameState.gameOver);
+    const pendingWages = gameState.payrollAccounts.filter((account) => account.grossPence > 0).map((account) => (
+      `${account.title}: ${formatMoney(Math.round(account.grossPence / 100))} gross due ${formatDate(getNextPayday(gameState.day, getJob(account.jobId)))}`
+    ));
+    if (job) {
+      const employment = gameState.employment;
+      const rating = employment.performance >= 85 ? "Excellent" : employment.performance >= 75 ? "Strong"
+        : employment.performance >= 55 ? "Developing" : "Needs improvement";
+      const req = job.promotionRequirements;
+      jobStatus.textContent = [
+        `${getJobTitle(gameState, job)} · ${formatMoney(getJobIncome(gameState, job))}/year`,
+        `${formatSchedule(job)} · ${job.workingHours.map((id) => DAILY_STAGES.find((stage) => stage.id === id).label).join(" + ")} · ${isWorkingDay(gameState.day, job) ? "Working day" : "Day off"} · Stress ${job.stressCost}`,
+        `Pay: ${job.payFrequency} · Next payday: ${formatDate(getNextPayday(gameState.day, job))}`,
+        ...(pendingWages.length ? [`Pending wages: ${pendingWages.join("; ")}`] : []),
+        `Attendance: ${employment.expected ? `${Math.round(attendancePercent(employment))}%` : "No shifts yet"} (${employment.worked}/${employment.expected}; ${employment.missed} missed, ${employment.excused} excused)`,
+        `Performance: ${rating}`,
+        `Employer trust: ${employment.trust >= 75 ? "Strong" : employment.trust >= 40 ? "Developing" : "Needs rebuilding"} · Credibility: ${employment.credibility >= 75 ? "Strong" : employment.credibility >= 40 ? "Fair" : "Needs rebuilding"} · HR: ${getHrConcernLabel(employment.hrConcern)}`,
+        gameState.promotionLevel < 2
+          ? `Next: ${getPromotionTitle(job, gameState.promotionLevel + 1)} · ${employment.daysInRole}/${req.days + 1} days · ${job.skill} ${gameState.skills[job.skill] || 0}/${req.skill} · attendance >${req.attendance}% · performance >${req.performance}%`
+          : "Promotion: highest level",
+        `Requirements: ${describeRequirements(job)}`,
+        `Manager feedback: ${employment.feedback}`,
+      ].join("\n");
+    } else {
+      jobStatus.textContent = `Looking for work · Apply during Morning or Daytime Activity.${pendingWages.length ? `\nPending wages: ${pendingWages.join("; ")}` : ""}`;
+    }
+    jobStatus.style.whiteSpace = "pre-line";
+    quitJobButton.hidden = !job || gameState.yearComplete || Boolean(gameState.gameOver)
+      || Boolean(report) || gameState.pendingAbsence;
 
     const collectionEntries = [
       ["Qualifications", gameState.collections.qualifications],
@@ -2172,7 +2776,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       }
     }
 
-    if (!choice || (choice.cost !== undefined && choice.cost > gameState.stats.money)) {
+    if (!choice || (choice.cost !== undefined && choice.cost > gameState.stats.money + OVERDRAFT_LIMIT)) {
       return false;
     }
 
@@ -2180,7 +2784,10 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     const effects = getChoiceEffects(gameState, choice);
     const strain = getHealthStrain(gameState);
     if (choice.endsDay) applyPeriodHunger(gameState, "Night");
-    applyEffects(gameState, effects, { sleep: choice.endsDay || gameState.stage === "night" });
+    applyEffects(gameState, effects, { sleep: choice.endsDay || gameState.stage === "night"
+      || choice.id === "sleep-after-night-shift" });
+    recordChoiceUsage(gameState, choice);
+    finishReportedAbsence(gameState, choice);
     if (PHASE_MEALS[gameState.stage] && choice.meal !== PHASE_MEALS[gameState.stage]) {
       gameState.skippedMealsToday += 1;
       if (gameState.stage === "eveningRoutine") {
@@ -2190,10 +2797,11 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       gameState.skippedMealsToday -= 1;
       gameState.skippedDinnerToday = false;
     }
-    if (choice.id === "stay-in-bed") {
+    if (choice.id === "stay-in-bed" || choice.id === "sleep-after-night-shift") {
       gameState.stayedInBedToday = true;
       gameState.skippedMealsToday += 1;
     }
+    if (gameState.stage === "earlyMorning") gameState.needsDaySleep = false;
     if (choice.selfCareDay) {
       gameState.selfCareToday = true;
     }
@@ -2230,8 +2838,13 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     if (applyGameOver(gameState)) {
       return true;
     }
+    if (gameState.stage === "eveningActivity" && !choice.endsDay && getDate(gameState.day).getUTCDay() === 0) {
+      gameState.reports.push(makeWeeklyReport(gameState));
+      gameState.weekReflectedDay = gameState.day;
+    }
     advanceStage(gameState, random, choice.endsDay);
     processStateEvents(gameState);
+    applyGameOver(gameState);
     return true;
   }
 
@@ -2239,12 +2852,15 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     if (action === "accept-job" && gameState.pendingJobOfferId) {
       const job = getJob(gameState.pendingJobOfferId);
       gameState.jobId = job.id;
+      gameState.employment = createEmployment(job);
+      gameState.payrollAccounts.push(gameState.employment.payroll);
+      scheduleShifts(gameState, job, gameState.stage);
       gameState.currentJobDays = 0;
       gameState.currentJobCountedDay = gameState.day - 1;
       gameState.promotionLevel = 0;
-      resetPromotionReview(gameState);
       gameState.pendingJobOfferId = null;
       appendEvent(gameState, `You accepted the ${job.name} offer.`);
+      recordSignificantEvent(gameState, `Accepted a ${job.name} job offer.`);
       checkAchievements(gameState);
       return true;
     }
@@ -2267,13 +2883,6 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     }
 
     const { lifeSimAction: action, lifeSimKind: kind } = button.dataset;
-    if (kind === "offer") {
-      if (resolveJobOffer(action)) {
-        processStateEvents(gameState);
-        render();
-      }
-      return;
-    }
     if (action === "restart-year") {
       gameState = createInitialState();
       notificationsContainer.replaceChildren();
@@ -2283,13 +2892,50 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
       render();
       return;
     }
+    if (gameState.reports.length) {
+      if (action === "continue-report") {
+        gameState.reports.shift();
+        render();
+      }
+      return;
+    }
+    if (gameState.pendingAbsence) {
+      if (action === "cancel-absence") {
+        gameState.pendingAbsence = false;
+        render();
+      } else if (action.startsWith("absence-")) {
+        const index = Number(action.slice("absence-".length));
+        const reason = ABSENCE_REASONS[index];
+        if (reason && hasScheduledShift(gameState)) {
+          gameState.pendingAbsence = false;
+          gameState.scheduledShifts.stages[gameState.stage] = "reported";
+          gameState.reportedAbsence = { day: gameState.day, stage: gameState.stage, jobId: gameState.jobId, reason: reason.id };
+          render();
+        }
+      }
+      return;
+    }
+    if (kind === "offer") {
+      if (resolveJobOffer(action)) {
+        processStateEvents(gameState);
+        render();
+      }
+      return;
+    }
     if (action === "quit-job" && gameState.jobId && !gameState.gameOver && !gameState.yearComplete) {
       const job = getJob(gameState.jobId);
       appendEvent(gameState, `You quit your job as ${getJobTitle(gameState, job)} and are looking for work again.`);
       gameState.jobId = null;
+      gameState.scheduledShifts = null;
+      gameState.reportedAbsence = null;
+      gameState.employment = null;
       gameState.promotionLevel = 0;
       gameState.currentJobDays = 0;
-      resetPromotionReview(gameState);
+      render();
+      return;
+    }
+    if (action === "unpaid-leave" && hasScheduledShift(gameState)) {
+      gameState.pendingAbsence = true;
       render();
       return;
     }

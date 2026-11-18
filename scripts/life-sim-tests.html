@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Life sim regression tests</title></head>
+<body>
+  <h1>Life sim regression tests</h1>
+  <pre id="results">Running…</pre>
+  <div id="fixtures" hidden></div>
+  <script type="module">
+    const results = document.querySelector("#results");
+    const fixtures = document.querySelector("#fixtures");
+    const urls = [];
+    const assert = (condition, message) => {
+      if (!condition) throw new Error(message);
+    };
+
+    try {
+      const [sourceResponse, htmlResponse] = await Promise.all([
+        fetch("../games/life-sim.js"),
+        fetch("../index.html"),
+      ]);
+      if (!sourceResponse.ok || !htmlResponse.ok) throw new Error("Could not load the game or its markup.");
+      const source = await sourceResponse.text();
+      const template = new DOMParser().parseFromString(await htmlResponse.text(), "text/html")
+        .querySelector("[data-life-sim-root]");
+      if (!template) throw new Error("Life sim markup is missing.");
+
+      async function loadModule(code) {
+        const url = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+        urls.push(url);
+        return import(url);
+      }
+
+      const game = await loadModule(`${source}
+        export { createInitialState, formatDate, getJob, getActivity, isWorkingDay,
+          isActivityAvailable, applyEffects, accrueDailyBills, recordChoiceUsage,
+          makeMonthlyReport, makeWeeklyReport, updateResponsibilities, finishDay, resolveWorkShift,
+          createEmployment, scheduleShifts, recordShift, finishReportedAbsence, reviewEmployerResponse,
+          reviewPromotion, processPaydays, getNextPayday, getHrConcernLabel, ABSENCE_REASONS,
+          getShiftGrossPence };`);
+
+      function employ(state, jobId) {
+        const job = game.getJob(jobId);
+        state.jobId = jobId;
+        state.employment = game.createEmployment(job);
+        state.payrollAccounts.push(state.employment.payroll);
+        game.scheduleShifts(state, job, state.stage);
+      }
+
+      async function mount(initialise = "") {
+        const code = source.replace("let gameState = createInitialState();",
+          `let gameState = createInitialState(); ${initialise} window.__lifeSimTestState = gameState;`);
+        const module = await loadModule(code);
+        const root = template.cloneNode(true);
+        fixtures.append(root);
+        module.mountLifeSim(root, { random: () => 0.99 });
+        return { root, state: window.__lifeSimTestState };
+      }
+
+      function click(root, action) {
+        const button = root.querySelector(`[data-life-sim-action="${action}"]`);
+        assert(button && !button.disabled, `Missing or disabled action: ${action}`);
+        button.click();
+      }
+
+      const tests = [
+        ["Calendar and job schedules", () => {
+          assert(game.formatDate(1) === "Monday 4 January 2027", "Incorrect starting date");
+          assert(game.formatDate(28) === "Sunday 31 January 2027", "Incorrect month end");
+          assert(game.formatDate(365) === "Monday 3 January 2028", "Incorrect final date");
+          const office = game.getJob("office-junior");
+          const retail = game.getJob("retail-assistant");
+          const care = game.getJob("care-assistant");
+          assert(game.isWorkingDay(1, office) && !game.isWorkingDay(6, office), "Office schedule");
+          assert(!game.isWorkingDay(4, retail) && game.isWorkingDay(6, retail), "Retail schedule");
+          assert(!game.isWorkingDay(3, care) && game.isWorkingDay(6, care)
+            && !game.isWorkingDay(7, care), "Care schedule");
+          assert(game.isWorkingDay(7, game.getJob("cafe-assistant")), "Sunday shift");
+          const state = game.createInitialState();
+          state.jobId = office.id;
+          state.stage = "morningActivity";
+          state.day = 6;
+          employ(state, office.id);
+          assert(!game.isActivityAvailable(state, game.getActivity("work-shift")), "Work on a day off");
+          state.day = 5;
+          game.scheduleShifts(state, office, state.stage);
+          assert(game.isActivityAvailable(state, game.getActivity("work-shift")), "Scheduled work missing");
+          assert(!game.isActivityAvailable(state, game.getActivity("take-stroll")), "Scheduled work did not block other activities");
+        }],
+        ["Attendance and deferred pay", () => {
+          const state = game.createInitialState();
+          state.stage = "morningActivity";
+          employ(state, "retail-assistant");
+          const balance = state.stats.money;
+          const performance = state.employment.performance;
+          game.resolveWorkShift(state);
+          assert(state.stats.money === balance && state.employment.worked === 1
+            && state.employment.payroll.grossPence > 0, "Shift did not accrue unpaid wages");
+          assert(state.employment.trust > 75 && state.employment.credibility > 75
+            && state.employment.performance > performance && state.skills.service === 1,
+          "Work did not improve trust, performance and experience");
+          state.day = 5;
+          game.processPaydays(state);
+          assert(state.stats.money > balance && state.monthly.jobIncome === state.weekly.income,
+            "Payday was not credited to the financial ledgers");
+          assert(state.reports[0].lines.some((line) => line.startsWith("National Insurance:")),
+            "Payday deductions missing");
+          const paid = state.stats.money;
+          game.processPaydays(state);
+          assert(state.stats.money === paid, "Payday paid twice");
+        }],
+        ["Payday dates and wages after leaving", () => {
+          const office = game.getJob("office-junior");
+          const warehouse = game.getJob("warehouse-worker");
+          const driver = game.getJob("delivery-driver");
+          assert(office.annualSalary === 24000 && game.getNextPayday(1, office) === 26
+            && game.getNextPayday(27, office) === 54, "Monthly payday");
+          assert(game.getNextPayday(1, warehouse) === 5 && game.getNextPayday(6, warehouse) === 12,
+            "Weekly payday");
+          assert(game.getNextPayday(1, driver) === 5 && game.getNextPayday(6, driver) === 19,
+            "Fortnightly payday");
+          const january = game.createInitialState();
+          let fullMonthPence = 0;
+          for (let day = -2; day <= 28; day += 1) {
+            january.day = day;
+            if (game.isWorkingDay(day, office)) fullMonthPence += 2 * game.getShiftGrossPence(january, office);
+          }
+          assert(Math.round(fullMonthPence / 100) === 2000, "Full monthly salary does not match annual salary");
+          const state = game.createInitialState();
+          state.stage = "morningActivity";
+          employ(state, "warehouse-worker");
+          game.resolveWorkShift(state);
+          state.jobId = null;
+          state.employment = null;
+          state.day = 5;
+          game.processPaydays(state);
+          assert(state.stats.money > 40 && state.reports[0].title === "PAYDAY", "Wages lost after leaving");
+        }],
+        ["Gradual HR escalation and promotion requirements", () => {
+          const state = game.createInitialState();
+          state.stage = "morningActivity";
+          employ(state, "office-junior");
+          const titles = [];
+          const responseDays = [];
+          for (let index = 0; index < 14 && state.jobId; index += 1) {
+            state.day = 1 + index * 7;
+            game.scheduleShifts(state, game.getJob("office-junior"));
+            game.recordShift(state, "morningActivity", "missed");
+            if (state.notifications.at(-1).title !== "EMPLOYMENT") responseDays.push(state.day);
+            titles.push(...state.notifications.filter((item) => item.title !== "EMPLOYMENT")
+              .map((item) => item.title).filter((title) => !titles.includes(title)));
+            if (index === 5) assert(state.jobId, "Six missed shifts caused automatic dismissal");
+          }
+          assert(titles.join(",") === "MANAGER CHECK-IN,ATTENDANCE DISCUSSION,HR SUPPORT MEETING,VERBAL WARNING,WRITTEN WARNING,FINAL WARNING,DISMISSAL",
+            `Incorrect HR response sequence: ${titles.join(",")}`);
+          assert(responseDays.every((day, index) => !index || day - responseDays[index - 1] >= 7),
+            "HR responses came too close together");
+          assert(state.jobId === null && state.payrollAccounts.length === 1, "Dismissal or payroll account lost");
+          const promotion = game.createInitialState();
+          employ(promotion, "care-assistant");
+          Object.assign(promotion.employment, { expected: 20, worked: 19, performance: 76, daysInRole: 31, reviewDays: 6 });
+          promotion.skills.care = 20;
+          game.reviewPromotion(promotion, game.getJob("care-assistant"));
+          assert(promotion.promotionLevel === 1, "Eligible promotion not awarded");
+          assert(promotion.weekly.promotions.includes("Lead Care Assistant"), "Career path title missing");
+          const insufficient = game.createInitialState();
+          employ(insufficient, "care-assistant");
+          Object.assign(insufficient.employment, { expected: 10, worked: 9, performance: 76, daysInRole: 31, reviewDays: 6 });
+          insufficient.skills.care = 20;
+          game.reviewPromotion(insufficient, game.getJob("care-assistant"));
+          assert(insufficient.promotionLevel === 0, "Promotion ignored attendance threshold");
+          const lowPerformance = game.createInitialState();
+          employ(lowPerformance, "care-assistant");
+          Object.assign(lowPerformance.employment, { expected: 20, worked: 19, performance: 75, daysInRole: 31, reviewDays: 6 });
+          lowPerformance.skills.care = 20;
+          game.reviewPromotion(lowPerformance, game.getJob("care-assistant"));
+          assert(lowPerformance.promotionLevel === 0, "Promotion ignored performance threshold");
+          const lowTrust = game.createInitialState();
+          employ(lowTrust, "care-assistant");
+          Object.assign(lowTrust.employment, { expected: 20, worked: 19, performance: 76, daysInRole: 31, reviewDays: 6, trust: 39 });
+          lowTrust.skills.care = 20;
+          game.reviewPromotion(lowTrust, game.getJob("care-assistant"));
+          assert(lowTrust.promotionLevel === 0, "Promotion ignored employer trust");
+          const shortTenure = game.createInitialState();
+          employ(shortTenure, "care-assistant");
+          Object.assign(shortTenure.employment, { expected: 20, worked: 19, performance: 76, daysInRole: 30, reviewDays: 6 });
+          shortTenure.skills.care = 20;
+          game.reviewPromotion(shortTenure, game.getJob("care-assistant"));
+          assert(shortTenure.promotionLevel === 0, "Promotion ignored minimum tenure");
+          const qualified = game.createInitialState();
+          employ(qualified, "nurse");
+          Object.assign(qualified.stats, { intelligence: 90, health: 90, happiness: 90 });
+          Object.assign(qualified.employment, { expected: 20, worked: 19, performance: 76, daysInRole: 31, reviewDays: 6 });
+          qualified.skills.care = 20;
+          game.reviewPromotion(qualified, game.getJob("nurse"));
+          assert(qualified.promotionLevel === 0, "Promotion ignored qualification");
+          qualified.collections.qualifications.push("Study Skills Certificate");
+          qualified.employment.reviewDays = 6;
+          game.reviewPromotion(qualified, game.getJob("nurse"));
+          assert(qualified.promotionLevel === 1, "Qualified promotion not awarded");
+        }],
+        ["Overdraft and monthly bills", () => {
+          const state = game.createInitialState();
+          game.applyEffects(state, { money: -600 });
+          assert(state.stats.money === -500 && state.arrears === 60, "Overdraft cap or arrears");
+          const month = game.createInitialState();
+          month.stats.money = 0;
+          for (let day = 1; day <= 28; day += 1) {
+            month.day = day;
+            game.accrueDailyBills(month);
+          }
+          game.recordChoiceUsage(month, { id: "quick-shower" });
+          game.recordChoiceUsage(month, { id: "visit-gym" });
+          assert(month.stats.money === 0 && month.monthly.water > 0, "Household usage charged immediately");
+          const report = game.makeMonthlyReport(month);
+          assert(report.lines.includes("Rent: £406"), "Partial-month rent");
+          assert(report.lines.includes("Gym membership: £30"), "Gym membership");
+          assert(month.stats.money === -500 && month.arrears > 0, "Unpaid bills lost");
+          game.applyEffects(month, { money: 200 });
+          game.makeMonthlyReport(month);
+          assert(month.arrears === 0 && month.stats.money > -500, "Arrears not settled");
+          const free = game.createInitialState();
+          game.recordChoiceUsage(free, { id: "visit-gym" });
+          free.monthly.freeGym = true;
+          assert(game.makeMonthlyReport(free).lines.includes("Gym membership: £0 (free month)"), "Free gym");
+        }],
+        ["Weekly trends and life reminders", () => {
+          const state = game.createInitialState();
+          state.day = 7;
+          state.stats.fitness += 8;
+          state.stats.hygiene = 30;
+          const report = game.makeWeeklyReport(state);
+          assert(report.lines.includes("Your fitness improved this week."), "Fitness trend missing");
+          assert(report.lines.includes("Your hygiene needs attention."), "Hygiene trend missing");
+          state.day = 80;
+          state.responsibilities.appearance = 40;
+          game.updateResponsibilities(state);
+          assert(state.eventLog.some((event) => event.message.includes("haircut")), "Appearance reminder missing");
+          assert(!Object.hasOwn(state.stats, "appearance"), "Hidden responsibility exposed as a stat");
+          game.recordChoiceUsage(state, { id: "haircut" });
+          assert(state.responsibilities.appearance === 100, "Haircut did not restore appearance");
+        }],
+        ["Sunday attendance and late offers", async () => {
+          const sunday = await mount(`gameState.day = 7; gameState.stage = "daytimeActivity";
+            gameState.jobId = "cafe-assistant"; gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId), gameState.stage);
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(sunday.root, "unpaid-leave");
+          click(sunday.root, "absence-2");
+          click(sunday.root, "relax-at-home");
+          click(sunday.root, "cook-dinner");
+          click(sunday.root, "watch-tv");
+          assert(sunday.state.employment.excused === 1 && sunday.state.employment.missed === 0
+            && sunday.root.querySelector("[data-scene-copy]").textContent.includes("Illness"),
+          "Sunday absence missing from reflection");
+          sunday.root.remove();
+
+          const offer = await mount(`gameState.stage = "eveningRoutine";
+            gameState.pendingJobOfferId = "retail-assistant";`);
+          click(offer.root, "accept-job");
+          assert(Object.keys(offer.state.scheduledShifts.stages).length === 0, "Late offer created a missed shift");
+          offer.root.remove();
+        }],
+        ["Player choices, leave and night work", async () => {
+          const weekend = await mount(`gameState.day = 6; gameState.stage = "morningActivity";
+            gameState.jobId = "office-junior"; gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId));`);
+          assert(!weekend.root.querySelector('[data-life-sim-action="work-shift"]')
+            && !weekend.root.querySelector('[data-life-sim-action="unpaid-leave"]'), "Work shown on an office day off");
+          weekend.root.remove();
+          const day = await mount(`gameState.stage = "morningActivity"; gameState.jobId = "office-junior";
+            gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId));
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          assert(day.root.querySelector("[data-game-actions] button").dataset.lifeSimAction === "work-shift",
+            "Go To Work is not first");
+          assert([...day.root.querySelectorAll("[data-game-actions] button")].map((button) => button.dataset.lifeSimAction).join(",")
+            === "work-shift,unpaid-leave", "Scheduled shift exposed other activities");
+          click(day.root, "work-shift");
+          click(day.root, "prepare-lunch");
+          assert(day.root.querySelector("[data-game-actions] button").dataset.lifeSimAction === "work-shift",
+            "Afternoon shift unavailable");
+          click(day.root, "unpaid-leave");
+          click(day.root, "absence-2");
+          assert(day.state.employment.worked === 1 && day.state.employment.expected === 1
+            && day.state.employment.excused === 0 && day.state.employment.missed === 0,
+          "Reported illness was counted before choosing an activity");
+          assert(day.state.stage === "daytimeActivity"
+            && !day.root.querySelector('[data-life-sim-action="work-shift"]'), "Leave did not preserve the activity choice");
+          click(day.root, "relax-at-home");
+          assert(day.state.employment.missed === 0 && day.state.employment.excused === 1
+            && day.state.employment.credibility > 76, "Supported illness affected attendance or credibility");
+          day.root.remove();
+          const night = await mount(`gameState.stage = "eveningActivity"; gameState.jobId = "night-security";
+            gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId));
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(night.root, "work-shift");
+          assert(night.root.querySelector("[data-game-actions] button").dataset.lifeSimAction === "work-shift",
+            "Night shift unavailable");
+          click(night.root, "work-shift");
+          assert(night.state.day === 2 && night.state.needsDaySleep, "Night shift recovery unavailable");
+          click(night.root, "sleep-after-night-shift");
+          assert(night.state.stage === "daytimeRoutine" && !night.state.needsDaySleep, "Day sleep did not advance");
+          night.root.remove();
+          const leave = await mount(`gameState.stage = "night"; gameState.jobId = "night-security";
+            gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId), "night");
+            Object.assign(gameState.stats, { health: 90, energy: 40, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(leave.root, "unpaid-leave");
+          click(leave.root, "absence-2");
+          click(leave.root, "go-to-bed");
+          assert(leave.state.day === 2 && leave.state.stats.energy > 40
+            && leave.state.employment.missed === 0, "Night leave prevented sleep or harmed attendance");
+          leave.root.remove();
+        }],
+        ["Absence reasons, evidence and credibility", async () => {
+          assert(game.ABSENCE_REASONS.map((reason) => reason.label).join("|")
+            === "Doctor Appointment|Dentist Appointment|Illness|Mental Health Day|Family Emergency|Personal Day|Other Reason",
+          "Absence reasons are incomplete");
+          const options = ["visit-doctor", "dentist", "stay-home", "take-stroll", "morning-study", "morning-study", "morning-study"];
+          for (let index = 0; index < options.length; index += 1) {
+            const { root, state } = await mount(`gameState.stage = "morningActivity"; gameState.jobId = "office-junior";
+              gameState.employment = createEmployment(getJob(gameState.jobId));
+              gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId));
+              Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+                hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+            click(root, "unpaid-leave");
+            click(root, "cancel-absence");
+            assert(root.querySelectorAll("[data-game-actions] button").length === 2, "Cancelling did not return to the work decision");
+            click(root, "unpaid-leave");
+            assert(root.querySelectorAll('[data-life-sim-action^="absence-"]').length === 7, "Reason screen is incomplete");
+            click(root, `absence-${index}`);
+            assert(root.querySelector(`[data-life-sim-action="${options[index]}"]`), "Normal activity missing after reporting");
+            click(root, options[index]);
+            assert(state.employment.excused === 1 && state.employment.expected === 0 && state.employment.missed === 0,
+              "Reported absence reduced attendance");
+            assert(state.employment.credibility === (index < 4 ? 77 : 75), "Supported or neutral credibility incorrect");
+            if (index < 2) assert(state.collections.opportunities.includes(index === 0 ? "Medical Note" : "Appointment Confirmation"),
+              "Appointment evidence missing");
+            const panel = root.querySelector("[data-game-employment]").textContent;
+            assert(!panel.includes("Credibility: 77") && !panel.includes("HR: 0") && !panel.includes("trust: 76"),
+              "Hidden employer values exposed");
+            root.remove();
+          }
+          const questionable = await mount(`gameState.stage = "daytimeActivity"; gameState.jobId = "office-junior";
+            gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId), gameState.stage);
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(questionable.root, "unpaid-leave");
+          click(questionable.root, "absence-2");
+          click(questionable.root, "socialise");
+          assert(questionable.state.employment.credibility === 72 && questionable.state.employment.hrConcern === 4
+            && questionable.state.employment.expected === 0, "Questionable activity was not handled proportionately");
+          questionable.root.remove();
+        }],
+        ["HR concern bands and unsupported reports", () => {
+          assert([0, 20, 21, 40, 41, 60, 61, 80, 81, 100].map(game.getHrConcernLabel).join("|")
+            === "No Concern|No Concern|Monitor Attendance|Monitor Attendance|Manager Discussion|Manager Discussion|HR Counselling|HR Counselling|Formal Process|Formal Process",
+          "HR concern thresholds incorrect");
+          const state = game.createInitialState();
+          state.stage = "morningActivity";
+          employ(state, "office-junior");
+          for (let day = 1; day <= 70; day += 1) {
+            state.day = day;
+            game.scheduleShifts(state, game.getJob(state.jobId));
+            if (!game.isWorkingDay(day, game.getJob(state.jobId))) continue;
+            state.scheduledShifts.stages.morningActivity = "reported";
+            state.reportedAbsence = { day, stage: state.stage, jobId: state.jobId, reason: "doctor" };
+            game.finishReportedAbsence(state, game.getActivity("morning-study"));
+          }
+          assert(state.employment.hrConcern > 40 && state.employment.hrConcern <= 60
+            && state.employment.credibility === 75 && state.jobId && state.employment.hrResponse <= 3,
+          "Repeated unsupported reports were ignored or automatically punished as dishonesty");
+        }],
+        ["Frequent supported absences remain non-punitive", () => {
+          const state = game.createInitialState();
+          state.stage = "morningActivity";
+          employ(state, "office-junior");
+          for (let day = 1; day <= 56; day += 1) {
+            state.day = day;
+            game.scheduleShifts(state, game.getJob(state.jobId));
+            if (!game.isWorkingDay(day, game.getJob(state.jobId))) continue;
+            for (const stage of ["morningActivity", "daytimeActivity"]) {
+              state.stage = stage;
+              state.scheduledShifts.stages[stage] = "reported";
+              state.reportedAbsence = { day, stage, jobId: state.jobId, reason: "illness" };
+              game.finishReportedAbsence(state, game.getActivity(stage === "morningActivity" ? "stay-home" : "relax-at-home"));
+            }
+          }
+          assert(state.jobId && state.employment.expected === 0 && state.employment.missed === 0
+            && state.employment.excused === 80 && state.employment.hrConcern <= 40
+            && state.employment.hrResponse <= 1, "Supported absences triggered formal punishment");
+          assert(state.employment.absenceDays.length === 20, "Frequency counted shifts rather than distinct days");
+          assert(state.employment.credibility === 100 && state.employment.trust === 100, "Employer values did not remain bounded");
+        }],
+        ["Quitting with a reported absence", async () => {
+          const { root, state } = await mount(`gameState.stage = "morningActivity"; gameState.jobId = "office-junior";
+            gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.employment.payroll.grossPence = 10000; gameState.payrollAccounts.push(gameState.employment.payroll);
+            scheduleShifts(gameState, getJob(gameState.jobId));`);
+          click(root, "unpaid-leave");
+          click(root, "absence-0");
+          click(root, "quit-job");
+          assert(!state.jobId && !state.reportedAbsence && state.payrollAccounts[0].grossPence === 10000,
+            "Quitting left a stale absence or discarded earned wages");
+          root.remove();
+        }],
+        ["Skipped work periods are recorded once", async () => {
+          const { root, state } = await mount(`gameState.stage = "morningRoutine"; gameState.jobId = "office-junior";
+            gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId));
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(root, "full-self-care");
+          assert(state.employment.missed === 1, "Self-care did not skip morning work");
+          click(root, "prepare-lunch");
+          assert(state.stage === "eveningRoutine" && state.employment.missed === 2, "Self-care did not skip daytime work");
+          click(root, "cook-dinner");
+          click(root, "sleep-early");
+          assert(state.employment.missed === 2, "Skipped shifts counted twice");
+          root.remove();
+        }],
+        ["Quitting preserves earned wages", async () => {
+          const { root, state } = await mount(`gameState.day = 5; gameState.stage = "morningActivity";
+            gameState.jobId = "retail-assistant"; gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); scheduleShifts(gameState, getJob(gameState.jobId));
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(root, "work-shift");
+          click(root, "quit-job");
+          assert(!state.jobId && root.querySelector("[data-game-employment]").textContent.includes("Pending wages"),
+            "Pending wages disappeared after quitting");
+          click(root, "prepare-lunch");
+          click(root, "relax-at-home");
+          click(root, "cook-dinner");
+          click(root, "sleep-early");
+          assert(state.reports.some((report) => report.title === "PAYDAY") && state.monthly.jobIncome > 0,
+            "Final wages were not paid");
+          root.remove();
+        }],
+        ["Payday feeds the monthly finance report", async () => {
+          const { root, state } = await mount(`gameState.day = 26; gameState.stage = "night";
+            gameState.jobId = "office-junior"; gameState.employment = createEmployment(getJob(gameState.jobId));
+            gameState.payrollAccounts.push(gameState.employment.payroll); gameState.employment.payroll.grossPence = 200000;
+            scheduleShifts(gameState, getJob(gameState.jobId), "night");
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(root, "go-to-bed");
+          assert(state.reports[0].title === "PAYDAY" && state.monthly.jobIncome > 0, "Payday card or ledger");
+          const net = state.monthly.jobIncome;
+          assert(net === 1733 && state.reports[0].lines.includes("Tax: £191")
+            && state.reports[0].lines.includes("National Insurance: £76"), "Payday deductions incorrect");
+          click(root, "continue-report");
+          state.day = 28;
+          state.stage = "night";
+          game.finishDay(state, () => 0.99);
+          const finance = state.reports.find((report) => report.title === "January 2027 finance report");
+          assert(finance && finance.lines.some((line) => line.includes(`job earnings £${net.toLocaleString("en-GB")}`)), "Payday missing from month-end");
+          root.remove();
+        }],
+        ["Sunday evening and month-end reports", async () => {
+          const { root, state } = await mount(`gameState.day = 28; gameState.stage = "eveningActivity";
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(root, "watch-tv");
+          assert(state.stage === "night" && state.reports[0].title === "Week 4 reflection", "Sunday reflection");
+          assert(root.querySelector("[data-scene-copy]").textContent.includes("Income earned:"), "Weekly details");
+          click(root, "continue-report");
+          click(root, "go-to-bed");
+          assert(state.day === 29 && state.reports[0].title === "January 2027 finance report", "Month-end report");
+          assert(root.querySelector("[data-game-day]").textContent.includes("Sunday 31 January 2027"), "Report date");
+          click(root, "continue-report");
+          assert(root.querySelector("[data-game-day]").textContent.includes("Monday 1 February 2027"), "Next date");
+          root.remove();
+        }],
+        ["Early sleep and year-end reports", async () => {
+          const { root, state } = await mount(`gameState.day = 28; gameState.stage = "eveningActivity";
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(root, "sleep-early");
+          assert(state.reports.length === 2 && state.reports[0].title === "Week 4 reflection"
+            && state.reports[1].title === "January 2027 finance report", "Early sleep reports");
+          click(root, "continue-report");
+          click(root, "continue-report");
+          assert(state.day === 29 && state.reports.length === 0, "Reports did not resume day");
+          root.remove();
+          const last = await mount(`gameState.day = 365; gameState.stage = "eveningActivity";
+            Object.assign(gameState.stats, { health: 90, energy: 90, happiness: 90, hunger: 90,
+              hygiene: 90, fitness: 90, stress: 10, money: 300 });`);
+          click(last.root, "sleep-early");
+          assert(last.state.yearComplete && last.state.reports.length === 2, "Final partial reports");
+          click(last.root, "continue-report");
+          click(last.root, "continue-report");
+          assert(last.root.querySelector("[data-scene-title]").textContent === "A year of your life", "Year ending");
+          last.root.remove();
+        }],
+      ];
+
+      const passed = [];
+      for (const [name, run] of tests) {
+        await run();
+        passed.push(`PASS ${name}`);
+      }
+      results.textContent = `${passed.join("\n")}\n\n${passed.length} tests passed.`;
+      results.dataset.status = "passed";
+    } catch (error) {
+      results.textContent = `FAIL: ${error.stack || error.message}`;
+      results.dataset.status = "failed";
+      console.error(error);
+    } finally {
+      delete window.__lifeSimTestState;
+      fixtures.replaceChildren();
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    }
+  </script>
+</body>
+</html>

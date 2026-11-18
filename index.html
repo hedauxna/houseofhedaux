@@ -421,6 +421,11 @@
       line-height: 1.2;
     }
 
+    .room-copy .life-sim-topline [data-game-day] {
+      font-size: 13px;
+      letter-spacing: .04em;
+    }
+
     .life-sim-topline-field {
       display: flex;
       align-items: baseline;
@@ -3206,7 +3211,6 @@
             </div>
             <div class="life-sim-app" data-life-sim-app hidden>
               <div class="life-sim-topline">
-                <p data-game-day></p>
                 <div class="life-sim-topline-field">
                   <span class="life-sim-topline-label">Current time</span>
                   <p data-game-period>
@@ -3218,6 +3222,7 @@
                   <span class="life-sim-topline-label">Current phase</span>
                   <p data-game-phase></p>
                 </div>
+                <p data-game-day></p>
               </div>
               <div class="life-sim-notifications" data-game-notifications role="status" aria-live="polite" hidden></div>
               <section class="life-sim-game-over" data-game-over aria-live="assertive" hidden>
@@ -3252,6 +3257,7 @@
                       <ul class="life-sim-warnings" data-game-warnings aria-label="Health and wellbeing warnings" aria-live="polite" hidden></ul>
                       <h5>Current status</h5>
                       <dl class="life-sim-stats" data-game-stats></dl>
+                      <p class="life-sim-employment" data-game-banking></p>
                     </section>
                     <section class="life-sim-dashboard-section">
                       <h5>Employment</h5>
