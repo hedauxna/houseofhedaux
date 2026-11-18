@@ -98,9 +98,9 @@ const routineDefinitions = [
     id: "make-breakfast",
     stage: "morningRoutine",
     name: "Make Breakfast",
-    description: "Make a simple breakfast at home · £2.",
-    effects: { health: 3, energy: 3, money: -2, stress: 1, confidence: 1, hygiene: -2, homeCleanliness: -3 },
-    hungerChange: 25,
+    description: "Make a simple breakfast at home.",
+    effects: { health: 3, energy: 5, money: -2, stress: 1, confidence: 1, hygiene: -2, homeCleanliness: -3, happiness: 2, fitness: 1 },
+    hungerChange: 30,
     meal: "breakfast",
     cost: 2,
     outcome: "You made a simple breakfast at home.",
@@ -109,9 +109,9 @@ const routineDefinitions = [
     id: "buy-breakfast",
     stage: "morningRoutine",
     name: "Buy Breakfast",
-    description: "Pick up breakfast on the way out · £5.",
-    effects: { health: 2, happiness: 4, energy: 4, money: -5 },
-    hungerChange: 20,
+    description: "Pick up breakfast on the way out.",
+    effects: { health: 2, happiness: 8, energy: 8, money: -5, fitness: 2 },
+    hungerChange: 25,
     meal: "breakfast",
     cost: 5,
     outcome: "You bought breakfast and enjoyed a brighter start.",
@@ -130,7 +130,7 @@ const routineDefinitions = [
     stages: ["morningRoutine", "eveningRoutine"],
     name: "Freshen Up",
     description: "Wash and get ready for the day.",
-    effects: { hygiene: 20, energy: -3, money: -1, happiness: 1, stress: -1, confidence: 1, homeCleanliness: -1 },
+    effects: { hygiene: 40, energy: -3, money: -1, happiness: 2, stress: -1, confidence: 1, homeCleanliness: -1 },
     cost: 1,
     outcome: "You freshened up before heading out.",
   },
@@ -139,7 +139,7 @@ const routineDefinitions = [
     stages: ["morningRoutine", "eveningRoutine"],
     name: "Quick Shower",
     description: "Take a quick shower and feel more confident.",
-    effects: { hygiene: 50, confidence: 3, energy: -5, money: -2, health: 1, happiness: 2, stress: -5, homeCleanliness: -5 },
+    effects: { hygiene: 70, confidence: 3, energy: -5, money: -2, health: 1, happiness: 4, stress: -5, homeCleanliness: -5, fitness: 1 },
     cost: 2,
     outcome: "A quick shower left you feeling refreshed and confident.",
   },
@@ -148,7 +148,7 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Full Self Care Day",
     description: "Spend the morning and daytime recovering. Skip breakfast and both activity slots, including work; lunch is still available.",
-    effects: { hygiene: 35, health: 4, stress: -10, happiness: 6, energy: 10, confidence: 2, homeCleanliness: -2 },
+    effects: { hygiene: 40, health: 4, stress: -10, happiness: 10, energy: 10, confidence: 2, homeCleanliness: -2, fitness: 4 },
     selfCareDay: true,
     outcome: "You dedicated the morning and daytime to self-care.",
   },
@@ -157,7 +157,7 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Gentle Stretch",
     description: "Ease into the day with light movement.",
-    effects: { fitness: 1, health: 1, energy: -4, hunger: -2, happiness: 2, hygiene: -5 },
+    effects: { fitness: 4, health: 1, energy: -4, hunger: -2, happiness: 4, hygiene: -5 },
     outcome: "You eased into the day with a gentle stretch.",
   },
   {
@@ -165,7 +165,7 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Mindful Moment",
     description: "Pause and set an intention for the day.",
-    effects: { stress: -4, happiness: 5, hunger: -2, hygiene: -2 },
+    effects: { stress: -4, happiness: 10, hunger: -2, hygiene: -2, fitness: 2 },
     outcome: "A mindful moment helped you feel more settled.",
   },
   {
@@ -173,16 +173,16 @@ const routineDefinitions = [
     stage: "morningRoutine",
     name: "Plan Your Day",
     description: "Prepare for your next challenge.",
-    effects: { confidence: 2, intelligence: 2, energy: -2, hunger: -1, happiness: 1, stress: -2 },
+    effects: { confidence: 2, intelligence: 2, energy: -2, hunger: -1, happiness: 2, stress: -2 },
     outcome: "You took a moment to plan your day.",
   },
   {
     id: "prepare-lunch",
     stage: "daytimeRoutine",
     name: "Prepare Lunch",
-    description: "Make a filling lunch at home · £2.",
-    effects: { health: 3, energy: 3, money: -2, stress: 1, confidence: 1, hygiene: -2, homeCleanliness: -3 },
-    hungerChange: 25,
+    description: "Make a filling lunch at home.",
+    effects: { health: 3, energy: 5, money: -2, stress: 1, confidence: 1, hygiene: -2, homeCleanliness: -3, happiness: 2, fitness: 1 },
+    hungerChange: 35,
     meal: "lunch",
     cost: 2,
     outcome: "You prepared an inexpensive lunch.",
@@ -191,9 +191,9 @@ const routineDefinitions = [
     id: "buy-lunch",
     stage: "daytimeRoutine",
     name: "Buy Lunch",
-    description: "Pick up something convenient · £8.",
-    effects: { health: 2, happiness: 4, energy: 4, money: -8 },
-    hungerChange: 28,
+    description: "Pick up something convenient.",
+    effects: { health: 2, happiness: 8, energy: 8, money: -8, fitness: 2 },
+    hungerChange: 30,
     meal: "lunch",
     cost: 8,
     outcome: "You bought lunch while out.",
@@ -211,9 +211,9 @@ const routineDefinitions = [
     id: "cook-dinner",
     stage: "eveningRoutine",
     name: "Cook Dinner",
-    description: "Cook a simple meal at home · £4.",
-    effects: { health: 4, happiness: 3, money: -4, energy: 3 },
-    hungerChange: 30,
+    description: "Cook a simple meal at home.",
+    effects: { health: 4, happiness: 6, money: -4, energy: 10, fitness: 1, hygiene: -2, homeCleanliness: -3 },
+    hungerChange: 40,
     meal: "dinner",
     cost: 4,
     outcome: "You cooked a satisfying dinner at home.",
@@ -222,23 +222,12 @@ const routineDefinitions = [
     id: "order-takeaway",
     stage: "eveningRoutine",
     name: "Order Takeaway",
-    description: "Have dinner delivered · £12.",
-    effects: { happiness: 7, health: 1, money: -12, energy: 5 },
-    hungerChange: 28,
+    description: "Have dinner delivered.",
+    effects: { happiness: 10, health: 1, money: -12, energy: 12, fitness: 1 },
+    hungerChange: 35,
     meal: "dinner",
     cost: 12,
     outcome: "You ordered a takeaway and enjoyed an easy evening meal.",
-  },
-  {
-    id: "eat-out",
-    stage: "eveningRoutine",
-    name: "Eat Out",
-    description: "Go out for dinner · £30.",
-    effects: { happiness: 12, confidence: 7, money: -30, health: 2, energy: 4 },
-    hungerChange: 30,
-    meal: "dinner",
-    cost: 30,
-    outcome: "You went out for dinner and enjoyed a special evening.",
   },
   {
     id: "skip-dinner",
@@ -380,7 +369,7 @@ const activityDefinitions = [
     name: "Stay Home",
     description: "Take a quiet day and recharge.",
     stage: "morningActivity",
-    effects: { energy: 5, hygiene: -2, happiness: -2, fitness: -2, hunger: -2, stress: 1, homeCleanliness: -5 },
+    effects: { energy: 3, hygiene: -2, happiness: -2, fitness: -2, hunger: -2, stress: 1, homeCleanliness: -5 },
     outcome: "You stayed home for a quiet start to the day.",
   },
   {
@@ -395,9 +384,9 @@ const activityDefinitions = [
   {
     id: "visit-gym",
     name: "Visit Gym",
-    description: "Put in a workout and build confidence and fitness skill · £10.",
+    description: "Put in a workout and build fitness skill.",
     stage: "morningRoutine",
-    effects: { confidence: 7, health: 6, energy: -25, hygiene: -40, fitness: 8, money: -10, hunger: -10, happiness: 2, stress: -5 },
+    effects: { confidence: 7, health: 6, energy: -25, hygiene: -40, fitness: 15, money: -10, hunger: -10, happiness: 8, stress: -5 },
     cost: 10,
     skillGains: { fitness: 1 },
     outcome: "You completed a gym session and felt stronger for it.",
@@ -407,7 +396,7 @@ const activityDefinitions = [
     name: "Take Stroll",
     description: "Get outside for some fresh air.",
     stages: ["morningActivity", "daytimeActivity"],
-    effects: { happiness: 7, stress: -6, energy: -12, fitness: 2, health: 2, hunger: -2, confidence: 1, hygiene: -5 },
+    effects: { happiness: 10, stress: -6, energy: -12, fitness: 7, health: 2, hunger: -2, confidence: 1, hygiene: -5 },
     outcome: "A change of scenery lifted your mood.",
   },
   {
@@ -425,7 +414,7 @@ const activityDefinitions = [
     name: "Meet People",
     description: "Make time for conversation and connection.",
     stage: "morningActivity",
-    effects: { confidence: 2, happiness: 4, energy: -5, money: -5, hunger: -2 },
+    effects: { confidence: 2, happiness: 8, energy: -5, money: -5, hunger: -2, fitness: 1 },
     cost: 5,
     outcome: "You made time to be around other people.",
   },
@@ -434,16 +423,16 @@ const activityDefinitions = [
     name: "Read a Book",
     description: "Enjoy a short read and build technical skill.",
     stage: "morningActivity",
-    effects: { intelligence: 3, stress: -2, energy: -2, fitness: -2, hunger: -2, happiness: 2, confidence: 1, hygiene: -2, homeCleanliness: -1 },
+    effects: { intelligence: 3, stress: -2, energy: -2, fitness: -2, hunger: -2, happiness: 4, confidence: 1, hygiene: -2, homeCleanliness: -1 },
     skillGains: { technical: 1 },
     outcome: "You spent a quiet morning reading.",
   },
   {
     id: "morning-chores",
     name: "Household Chores",
-    description: "Clean your home and make it more comfortable · £3.",
+    description: "Clean your home and make it more comfortable.",
     stages: ["morningActivity", "daytimeActivity"],
-    effects: { homeCleanliness: 50, stress: -3, happiness: 2, energy: -8, money: -3, fitness: 1, hunger: -2, confidence: 1, hygiene: -5 },
+    effects: { homeCleanliness: 50, stress: -3, happiness: 4, energy: -8, money: -3, fitness: 2, hunger: -2, confidence: 1, hygiene: -5 },
     cost: 3,
     outcome: "You tidied up and made your home feel calmer.",
   },
@@ -452,7 +441,7 @@ const activityDefinitions = [
     name: "Enjoy a Hobby",
     description: "Make time for something you enjoy.",
     stages: ["morningActivity", "daytimeActivity"],
-    effects: { happiness: 5, stress: -3, energy: -5, hygiene: -2, homeCleanliness: -2 },
+    effects: { happiness: 10, stress: -3, energy: -5, hygiene: -2, homeCleanliness: -2 },
     outcome: "You made time for a favourite hobby.",
   },
   {
@@ -479,16 +468,16 @@ const activityDefinitions = [
     name: "Visit Town",
     description: "Run errands and see what's happening in town.",
     stage: "daytimeActivity",
-    effects: { happiness: 3, confidence: 2, energy: -10, money: -4, fitness: 1, hunger: -6, hygiene: -5 },
+    effects: { happiness: 6, confidence: 2, energy: -10, money: -4, fitness: 2, hunger: -6, hygiene: -5 },
     cost: 4,
     outcome: "You spent some time exploring town.",
   },
   {
     id: "daytime-exercise",
     name: "Intense Workout",
-    description: "Push yourself and build fitness skill · £10.",
+    description: "Push yourself and build fitness skill.",
     stage: "daytimeActivity",
-    effects: { health: 5, confidence: 3, energy: -35, hygiene: -40, fitness: 5, money: -10, hunger: -12, happiness: 2, stress: -8 },
+    effects: { health: 5, confidence: 3, energy: -35, hygiene: -40, fitness: 15, money: -10, hunger: -12, happiness: 8, stress: -8 },
     cost: 10,
     skillGains: { fitness: 1 },
     outcome: "You made time for exercise.",
@@ -498,7 +487,7 @@ const activityDefinitions = [
     name: "Socialise",
     description: "Catch up with someone and enjoy their company.",
     stage: "daytimeActivity",
-    effects: { confidence: 2, happiness: 4, energy: -8, money: -8, hunger: -2, hygiene: -2 },
+    effects: { confidence: 2, happiness: 8, energy: -8, money: -8, hunger: -2, hygiene: -2, fitness: 1 },
     cost: 8,
     outcome: "You spent time socialising.",
   },
@@ -507,15 +496,26 @@ const activityDefinitions = [
     name: "Relax At Home",
     description: "Take a quiet break and recharge.",
     stage: "daytimeActivity",
-    effects: { energy: 8, stress: -4, hygiene: -2, happiness: 1, fitness: -1, hunger: -2, confidence: -2 },
+    effects: { energy: 5, stress: -4, hygiene: -2, happiness: 2, fitness: -1, hunger: -2, confidence: -2 },
     outcome: "You relaxed at home and recharged.",
+  },
+  {
+    id: "eat-out",
+    stage: "eveningActivity",
+    name: "Eat Out",
+    description: "Go out for dinner.",
+    effects: { happiness: 15, confidence: 7, money: -30, health: 2, energy: 8, fitness: 2 },
+    hungerChange: 40,
+    meal: "dinner",
+    cost: 30,
+    outcome: "You went out for dinner and enjoyed a special evening.",
   },
   {
     id: "watch-tv",
     name: "Watch TV",
     description: "Put your feet up and watch a favourite show.",
     stage: "eveningActivity",
-    effects: { happiness: 5, stress: -3, energy: -2, fitness: -2, hunger: -2, hygiene: -2 },
+    effects: { happiness: 10, stress: -3, energy: -2, fitness: -4, hunger: -2, hygiene: -2 },
     outcome: "You watched television and unwound.",
   },
   {
@@ -523,7 +523,7 @@ const activityDefinitions = [
     name: "Read Book",
     description: "Enjoy a book and build technical skill.",
     stage: "eveningActivity",
-    effects: { intelligence: 3, stress: -2, energy: -2, fitness: -1, hunger: -2, happiness: 2, confidence: 1, hygiene: -2, homeCleanliness: -1 },
+    effects: { intelligence: 3, stress: -2, energy: -2, fitness: -1, hunger: -2, happiness: 4, confidence: 1, hygiene: -2, homeCleanliness: -1 },
     skillGains: { technical: 1 },
     outcome: "You spent the evening reading.",
   },
@@ -532,16 +532,16 @@ const activityDefinitions = [
     name: "See Friends",
     description: "Spend the evening with friends.",
     stage: "eveningActivity",
-    effects: { happiness: 6, confidence: 3, energy: -6, money: -5, hunger: -2, hygiene: -2 },
+    effects: { happiness: 10, confidence: 3, energy: -6, money: -5, hunger: -2, hygiene: -2 },
     cost: 5,
     outcome: "You enjoyed an evening with friends.",
   },
   {
     id: "visit-pub",
     name: "Visit Pub",
-    description: "Go out for a drink and a change of scene · £10.",
+    description: "Go out for a drink and a change of scene.",
     stage: "eveningActivity",
-    effects: { happiness: 5, confidence: 2, stress: -2, money: -10, hygiene: -10, fitness: -3, health: -5, energy: -8 },
+    effects: { happiness: 10, confidence: 2, stress: -2, money: -10, hygiene: -10, fitness: -2, health: -5, energy: -8 },
     cost: 10,
     outcome: "You visited the pub for a change of scene.",
   },
@@ -561,7 +561,7 @@ const activityDefinitions = [
     name: "Relaxing Bath",
     description: "Enjoy a warm bath and let the day melt away.",
     stage: "eveningRoutine",
-    effects: { health: 3, stress: -10, happiness: 4, hygiene: 90, energy: -2, confidence: 2, homeCleanliness: -5 },
+    effects: { health: 3, stress: -10, happiness: 6, hygiene: 90, energy: -2, confidence: 2, homeCleanliness: -5 },
     outcome: "A relaxing bath eased your stress and refreshed you.",
   },
   {
@@ -570,7 +570,7 @@ const activityDefinitions = [
     description: "Turn in early for a long sleep and start the next day. Recovery depends on Stress, Hunger and Fitness.",
     stage: "eveningActivity",
     endsDay: true,
-    effects: { health: 5, energy: 80, stress: -7, hunger: -4 },
+    effects: { health: 5, energy: 80, stress: -7, hunger: -4, fitness: -2 },
     outcome: "You slept early and woke feeling well rested.",
   },
   {
@@ -584,9 +584,9 @@ const activityDefinitions = [
   {
     id: "stay-up-late",
     name: "Stay Up Late",
-    description: "Chance of a creative idea or paid commission. Energy −14 tomorrow; sleep recovery depends on Stress, Hunger and Fitness.",
+    description: "Stay up for a chance of a creative idea or paid commission.",
     stage: "night",
-    effects: { energy: 20, intelligence: 2, happiness: 2, stress: 3, health: -1, fitness: -1, hunger: -4, homeCleanliness: -2 },
+    effects: { energy: 20, intelligence: 2, happiness: 4, stress: 3, health: -1, fitness: -2, hunger: -4, homeCleanliness: -2 },
     outcome: "You stayed up later than planned.",
     nextDayEnergy: -14,
   },
@@ -606,7 +606,7 @@ const earlyMorningChoices = [
     id: "stay-in-bed",
     name: "Stay In Bed",
     description: "Rest longer, but miss breakfast and both Morning choices.",
-    effects: { energy: 8, hygiene: -5, confidence: -2, happiness: 2, homeCleanliness: -7 },
+    effects: { energy: 8, hygiene: -5, confidence: -2, happiness: 4, homeCleanliness: -7 },
     hungerChange: -20,
     outcome: "You stayed in bed and gave up the morning's productive time.",
   },
@@ -1020,6 +1020,7 @@ function createInitialState() {
     consecutiveWorkDays: 0,
     nextDayEnergy: 0,
     skippedMealsToday: 0,
+    skippedDinnerToday: false,
     healthStrainUnits: 0,
     rentSurcharge: 0,
     consecutiveHealthyDays: 0,
@@ -1602,6 +1603,7 @@ function finishDay(state, random) {
   state.stayedInBedToday = false;
   state.stayedHomeToday = false;
   state.skippedMealsToday = 0;
+  state.skippedDinnerToday = false;
   applyPeriodHunger(state, "Morning");
   const livingCost = getDailyLivingCost(state);
   applyEffects(state, { money: -livingCost });
@@ -1935,14 +1937,7 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
 
     choices.forEach((choice) => {
       let description = choice.description;
-      const choiceEffects = getChoiceEffects(gameState, choice);
       const unavailable = stage.type !== "choice" && !isActivityAvailable(gameState, choice);
-      if (choiceEffects) {
-        const effects = formatEffects(choiceEffects);
-        if (effects) {
-          description = `${description} ${effects}.`;
-        }
-      }
       if (choice.id === "look-for-work" && gameState.jobId) {
         description = "You already have a job.";
       } else if (choice.id === "work-shift" || choice.id === "work-overtime") {
@@ -1954,15 +1949,16 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
         } else if (choice.id === "work-overtime"
           && (!gameState.workedToday || gameState.workedJobIdToday !== gameState.jobId)) {
           description = "Work a regular shift for this job today to unlock overtime.";
-        } else {
-          description = choice.id === "work-shift"
-            ? `${job.description} Earn £${getJobIncome(gameState, job)} before hunger effects and gain ${job.skill} skill; ${formatEffects({ ...choiceEffects, energy: -job.energyCost, stress: job.stressCost })}. Job effects: ${formatEffects(job.shiftEffects)}.`
-            : `${job.description} Earn an extra £${Math.round(getJobIncome(gameState, job) * 0.5)} before hunger effects; ${formatEffects({ ...choiceEffects, energy: -(job.energyCost + 8), stress: job.stressCost + 2 })}.`;
         }
+      }
+      if (!unavailable && choice.cost > gameState.stats.money) {
+        description += " Not enough money.";
       }
       const phaseMeal = PHASE_MEALS[gameState.stage];
       if (phaseMeal && choice.meal !== phaseMeal) {
-        description += ` Miss ${phaseMeal}.`;
+        description += phaseMeal === "dinner"
+          ? " Miss dinner unless you eat out later."
+          : ` Miss ${phaseMeal}.`;
       }
       actionContainer.append(
         makeButton(
@@ -2187,6 +2183,12 @@ export function mountLifeSim(root, { random = () => Math.random() } = {}) {
     applyEffects(gameState, effects, { sleep: choice.endsDay || gameState.stage === "night" });
     if (PHASE_MEALS[gameState.stage] && choice.meal !== PHASE_MEALS[gameState.stage]) {
       gameState.skippedMealsToday += 1;
+      if (gameState.stage === "eveningRoutine") {
+        gameState.skippedDinnerToday = true;
+      }
+    } else if (gameState.stage === "eveningActivity" && choice.meal === "dinner" && gameState.skippedDinnerToday) {
+      gameState.skippedMealsToday -= 1;
+      gameState.skippedDinnerToday = false;
     }
     if (choice.id === "stay-in-bed") {
       gameState.stayedInBedToday = true;
