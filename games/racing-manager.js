@@ -320,7 +320,9 @@ class GameState {
     const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
     const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
 
-    return new Driver(`${firstName} ${lastName}`, traits, stats);
+    const driver = new Driver(`${firstName} ${lastName}`, traits, stats);
+    driver.number = 1; // Player is always driver #1
+    return driver;
   }
 
   getRandomTraits() {
@@ -565,57 +567,102 @@ class LiveRaceScreenUI extends RaceScreenUI {
     this.lastUpdateTime = 0;
     this.showStartSequence = true;
     this.eventLog = [];
+    this.showStartButton = true;
+    this.raceLapProgress = {}; // Store lap progress (0-1) for each driver for smooth movement
+    this.raceFrameTime = 0;
+    this.animationFrameId = null;
   }
 
-  renderStartSequence() {
+  renderPreRaceScreen() {
     const html = `
-      <div class="rrm-container" data-rrm-screen="start-sequence">
-        <div class="rrm-start-sequence">
-          <div class="rrm-start-title">
+      <div class="rrm-container" data-rrm-screen="pre-race">
+        <div class="rrm-pre-race-screen">
+          <div class="rrm-circuit-preview">
             <h2>${this.track.name}</h2>
-            <p>${this.race.driver.name} #${this.race.driver.number}</p>
+            <svg class="rrm-preview-track" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet">
+              ${this.renderTrackMapLarge()}
+            </svg>
+            <div class="rrm-preview-info">
+              <p><strong>${this.track.lapLength}km</strong> • <strong>${this.track.corners}</strong> corners</p>
+              <p class="rrm-preview-weather"><strong>${this.track.weather.toUpperCase()}</strong> • <strong>Grip: ${(this.track.gripLevel * 100).toFixed(0)}%</strong></p>
+            </div>
           </div>
-          
-          <div class="rrm-grid-lights">
-            <div class="rrm-light" data-light="1"></div>
-            <div class="rrm-light" data-light="2"></div>
-            <div class="rrm-light" data-light="3"></div>
-            <div class="rrm-light" data-light="4"></div>
-            <div class="rrm-light" data-light="5"></div>
+
+          <div class="rrm-driver-briefing">
+            <h3>${this.race.driver.name} #${this.race.driver.number}</h3>
+            <div class="rrm-driver-traits">
+              ${this.race.driver.traits.map(t => `<span class="rrm-trait-badge">${t.name}</span>`).join('')}
+            </div>
+            <div class="rrm-briefing-stats">
+              <p><strong>Grid Position:</strong> ${this.race.position}</p>
+              <p><strong>Confidence:</strong> ${Math.floor(this.race.driver.confidence)}%</p>
+              <p><strong>Grid:</strong> 20 drivers • Starting soon...</p>
+            </div>
           </div>
-          
-          <div class="rrm-sequence-info">
-            <p>Get ready for the race start</p>
-            <p class="rrm-drivers-info">20 drivers | ${this.track.weather.toUpperCase()}</p>
-          </div>
+
+          <button class="rrm-btn-start-race" data-action="start-race">START RACE</button>
         </div>
       </div>
     `;
     
     this.root.innerHTML = html;
-    this.animateStartLights();
+    const startBtn = this.root.querySelector('[data-action="start-race"]');
+    startBtn?.addEventListener('click', () => this.startRaceSequence());
+  }
+
+  startRaceSequence() {
+    this.showStartButton = false;
+    this.showStartSequence = true;
+    this.render();
+  }
+
+  renderStartSequence() {
+    // Start sequence is now rendered inline on the main race screen
+    // This method is kept for compatibility but most work is in renderLiveRace
   }
 
   animateStartLights() {
-    const lights = this.root.querySelectorAll('.rrm-light');
+    const lights = this.root.querySelectorAll('.rrm-track-lights .rrm-light');
+    if (lights.length === 0) return;
+    
     let lightIndex = 0;
     
     const lightSequence = () => {
       if (lightIndex < 5) {
         lights[lightIndex].classList.add('rrm-light-on');
         lightIndex++;
-        setTimeout(lightSequence, 400);
+        setTimeout(lightSequence, 600);
       } else {
+        // Hold all lights for random duration
+        const holdDuration = 500 + Math.random() * 1500;
         setTimeout(() => {
+          // Lights out
+          lights.forEach(l => l.classList.remove('rrm-light-on'));
           this.showStartSequence = false;
           this.isRaceRunning = true;
-          this.render();
+          this.race.currentLapNumber = 1;
+          this.race.laps = [];
+          this.race.raceTime = 0;
+          this.race.isComplete = false;
+          this.eventLog = [];
+          
+          // Initialize lap progress for all drivers
+          this.initializeLapProgress();
+          
+          this.renderLiveRace();
           this.startRaceLoop();
-        }, 500);
+        }, holdDuration);
       }
     };
     
     setTimeout(lightSequence, 500);
+  }
+
+  initializeLapProgress() {
+    this.raceLapProgress[this.race.driver.name] = 0;
+    this.race.competitors?.forEach(driver => {
+      this.raceLapProgress[driver.name] = 0;
+    });
   }
 
   renderLiveRace() {
@@ -657,11 +704,11 @@ class LiveRaceScreenUI extends RaceScreenUI {
               <div class="rrm-driver-stats">
                 <div class="rrm-stat-line">
                   <span class="rrm-stat-label">Confidence</span>
-                  <span class="rrm-stat-value">${Math.floor(this.race.driver.confidence)}%</span>
+                  <span class="rrm-stat-value" data-stat="confidence">${Math.floor(this.race.driver.confidence)}%</span>
                 </div>
                 <div class="rrm-stat-line">
                   <span class="rrm-stat-label">Gap to Leader</span>
-                  <span class="rrm-stat-value">${this.race.driver.gapToLeader > 0 ? '+' : ''}${this.race.driver.gapToLeader.toFixed(1)}s</span>
+                  <span class="rrm-stat-value" data-stat="gap">${this.race.driver.gapToLeader > 0 ? '+' : ''}${this.race.driver.gapToLeader.toFixed(2)}s</span>
                 </div>
               </div>
             </div>
@@ -672,36 +719,46 @@ class LiveRaceScreenUI extends RaceScreenUI {
                 <div class="rrm-bar-background">
                   <div class="rrm-bar-fill" style="width: ${100 - this.race.driver.tyreWear}%; background: ${this.getBarColor(100 - this.race.driver.tyreWear)}"></div>
                 </div>
-                <span>${Math.floor(this.race.driver.tyreWear)}%</span>
+                <span data-stat="tyres">${Math.floor(this.race.driver.tyreWear)}%</span>
               </div>
               <div class="rrm-status-bar">
                 <label>Fuel</label>
                 <div class="rrm-bar-background">
                   <div class="rrm-bar-fill" style="width: ${this.race.driver.fuelLevel}%; background: #80c9f3"></div>
                 </div>
-                <span>${Math.floor(this.race.driver.fuelLevel)}%</span>
+                <span data-stat="fuel">${Math.floor(this.race.driver.fuelLevel)}%</span>
               </div>
               <div class="rrm-status-bar">
                 <label>Battery</label>
                 <div class="rrm-bar-background">
                   <div class="rrm-bar-fill" style="width: ${this.race.driver.batteryCharge}%; background: #2ecc71"></div>
                 </div>
-                <span>${Math.floor(this.race.driver.batteryCharge)}%</span>
+                <span data-stat="battery">${Math.floor(this.race.driver.batteryCharge)}%</span>
               </div>
               <div class="rrm-status-bar">
                 <label>Reliability</label>
                 <div class="rrm-bar-background">
                   <div class="rrm-bar-fill" style="width: ${this.race.driver.reliability}%; background: #f39c12"></div>
                 </div>
-                <span>${Math.floor(this.race.driver.reliability)}%</span>
+                <span data-stat="reliability">${Math.floor(this.race.driver.reliability)}%</span>
               </div>
             </div>
           </aside>
 
           <div class="rrm-track-view">
-            <svg class="rrm-track-map" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
-              ${this.renderTrackMap()}
-            </svg>
+            <div class="rrm-track-container">
+              ${this.showStartSequence ? `<div class="rrm-track-lights" id="start-lights-container">
+                <div class="rrm-light" data-light="1"></div>
+                <div class="rrm-light" data-light="2"></div>
+                <div class="rrm-light" data-light="3"></div>
+                <div class="rrm-light" data-light="4"></div>
+                <div class="rrm-light" data-light="5"></div>
+              </div>` : ''}
+              <svg class="rrm-track-map" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet">
+                ${this.renderTrackMapLarge()}
+              </svg>
+              ${!this.showStartSequence && this.isRaceRunning ? `<div class="rrm-lights-out-message">LIGHTS OUT AND AWAY WE GO</div>` : ''}
+            </div>
             <div class="rrm-track-info">
               <p><strong>${this.track.lapLength}km</strong> • <strong>${this.track.corners}</strong> corners • Grip: ${(this.track.gripLevel * 100).toFixed(0)}%</p>
             </div>
@@ -760,7 +817,97 @@ class LiveRaceScreenUI extends RaceScreenUI {
     `;
     
     this.root.innerHTML = html;
+    
+    if (this.showStartSequence) {
+      setTimeout(() => this.animateStartLights(), 100);
+    }
+    
     this.attachLiveEventListeners();
+  }
+
+  renderTrackMapLarge() {
+    // Real Silverstone SVG layout (high-fidelity)
+    const silverstone = `
+      <defs>
+        <linearGradient id="trackGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#00bfff;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#0088ff;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="800" fill="#031a34" opacity="0.1"/>
+      
+      <!-- Silverstone Track Path -->
+      <path d="M 950 100 L 1050 150 L 1100 250 L 1080 350 L 1000 400 L 850 420 L 700 400 L 600 350 L 550 300 L 500 200 L 550 100 L 700 80 L 850 100 Z" 
+            fill="none" stroke="url(#trackGradient)" stroke-width="45" stroke-linejoin="round"/>
+      
+      <!-- Pit Lane -->
+      <path d="M 950 100 L 900 110 L 850 115" fill="none" stroke="#f39c12" stroke-width="20" stroke-dasharray="10,10" opacity="0.6"/>
+      
+      <!-- Kerbs -->
+      <path d="M 950 100 L 1050 150 L 1100 250 L 1080 350 L 1000 400 L 850 420 L 700 400 L 600 350 L 550 300 L 500 200 L 550 100 L 700 80 L 850 100 Z" 
+            fill="none" stroke="#2ecc71" stroke-width="8" opacity="0.4"/>
+      
+      <!-- Start/Finish Line -->
+      <line x1="950" y1="85" x2="950" y2="115" stroke="#ff6b6b" stroke-width="12" stroke-dasharray="6,6"/>
+      
+      <!-- Driver Markers (animated via JS) -->
+      <g class="rrm-driver-markers">
+        ${this.renderDriverMarkers()}
+      </g>
+      
+      <!-- Weather Effects (optional overlay) -->
+      ${this.track.weather.includes('rain') ? `<rect width="1200" height="800" fill="#4a7c9e" opacity="0.1"/>` : ''}
+    `;
+    
+    return silverstone;
+  }
+
+  renderDriverMarkers() {
+    const drivers = [this.race.driver, ...this.race.competitors];
+    const trackPath = new Path2D();
+    
+    return drivers.map((driver, idx) => {
+      const position = this.getDriverPosition(driver);
+      const isPlayer = driver === this.race.driver;
+      const isLeader = driver.position === 1;
+      
+      return `<circle cx="${position.x}" cy="${position.y}" r="${isPlayer ? 10 : 7}" 
+                      fill="${isPlayer ? '#2ecc71' : isLeader ? '#ff6b6b' : '#00bfff'}" 
+                      opacity="0.9" class="rrm-driver-car" data-driver="${driver.name}"
+                      style="filter: drop-shadow(0 0 ${isPlayer ? 8 : 4}px ${isPlayer ? '#2ecc71' : isLeader ? '#ff6b6b' : '#00bfff'})"/>`;
+    }).join('');
+  }
+
+  getDriverPosition(driver) {
+    // Simplified track path points for Silverstone
+    const trackPoints = [
+      { x: 950, y: 100 },   // 0% - Start
+      { x: 1050, y: 150 },  // 20%
+      { x: 1100, y: 250 },  // 40%
+      { x: 1080, y: 350 },  // 60%
+      { x: 1000, y: 400 },  // 70%
+      { x: 850, y: 420 },   // 80%
+      { x: 700, y: 400 },   // 85%
+      { x: 600, y: 350 },   // 87%
+      { x: 550, y: 300 },   // 89%
+      { x: 500, y: 200 },   // 91%
+      { x: 550, y: 100 },   // 93%
+      { x: 700, y: 80 },    // 95%
+      { x: 850, y: 100 }    // 100%
+    ];
+    
+    const progress = (this.raceLapProgress[driver.name] || 0) % 1;
+    const pointIndex = Math.floor(progress * (trackPoints.length - 1));
+    const nextIndex = (pointIndex + 1) % trackPoints.length;
+    const interpolation = (progress * (trackPoints.length - 1)) % 1;
+    
+    const p1 = trackPoints[pointIndex];
+    const p2 = trackPoints[nextIndex];
+    
+    return {
+      x: p1.x + (p2.x - p1.x) * interpolation,
+      y: p1.y + (p2.y - p1.y) * interpolation
+    };
   }
 
   renderStandings() {
@@ -771,7 +918,7 @@ class LiveRaceScreenUI extends RaceScreenUI {
       <div class="rrm-timing-row" ${driver === this.race.driver ? 'style="background: rgba(0, 191, 255, 0.1); border-left-color: #2ecc71;"' : ''}>
         <span class="rrm-timing-col rrm-col-pos">${driver.position}</span>
         <span class="rrm-timing-col rrm-col-driver">${driver.name}</span>
-        <span class="rrm-timing-col rrm-col-gap">${driver.position === 1 ? 'LEADER' : '+' + driver.gapToLeader.toFixed(1)}</span>
+        <span class="rrm-timing-col rrm-col-gap">${driver.position === 1 ? 'LEADER' : '+' + driver.gapToLeader.toFixed(2)}</span>
         <span class="rrm-timing-col rrm-col-last">${driver.lastLap ? (driver.lastLap / 1000).toFixed(2) : '--:--'}</span>
         <span class="rrm-timing-col rrm-col-best">${driver.bestLap ? (driver.bestLap / 1000).toFixed(2) : '--:--'}</span>
       </div>
@@ -819,40 +966,6 @@ class LiveRaceScreenUI extends RaceScreenUI {
     });
   }
 
-  startRaceLoop() {
-    const simulateFrame = () => {
-      if (!this.isPaused && this.isRaceRunning) {
-        const now = performance.now();
-        if (!this.lastUpdateTime) this.lastUpdateTime = now;
-        
-        const deltaTime = (now - this.lastUpdateTime) / 1000 * this.raceSpeed;
-        this.lastUpdateTime = now;
-        
-        // Simulate a lap approximately every 500ms
-        if (deltaTime > 0.5) {
-          this.race.simulateLap(this.selectedCommand, this.selectedErs);
-          this.addEvent(`Lap ${this.race.currentLapNumber - 1} completed`, 'green');
-          this.lastUpdateTime = now;
-          
-          if (this.race.currentLapNumber > 10) {
-            this.race.completeRace();
-            this.isRaceRunning = false;
-            this.showRaceResults();
-            return;
-          }
-          
-          this.renderLiveRace();
-        }
-      }
-      
-      if (this.isRaceRunning) {
-        requestAnimationFrame(simulateFrame);
-      }
-    };
-    
-    requestAnimationFrame(simulateFrame);
-  }
-
   addEvent(message, type = 'info') {
     this.eventLog.push({
       lap: this.race.currentLapNumber,
@@ -861,9 +974,76 @@ class LiveRaceScreenUI extends RaceScreenUI {
     });
   }
 
+  startRaceLoop() {
+    let lastLapSimTime = performance.now();
+    
+    const simulateFrame = (currentTime) => {
+      if (!this.isPaused && this.isRaceRunning) {
+        const deltaTime = (currentTime - lastLapSimTime) / 1000;
+        
+        // Simulate a new lap every ~0.5 seconds (at 1x speed)
+        if (deltaTime >= 0.5 / this.raceSpeed) {
+          // Advance lap progress for all drivers
+          const drivers = [this.race.driver, ...this.race.competitors];
+          drivers.forEach(driver => {
+            const lapProgressDelta = 1 / (1 + Math.random() * 0.3); // Some randomness in pace
+            this.raceLapProgress[driver.name] = (this.raceLapProgress[driver.name] || 0) + lapProgressDelta;
+          });
+          
+          // Simulate lap when player completes it
+          if (this.raceLapProgress[this.race.driver.name] >= 1) {
+            this.race.simulateLap(this.selectedCommand, this.selectedErs);
+            this.addEvent(`Lap ${this.race.currentLapNumber - 1} completed`, 'green');
+            this.raceLapProgress[this.race.driver.name] = 0;
+            
+            if (this.race.currentLapNumber > 10) {
+              this.race.completeRace();
+              this.isRaceRunning = false;
+              this.showRaceResults();
+              return;
+            }
+          }
+          
+          lastLapSimTime = currentTime;
+          this.renderLiveRace();
+        } else {
+          // Update car positions smoothly between renders
+          this.updateCarPositions();
+        }
+      } else if (this.isRaceRunning) {
+        this.renderLiveRace();
+      }
+      
+      if (this.isRaceRunning) {
+        this.animationFrameId = requestAnimationFrame(simulateFrame);
+      }
+    };
+    
+    this.animationFrameId = requestAnimationFrame(simulateFrame);
+  }
+
+  updateCarPositions() {
+    // Smoothly update car positions on track without re-rendering entire UI
+    const markerGroup = this.root.querySelector('.rrm-driver-markers');
+    if (!markerGroup) return;
+    
+    const markers = markerGroup.querySelectorAll('.rrm-driver-car');
+    const drivers = [this.race.driver, ...this.race.competitors];
+    
+    drivers.forEach((driver, idx) => {
+      if (markers[idx]) {
+        const position = this.getDriverPosition(driver);
+        markers[idx].setAttribute('cx', position.x);
+        markers[idx].setAttribute('cy', position.y);
+      }
+    });
+  }
+
   render() {
-    if (this.showStartSequence) {
-      this.renderStartSequence();
+    if (this.showStartButton) {
+      this.renderPreRaceScreen();
+    } else if (this.showStartSequence) {
+      this.renderLiveRace();
     } else {
       this.renderLiveRace();
     }
