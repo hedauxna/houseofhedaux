@@ -347,16 +347,41 @@
       color: var(--paper);
     }
 
+    .racing-manager-panel {
+      margin: 8px 0;
+      border: 1px solid rgba(0, 191, 255, .3);
+      background: rgba(3, 26, 52, .6);
+      color: var(--paper);
+      display: flex;
+      flex-direction: column;
+      min-height: 600px;
+    }
+
     .room-dialog:has(#games-life-sim:not([hidden])) {
       width: min(1380px, calc(100% - 32px));
       max-height: min(850px, calc(100dvh - 16px));
+    }
+
+    .room-dialog:has(#games-racing-manager:not([hidden])) {
+      width: min(1500px, calc(100% - 32px));
+      max-height: min(900px, calc(100dvh - 16px));
     }
 
     #games-life-sim:not([hidden]) > .observatory-section-header {
       display: none;
     }
 
+    #games-racing-manager:not([hidden]) > .observatory-section-header {
+      display: none;
+    }
+
     #room-gamesroom:has(#games-life-sim:not([hidden])) > .room-copy {
+      width: 100%;
+      max-width: none;
+      padding: 8px 18px;
+    }
+
+    #room-gamesroom:has(#games-racing-manager:not([hidden])) > .room-copy {
       width: 100%;
       max-width: none;
       padding: 8px 18px;
@@ -367,7 +392,16 @@
       border-bottom: 1px solid rgba(243, 239, 227, .16);
     }
 
+    .racing-manager-heading {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(0, 191, 255, .25);
+    }
+
     .life-sim-heading .room-kicker {
+      margin-bottom: 4px;
+    }
+
+    .racing-manager-heading .room-kicker {
       margin-bottom: 4px;
     }
 
@@ -377,6 +411,13 @@
       font: 400 clamp(20px, 2.4vw, 25px)/1.2 var(--serif);
     }
 
+    .racing-manager-heading h4 {
+      margin: 0;
+      color: #00bfff;
+      font: 400 clamp(20px, 2.4vw, 25px)/1.2 var(--serif);
+      text-shadow: 0 0 10px rgba(0, 191, 255, 0.3);
+    }
+
     .life-sim-placeholder {
       padding: 18px 20px;
       color: rgba(243, 239, 227, .82);
@@ -384,7 +425,22 @@
       line-height: 1.65;
     }
 
+    .racing-manager-placeholder {
+      padding: 18px 20px;
+      color: rgba(243, 239, 227, .82);
+      font-size: 13px;
+      line-height: 1.65;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .life-sim-placeholder p {
+      margin: 0;
+    }
+
+    .racing-manager-placeholder p {
       margin: 0;
     }
 
@@ -2579,6 +2635,397 @@
       }
     }
 
+    /* Rogue Racing Manager Styles */
+    .rrm-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(10, 20, 35, 0.95), rgba(15, 30, 50, 0.95));
+      color: var(--paper);
+      font-family: var(--sans);
+    }
+
+    .rrm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0, 191, 255, 0.3);
+      background: rgba(3, 26, 52, 0.7);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .rrm-header-left,
+    .rrm-header-right {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .rrm-race-title {
+      margin: 0;
+      font: 600 24px/1.2 var(--serif);
+      color: #00bfff;
+      text-shadow: 0 0 10px rgba(0, 191, 255, 0.4);
+    }
+
+    .rrm-race-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: rgba(243, 239, 227, 0.7);
+    }
+
+    .rrm-weather-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      background: rgba(0, 191, 255, 0.15);
+      border: 1px solid rgba(0, 191, 255, 0.4);
+    }
+
+    .rrm-weather-badge[data-weather="wet"] {
+      background: rgba(100, 150, 200, 0.2);
+      border-color: rgba(100, 150, 200, 0.5);
+    }
+
+    .rrm-weather-badge[data-weather="stormy"] {
+      background: rgba(200, 100, 100, 0.2);
+      border-color: rgba(200, 100, 100, 0.5);
+    }
+
+    .rrm-championship-position {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .rrm-label {
+      font-size: 10px;
+      color: rgba(243, 239, 227, 0.6);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .rrm-value {
+      font: 600 20px/1 var(--serif);
+      color: #2ecc71;
+    }
+
+    .rrm-main-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr) 240px;
+      gap: 12px;
+      padding: 12px;
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .rrm-driver-panel,
+    .rrm-timing-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid rgba(0, 191, 255, 0.25);
+      border-radius: 4px;
+      background: rgba(3, 26, 52, 0.6);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(0, 191, 255, 0.05);
+    }
+
+    .rrm-driver-info h3 {
+      margin: 0 0 8px;
+      font: 600 18px/1.2 var(--serif);
+      color: #00bfff;
+    }
+
+    .rrm-driver-traits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .rrm-trait-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 2px;
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.4);
+      color: #2ecc71;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .rrm-car-condition {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rrm-status-bar {
+      display: grid;
+      grid-template-columns: 50px minmax(0, 1fr) 40px;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .rrm-status-bar label {
+      color: rgba(243, 239, 227, 0.6);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .rrm-bar-background {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      overflow: hidden;
+    }
+
+    .rrm-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    .rrm-track-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid rgba(0, 191, 255, 0.25);
+      border-radius: 4px;
+      background: rgba(3, 26, 52, 0.6);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(0, 191, 255, 0.05);
+    }
+
+    .rrm-track-map {
+      width: 100%;
+      max-width: 280px;
+      aspect-ratio: 4/3;
+      filter: drop-shadow(0 0 8px rgba(0, 191, 255, 0.3));
+    }
+
+    .rrm-track-line {
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 4px rgba(0, 191, 255, 0.5));
+    }
+
+    .rrm-driver-marker {
+      animation: pulse-marker 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 6px rgba(255, 107, 107, 0.6));
+    }
+
+    @keyframes pulse-marker {
+      0%, 100% { r: 4; opacity: 1; }
+      50% { r: 5; opacity: 0.8; }
+    }
+
+    .rrm-track-info {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(243, 239, 227, 0.7);
+    }
+
+    .rrm-track-info p {
+      margin: 0;
+    }
+
+    .rrm-timing-panel h4 {
+      margin: 0 0 10px;
+      font: 600 16px/1.2 var(--serif);
+      color: #00bfff;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 12px;
+    }
+
+    .rrm-timing-tower {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .rrm-timing-row {
+      display: grid;
+      grid-template-columns: 25px 80px 50px 50px 50px;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 2px;
+      background: rgba(0, 191, 255, 0.08);
+      border: 1px solid rgba(0, 191, 255, 0.2);
+      color: rgba(243, 239, 227, 0.9);
+    }
+
+    .rrm-timing-col {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rrm-col-pos {
+      font: 600 12px/1 var(--serif);
+      color: #2ecc71;
+      justify-content: center;
+    }
+
+    .rrm-col-driver {
+      font-weight: 600;
+      color: #00bfff;
+    }
+
+    .rrm-fastest-lap {
+      margin-top: 8px;
+      padding: 6px 8px;
+      border-radius: 2px;
+      background: rgba(46, 204, 113, 0.1);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      color: #2ecc71;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+    }
+
+    .rrm-fl-badge {
+      display: inline-block;
+      margin-right: 4px;
+      font-weight: 600;
+    }
+
+    .rrm-command-deck {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 14px 16px;
+      border-top: 1px solid rgba(0, 191, 255, 0.3);
+      background: rgba(3, 26, 52, 0.7);
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .rrm-command-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rrm-command-section > label {
+      font-size: 10px;
+      color: rgba(243, 239, 227, 0.6);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .rrm-command-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .rrm-btn {
+      padding: 8px 12px;
+      border: 1px solid rgba(0, 191, 255, 0.4);
+      border-radius: 3px;
+      background: rgba(0, 191, 255, 0.08);
+      color: #00bfff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .rrm-btn:hover:not(:disabled) {
+      background: rgba(0, 191, 255, 0.15);
+      border-color: rgba(0, 191, 255, 0.6);
+      box-shadow: 0 0 12px rgba(0, 191, 255, 0.3);
+    }
+
+    .rrm-btn-active {
+      background: rgba(0, 191, 255, 0.25);
+      border-color: rgba(0, 191, 255, 0.8);
+      box-shadow: 0 0 16px rgba(0, 191, 255, 0.4), inset 0 0 10px rgba(0, 191, 255, 0.1);
+      color: #fff;
+    }
+
+    .rrm-btn-primary {
+      background: rgba(46, 204, 113, 0.15);
+      border-color: rgba(46, 204, 113, 0.5);
+      color: #2ecc71;
+    }
+
+    .rrm-btn-primary:hover:not(:disabled) {
+      background: rgba(46, 204, 113, 0.25);
+      border-color: rgba(46, 204, 113, 0.8);
+      box-shadow: 0 0 12px rgba(46, 204, 113, 0.3);
+    }
+
+    .rrm-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .rrm-race-results {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .rrm-race-results h2 {
+      margin: 0;
+      font: 600 32px/1.2 var(--serif);
+      color: #00bfff;
+    }
+
+    .rrm-result-summary {
+      display: grid;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .rrm-result-summary p {
+      margin: 0;
+      color: rgba(243, 239, 227, 0.9);
+    }
+
+    .rrm-result-summary strong {
+      color: #2ecc71;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1200px) {
+      .rrm-main-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .rrm-driver-panel,
+      .rrm-timing-panel {
+        grid-column: 1 / -1;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *,
       *::before,
@@ -3195,6 +3642,13 @@
                 <span class="observatory-feature-description">Make everyday choices and experience a full year of life.</span>
                 <span class="observatory-feature-link">Start playing <span aria-hidden="true">→</span></span>
               </a>
+              <a class="observatory-feature-card" href="#games-racing-manager">
+                <span class="observatory-feature-icon" aria-hidden="true">🏁</span>
+                <span class="observatory-feature-label">Roguelike team simulator</span>
+                <strong class="observatory-feature-title">Rogue Racing Manager</strong>
+                <span class="observatory-feature-description">Strategic racing simulation with roguelike mechanics.</span>
+                <span class="observatory-feature-link">Start racing <span aria-hidden="true">→</span></span>
+              </a>
             </nav>
             <details class="room-original-story" open>
               <summary>Original room story</summary>
@@ -3298,6 +3752,24 @@
             </div>
           </section>
           <a class="observatory-back-link" href="#games-room-start">↑ Games Room overview</a>
+          </section>
+
+          <section class="games-page" id="games-racing-manager" data-games-page="racing-manager" data-games-title="Games Room · Rogue Racing Manager" aria-labelledby="games-racing-manager-title" hidden>
+            <header class="observatory-section-header">
+              <span class="observatory-section-kicker">Roguelike racing team management</span>
+              <h4 id="games-racing-manager-title">Strategic pit wall decisions</h4>
+              <p>Command your racing team through a season of randomized events, strategic upgrades, and high-stakes races.</p>
+            </header>
+            <section class="racing-manager-panel" data-racing-manager-root aria-labelledby="racing-manager-heading">
+              <header class="racing-manager-heading">
+                <p class="room-kicker">Playable prototype</p>
+                <h4 id="racing-manager-heading">Rogue Racing Manager</h4>
+              </header>
+              <div class="racing-manager-placeholder" data-racing-manager-placeholder role="status">
+                <p>Loading the racing simulator…</p>
+              </div>
+            </section>
+            <a class="observatory-back-link" href="#games-room-start">↑ Games Room overview</a>
           </section>
         </div>
       </article>
@@ -4103,6 +4575,20 @@
             placeholder.textContent = "The life sim could not be loaded. Check the browser console for details.";
           }
           console.error("Could not load the local Games Room life sim.", error);
+        });
+    }
+
+    const racingManagerRoot = document.querySelector("[data-racing-manager-root]");
+
+    if (racingManagerRoot) {
+      import("./games/racing-manager.js")
+        .then(({ mountRacingManager }) => mountRacingManager(racingManagerRoot))
+        .catch((error) => {
+          const placeholder = racingManagerRoot.querySelector("[data-racing-manager-placeholder]");
+          if (placeholder) {
+            placeholder.textContent = "The racing simulator could not be loaded. Check the browser console for details.";
+          }
+          console.error("Could not load the Racing Manager game.", error);
         });
     }
   </script>
