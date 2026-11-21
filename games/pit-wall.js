@@ -74,6 +74,11 @@ class PitWallConsole {
         <footer class="pit-wall-panel pit-wall-panel-bottom">
           <div class="pit-wall-panel-header">
             <h3>Command Centre</h3>
+            <button class="pit-wall-quit-button" title="Return to Games Room" data-action="quit-game">
+              <svg class="pit-wall-quit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
           </div>
           <div class="pit-wall-panel-content">
             <div class="pit-wall-placeholder-block">

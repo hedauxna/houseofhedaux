@@ -360,7 +360,7 @@
 
     .pit-wall-header {
       flex-shrink: 0;
-      padding: 16px 20px;
+      padding: 8px 12px;
       border-bottom: 1px solid rgba(215, 189, 133, .24);
       background: linear-gradient(90deg, rgba(3, 26, 52, 0.8), rgba(6, 38, 74, 0.8));
     }
@@ -369,35 +369,36 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
+      gap: 12px;
     }
 
     .pit-wall-title-block h2 {
-      margin: 0 0 2px 0;
+      margin: 0;
       color: var(--paper);
-      font: 600 24px/1.2 var(--serif);
+      font: 600 16px/1 var(--serif);
       letter-spacing: .08em;
     }
 
     .pit-wall-subtitle {
       margin: 0;
       color: rgba(243, 239, 227, .68);
-      font-size: 11px;
+      font-size: 9px;
       letter-spacing: .08em;
       text-transform: uppercase;
+      display: none;
     }
 
     .pit-wall-header-info {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 2px;
+      gap: 1px;
     }
 
     .pit-wall-info-label {
       display: block;
       color: var(--gold);
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 600;
       letter-spacing: .12em;
       text-transform: uppercase;
@@ -406,7 +407,7 @@
     .pit-wall-info-value {
       display: block;
       color: rgba(126, 211, 33, 0.9);
-      font: 600 13px/1.2 var(--sans);
+      font: 600 11px/1 var(--sans);
       letter-spacing: .04em;
     }
 
@@ -455,22 +456,27 @@
 
     .pit-wall-panel-header {
       flex-shrink: 0;
-      padding: 12px 16px;
+      padding: 4px 8px;
       border-bottom: 1px solid rgba(215, 189, 133, .16);
       background: rgba(0, 0, 0, .3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 24px;
     }
 
     .pit-wall-panel-header h3 {
       margin: 0;
+      padding: 0;
       color: var(--gold);
-      font: 600 12px/1.2 var(--sans);
-      letter-spacing: .12em;
-      text-transform: uppercase;
+      font: 600 14px/1 var(--serif);
+      letter-spacing: .08em;
+      white-space: nowrap;
     }
 
     .pit-wall-panel-content {
       flex: 1;
-      padding: 16px;
+      padding: 8px;
       overflow-y: auto;
       display: flex;
       align-items: center;
@@ -492,9 +498,9 @@
     }
 
     .pit-wall-placeholder-label {
-      margin: 0 0 8px 0;
+      margin: 0 0 4px 0;
       color: var(--gold);
-      font: 600 12px/1.2 var(--sans);
+      font: 600 10px/1 var(--sans);
       letter-spacing: .08em;
       text-transform: uppercase;
     }
@@ -502,8 +508,8 @@
     .pit-wall-placeholder-info {
       margin: 0;
       color: rgba(243, 239, 227, .64);
-      font-size: 12px;
-      line-height: 1.6;
+      font-size: 10px;
+      line-height: 1.4;
     }
 
     .pit-wall-panel-bottom .pit-wall-panel-content {
@@ -512,6 +518,35 @@
       align-items: flex-start;
       gap: 12px;
       min-height: 100px;
+    }
+
+    /* Quit Button */
+    .pit-wall-quit-button {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      margin: 0;
+      border: 1px solid rgba(215, 189, 133, .4);
+      background: transparent;
+      color: var(--gold);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s ease;
+      border-radius: 2px;
+    }
+
+    .pit-wall-quit-button:hover {
+      background: rgba(215, 189, 133, .15);
+      border-color: rgba(215, 189, 133, .6);
+    }
+
+    .pit-wall-quit-icon {
+      width: 12px;
+      height: 12px;
+      display: block;
     }
 
     /* Responsive Design */
@@ -609,13 +644,15 @@
 
       /* Compact panel styling for landscape */
       .pit-wall-panel-header {
-        padding: 6px 8px;
-        min-height: auto;
+        padding: 4px 8px;
+        height: 24px;
       }
 
       .pit-wall-panel-header h3 {
-        font: 600 10px/1 var(--sans);
+        font: 600 14px/1 var(--serif);
         margin: 0;
+        padding: 0;
+        white-space: nowrap;
       }
 
       .pit-wall-panel-content {
@@ -686,7 +723,22 @@
       max-height: min(900px, calc(100dvh - 16px));
     }
 
+    /* Pit Wall Full Screen Mode (Desktop) */
+    #room-gamesroom:has(#games-pit-wall:not([hidden])) > .room-copy {
+      width: 100%;
+      max-width: none;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Pit Wall Full Screen Mode (Landscape) */
     @media (max-width: 1200px) and (orientation: landscape) {
+      /* Hide room wrapper elements */
+      #room-gamesroom > .room-panel-header {
+        display: none;
+      }
+
       .room-dialog:has(#games-pit-wall:not([hidden])) {
         width: 100%;
         max-width: 100%;
@@ -695,26 +747,35 @@
         padding: 0;
         border: none;
         box-shadow: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+
+      #room-gamesroom:has(#games-pit-wall:not([hidden])) {
+        background: transparent;
+      }
+
+      #room-gamesroom:has(#games-pit-wall:not([hidden])) > .room-copy {
+        height: 100dvh;
+        max-height: 100dvh;
+        padding: 0;
+        margin: 0;
+      }
+
+      .games-back-wrapper {
+        display: none;
       }
     }
 
+    /* Pit Wall Mobile Portrait Mode */
     @media (max-width: 1200px) and (orientation: portrait) {
       .room-dialog:has(#games-pit-wall:not([hidden])) {
         width: min(100%, calc(100% - 32px));
         max-height: auto;
       }
-    }
-
-    #games-pit-wall:not([hidden]) > .observatory-section-header {
-      display: none;
-    }
-
-    #room-gamesroom:has(#games-pit-wall:not([hidden])) > .room-copy {
-      width: 100%;
-      max-width: none;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
     }
 
     .pit-wall-container {
@@ -730,16 +791,6 @@
       .pit-wall-container {
         height: 100dvh;
         max-height: 100dvh;
-      }
-
-      #room-gamesroom:has(#games-pit-wall:not([hidden])) > .room-copy {
-        height: 100dvh;
-        max-height: 100dvh;
-        padding: 0;
-      }
-
-      .games-back-wrapper {
-        display: none; /* Hide back link in landscape */
       }
     }
 
@@ -4514,6 +4565,15 @@
         .then(({ PitWallConsole }) => {
           const console = new PitWallConsole(pitWallRoot);
           console.mount();
+
+          // Handle quit button
+          const quitButton = pitWallRoot.querySelector('[data-action="quit-game"]');
+          if (quitButton) {
+            quitButton.addEventListener('click', () => {
+              // Navigate back to Games Room overview
+              window.location.hash = '#games-room-start';
+            });
+          }
         })
         .catch((error) => {
           pitWallRoot.innerHTML = "<p style='padding: 20px; color: #ccc;'>Pit Wall could not be loaded. Check the browser console for details.</p>";
