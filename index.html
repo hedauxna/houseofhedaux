@@ -522,6 +522,36 @@
       line-height: 1.4;
     }
 
+    .pit-wall-menu-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      justify-content: center;
+    }
+
+    .pit-wall-menu-button {
+      padding: 8px 16px;
+      border: 1px solid rgba(215, 189, 133, .4);
+      background: rgba(3, 26, 52, 0.6);
+      color: var(--gold);
+      font: 600 12px/1 var(--serif);
+      letter-spacing: .08em;
+      cursor: pointer;
+      transition: all .18s ease;
+      border-radius: 2px;
+    }
+
+    .pit-wall-menu-button:hover {
+      background: rgba(3, 26, 52, 0.9);
+      border-color: rgba(215, 189, 133, .7);
+      text-shadow: 0 0 8px rgba(215, 189, 133, .4);
+    }
+
+    .pit-wall-menu-button:active {
+      background: rgba(3, 26, 52, 1);
+      border-color: var(--gold);
+    }
+
     .pit-wall-panel-bottom .pit-wall-panel-content {
       flex-direction: row;
       justify-content: flex-start;

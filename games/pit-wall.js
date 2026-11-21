@@ -46,12 +46,16 @@ class PitWallConsole {
           <!-- Centre Panel: Track Display -->
           <main class="pit-wall-panel pit-wall-panel-centre">
             <div class="pit-wall-panel-header">
-              <h3>Circuit</h3>
+              <h3>Main</h3>
             </div>
             <div class="pit-wall-panel-content pit-wall-track-display">
               <div class="pit-wall-placeholder-block pit-wall-track-placeholder">
-                <p class="pit-wall-placeholder-label">Circuit Display</p>
-                <p class="pit-wall-placeholder-info">Track visualization will appear here</p>
+                <p class="pit-wall-placeholder-label">Pit Wall</p>
+                <p class="pit-wall-placeholder-info">Select an option to begin</p>
+                <div class="pit-wall-menu-buttons">
+                  <button class="pit-wall-menu-button" data-action="continue-game">Continue</button>
+                  <button class="pit-wall-menu-button" data-action="new-game">New Game</button>
+                </div>
               </div>
             </div>
           </main>
