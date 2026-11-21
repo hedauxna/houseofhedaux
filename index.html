@@ -542,6 +542,138 @@
       }
     }
 
+    /* Mobile Landscape: Priority is to fit everything in viewport */
+    @media (max-width: 1200px) and (orientation: landscape) {
+      /* Header becomes compact */
+      .pit-wall-header {
+        padding: 8px 12px;
+        flex-shrink: 0;
+        min-height: auto;
+      }
+
+      .pit-wall-header-content {
+        gap: 12px;
+      }
+
+      .pit-wall-title-block h2 {
+        font: 600 16px/1 var(--serif);
+        margin: 0;
+      }
+
+      .pit-wall-subtitle {
+        font-size: 9px;
+        display: none;
+      }
+
+      .pit-wall-info-label {
+        font-size: 8px;
+      }
+
+      .pit-wall-info-value {
+        font: 600 11px/1 var(--sans);
+      }
+
+      /* Layout changes to 2-row: controls top, circuit below */
+      .pit-wall-layout {
+        grid-template-columns: 1fr 2fr 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 0;
+        padding: 0;
+        height: 100%;
+      }
+
+      .pit-wall-panel-left {
+        grid-column: 1 / 2;
+        grid-row: 1 / 3;
+        order: 1;
+      }
+
+      .pit-wall-panel-centre {
+        grid-column: 2 / 3;
+        grid-row: 1 / 3;
+        order: 2;
+      }
+
+      .pit-wall-panel-right {
+        grid-column: 3 / 4;
+        grid-row: 1 / 3;
+        order: 3;
+      }
+
+      .pit-wall-panel-bottom {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        order: 4;
+        display: none; /* Hide command centre to save space */
+      }
+
+      /* Compact panel styling for landscape */
+      .pit-wall-panel-header {
+        padding: 6px 8px;
+        min-height: auto;
+      }
+
+      .pit-wall-panel-header h3 {
+        font: 600 10px/1 var(--sans);
+        margin: 0;
+      }
+
+      .pit-wall-panel-content {
+        padding: 8px;
+        font-size: 11px;
+      }
+
+      .pit-wall-placeholder-label {
+        font: 600 10px/1 var(--sans);
+        margin: 0 0 4px 0;
+      }
+
+      .pit-wall-placeholder-info {
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .pit-wall-track-placeholder {
+        min-height: auto;
+      }
+    }
+
+    /* Portrait mobile: stack vertically */
+    @media (max-width: 1200px) and (orientation: portrait) {
+      .pit-wall-header {
+        padding: 12px 16px;
+      }
+
+      .pit-wall-title-block h2 {
+        font: 600 20px/1.2 var(--serif);
+      }
+
+      .pit-wall-subtitle {
+        font-size: 10px;
+      }
+
+      .pit-wall-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        gap: 1px;
+      }
+
+      .pit-wall-panel-left,
+      .pit-wall-panel-centre,
+      .pit-wall-panel-right,
+      .pit-wall-panel-bottom {
+        grid-column: 1 / -1;
+      }
+
+      .pit-wall-panel-centre {
+        min-height: 300px;
+      }
+
+      .pit-wall-panel-bottom {
+        display: flex;
+      }
+    }
+
     .life-sim-panel {
       margin: 8px 0;
       border: 1px solid rgba(215, 189, 133, .4);
@@ -552,6 +684,25 @@
     .room-dialog:has(#games-pit-wall:not([hidden])) {
       width: min(1400px, calc(100% - 32px));
       max-height: min(900px, calc(100dvh - 16px));
+    }
+
+    @media (max-width: 1200px) and (orientation: landscape) {
+      .room-dialog:has(#games-pit-wall:not([hidden])) {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100dvh;
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+      }
+    }
+
+    @media (max-width: 1200px) and (orientation: portrait) {
+      .room-dialog:has(#games-pit-wall:not([hidden])) {
+        width: min(100%, calc(100% - 32px));
+        max-height: auto;
+      }
     }
 
     #games-pit-wall:not([hidden]) > .observatory-section-header {
@@ -572,6 +723,24 @@
       flex-direction: column;
       min-height: 0;
       overflow: hidden;
+      height: 100%;
+    }
+
+    @media (max-width: 1200px) and (orientation: landscape) {
+      .pit-wall-container {
+        height: 100dvh;
+        max-height: 100dvh;
+      }
+
+      #room-gamesroom:has(#games-pit-wall:not([hidden])) > .room-copy {
+        height: 100dvh;
+        max-height: 100dvh;
+        padding: 0;
+      }
+
+      .games-back-wrapper {
+        display: none; /* Hide back link in landscape */
+      }
     }
 
     .games-back-wrapper {
