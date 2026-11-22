@@ -70,49 +70,75 @@ const WEEKENDS = [
 }));
 
 const DISCOVERIES = [
-  { id: "wind-tunnel", name: "Wind Tunnel Upgrade", stat: "Aero", amount: 1, effect: "+1 Aero", rarity: "green", category: "permanent" },
-  { id: "brake-cooling", name: "Brake Cooling", stat: "Reliability", amount: 1, effect: "+1 Reliability", rarity: "green", category: "permanent" },
-  { id: "battery-optimisation", name: "Battery Optimisation", stat: "Energy Recovery", amount: 1, effect: "+1 Energy Recovery", rarity: "green", category: "permanent" },
-  { id: "suspension-development", name: "Suspension Development", stat: "Handling", amount: 1, effect: "+1 Handling", rarity: "green", category: "permanent" },
-  { id: "pit-crew-training", name: "Pit Crew Training", stat: "Pit Efficiency", amount: 1, effect: "+1 Pit Efficiency", rarity: "green", category: "permanent" },
-  { id: "tyre-insight", name: "Tyre Insight", effect: "+10% Tyre Life", rarity: "blue", category: "weekend" },
-  { id: "track-evolution", name: "Track Evolution Notes", effect: "+0.15 Pace", rarity: "blue", category: "weekend" },
-  { id: "braking-reference", name: "Braking Reference Data", effect: "+20% Corner Entry", rarity: "blue", category: "weekend" },
-  { id: "fuel-mapping", name: "Fuel Mapping Discovery", effect: "+15% Fuel Efficiency", rarity: "blue", category: "weekend" },
-  { id: "overtaking-analysis", name: "Overtaking Analysis", effect: "+20% Racecraft", rarity: "blue", category: "weekend" },
-  { id: "aero-breakthrough", name: "Aero Breakthrough", stat: "Aero", amount: 3, effect: "+3 Aero", rarity: "purple", category: "permanent" },
-  { id: "durability-breakthrough", name: "Durability Breakthrough", stat: "Reliability", amount: 3, effect: "+3 Reliability", rarity: "purple", category: "permanent" },
-  { id: "handling-breakthrough", name: "Handling Breakthrough", stat: "Handling", amount: 3, effect: "+3 Handling", rarity: "purple", category: "permanent" },
-  { id: "research-charter", name: "Research Charter", effect: "+1 full reroll per future session", rarity: "gold", category: "permanent" },
-  { id: "design-review", name: "Design Review", effect: "+1 single-card reroll per future session", rarity: "gold", category: "permanent" },
-  { id: "legacy-lab", name: "Legacy Lab", effect: "Future green upgrades gain +1x effect", rarity: "gold", category: "permanent" },
+  { id: "wind-tunnel", name: "Wind Tunnel Upgrade", description: "Refine the car's aerodynamics.", stat: "Aero", amount: 1, effect: "+1 Aero", rarity: "blue", category: "permanent", stackable: true },
+  { id: "brake-cooling", name: "Brake Cooling", description: "Keep critical components cooler.", stat: "Reliability", amount: 1, effect: "+1 Reliability", rarity: "blue", category: "permanent", stackable: true },
+  { id: "battery-optimisation", name: "Battery Optimisation", description: "Recover more energy each lap.", stat: "Energy Recovery", amount: 1, effect: "+1 Energy Recovery", rarity: "blue", category: "permanent", stackable: true },
+  { id: "suspension-development", name: "Suspension Development", description: "Improve the car's balance.", stat: "Handling", amount: 1, effect: "+1 Handling", rarity: "blue", category: "permanent", stackable: true },
+  { id: "pit-crew-training", name: "Pit Crew Training", description: "Sharpen the team's pit stops.", stat: "Pit Efficiency", amount: 1, effect: "+1 Pit Efficiency", rarity: "blue", category: "permanent", stackable: true },
+  { id: "tyre-insight", name: "Tyre Insight", description: "Make the tyres last longer.", effect: "+10% Tyre Life", rarity: "green", category: "weekend", stackable: true },
+  { id: "track-evolution", name: "Track Evolution Notes", description: "Adapt to the changing circuit.", effect: "+0.15 Pace", rarity: "green", category: "weekend", stackable: true },
+  { id: "braking-reference", name: "Braking Reference Data", description: "Find better braking points.", effect: "+20% Corner Entry", rarity: "green", category: "weekend", stackable: true },
+  { id: "fuel-mapping", name: "Fuel Mapping Discovery", description: "Use fuel more efficiently.", effect: "+15% Fuel Efficiency", rarity: "green", category: "weekend", stackable: true },
+  { id: "overtaking-analysis", name: "Overtaking Analysis", description: "Identify passing opportunities.", effect: "+20% Racecraft", rarity: "green", category: "weekend", stackable: true },
+  { id: "aero-breakthrough", name: "Aero Breakthrough", description: "Unlock a major aerodynamic advance.", stat: "Aero", amount: 3, effect: "+3 Aero", rarity: "purple", category: "permanent" },
+  { id: "durability-breakthrough", name: "Durability Breakthrough", description: "Make a major reliability advance.", stat: "Reliability", amount: 3, effect: "+3 Reliability", rarity: "purple", category: "permanent" },
+  { id: "handling-breakthrough", name: "Handling Breakthrough", description: "Transform the car's handling.", stat: "Handling", amount: 3, effect: "+3 Handling", rarity: "purple", category: "permanent" },
+  { id: "research-charter", name: "Research Charter", description: "Expand future discovery choices.", effect: "+1 full reroll per future session", rarity: "gold", category: "permanent" },
+  { id: "design-review", name: "Design Review", description: "Refine future discovery offers.", effect: "+1 single-card reroll per future session", rarity: "gold", category: "permanent" },
+  { id: "legacy-lab", name: "Legacy Lab", description: "Amplify all common upgrades.", effect: "Blue upgrades gain +1x effect", rarity: "gold", category: "permanent" },
 ];
 
 const SESSION_DURATION = 5000;
 
-function drawDiscovery(postGrandPrix, exclude = []) {
-  const roll = Math.random();
-  const rarity = postGrandPrix
-    ? (roll < .90 ? "green" : roll < .98 ? "purple" : "gold")
-    : (roll < .45 ? "blue" : roll < .90 ? "green" : roll < .98 ? "purple" : "gold");
-  const candidates = DISCOVERIES.filter((item) =>
-    item.rarity === rarity && !exclude.some((other) => other.id === item.id));
-  if (!candidates.length) throw new Error(`No ${rarity} discoveries available for this offer`);
+function eligibleDiscoveries(postGrandPrix, exclude, owned, uniqueRewards) {
+  return DISCOVERIES.filter((item) => {
+    if ((postGrandPrix && item.category === "weekend") || exclude.some((other) => other.id === item.id)) return false;
+    const existing = owned.find((other) => other.id === item.id);
+    if (!item.stackable && (existing || uniqueRewards.has(item.id))) return false;
+    return item.maxLevel == null || (existing ? existing.level : 0) < item.maxLevel;
+  });
+}
+
+function drawDiscovery(postGrandPrix, exclude = [], owned = [], uniqueRewards = new Set()) {
+  const eligible = eligibleDiscoveries(postGrandPrix, exclude, owned, uniqueRewards);
+  const weights = postGrandPrix
+    ? [["blue", 90], ["purple", 8], ["gold", 2]]
+    : [["green", 45], ["blue", 45], ["purple", 8], ["gold", 2]];
+  const available = weights.filter(([rarity]) => eligible.some((item) => item.rarity === rarity));
+  const total = available.reduce((sum, [, weight]) => sum + weight, 0);
+  if (!total) throw new Error("No eligible discoveries available");
+  let roll = Math.random() * total;
+  const [rarity] = available.find(([, weight]) => {
+    roll -= weight;
+    return roll < 0;
+  });
+  const candidates = eligible.filter((item) => item.rarity === rarity);
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-function discoveryOffer(postGrandPrix) {
+function discoveryOffer(postGrandPrix, owned, uniqueRewards) {
   const options = [];
-  while (options.length < 3) options.push(drawDiscovery(postGrandPrix, options));
+  while (options.length < 3 && eligibleDiscoveries(postGrandPrix, options, owned, uniqueRewards).length) {
+    options.push(drawDiscovery(postGrandPrix, options, owned, uniqueRewards));
+  }
   return options;
 }
 
 function rarityLabel(rarity) {
   return {
-    blue: "Blue · Weekend Only",
-    green: "Green · Permanent",
+    green: "Green · Weekend Only",
+    blue: "Blue · Permanent",
     purple: "Purple · Rare · Permanent",
     gold: "Gold · Legendary · Permanent",
+  }[rarity];
+}
+
+function discoveryType(rarity) {
+  return {
+    green: "Weekend Discovery",
+    blue: "Permanent Upgrade",
+    purple: "Rare Breakthrough",
+    gold: "Legendary Discovery",
   }[rarity];
 }
 
@@ -268,12 +294,11 @@ class PitWallConsole {
     this.team = null;
     this.permanentUpgrades = [];
     this.weekendDiscoveries = [];
+    this.uniqueRewards = new Set();
     this.weekendState = null;
     this.seasonWeekends = [];
     this.currentRoundIndex = 0;
     this.roundsCompleted = 0;
-    this.profileUpgradePage = 0;
-    this.seasonPage = 0;
     this.selectedWeekends = new Set(WEEKENDS.map((weekend) => weekend.id));
     const driverPanel = this.rootElement.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
     const mainPanel = this.rootElement.querySelector(".pit-wall-track-display");
@@ -291,12 +316,10 @@ class PitWallConsole {
 
   renderProfile(status) {
     const driverPanel = this.rootElement.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
-    const permanent = this.upgradeEntries(this.permanentUpgrades);
-    const temporary = this.upgradeEntries(this.weekendDiscoveries);
-    const pages = Math.max(1, permanent.length + temporary.length);
-    this.profileUpgradePage = Math.min(this.profileUpgradePage, pages - 1);
-    const rareCount = this.permanentUpgrades.filter((upgrade) => upgrade.rarity === "purple").length;
-    const legendaryCount = this.permanentUpgrades.filter((upgrade) => upgrade.rarity === "gold").length;
+    const active = [...this.weekendDiscoveries, ...this.permanentUpgrades];
+    const rarityOrder = { green: 0, blue: 1, purple: 2, gold: 3 };
+    const unique = active.sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
+    const labels = { green: "Weekend discovery", blue: "Permanent upgrade", purple: "Rare breakthrough", gold: "Legendary discovery" };
     driverPanel.innerHTML = `
       <div class="pit-wall-driver-profile${this.weekendState ? " pit-wall-driver-profile-weekend" : ""}">
         ${portrait(this.driver)}
@@ -317,54 +340,22 @@ class PitWallConsole {
           <section class="pit-wall-season-progress" aria-label="Season Progress">
             <span class="pit-wall-driver-profile-label">Season Progress</span>
             <span>Rounds Completed: ${this.roundsCompleted}</span>
-            <span>Permanent Upgrades: ${this.permanentUpgrades.length}</span>
-            <span>Rare Breakthroughs: ${rareCount}</span>
-            <span>Legendary Discoveries: ${legendaryCount}</span>
           </section>
           <section class="pit-wall-active-upgrades" aria-label="Active Upgrades">
             <span class="pit-wall-driver-profile-label">Active Upgrades</span>
-            <span class="pit-wall-driver-traits-label">Permanent Upgrades${permanent.length ? "" : ": None"}</span>
-            ${this.upgradeList(permanent, 0)}
-            <span class="pit-wall-driver-traits-label">Weekend Discoveries${temporary.length ? "" : ": None"}</span>
-            ${this.upgradeList(temporary, permanent.length)}
-            ${pages > 1 ? `
-              <div class="pit-wall-upgrade-pagination" aria-label="Upgrade pages">
-                <button type="button" data-action="previous-upgrades" ${this.profileUpgradePage === 0 ? "disabled" : ""} aria-label="Previous upgrades">&lsaquo;</button>
-                <span>${this.profileUpgradePage + 1}/${pages}</span>
-                <button type="button" data-action="next-upgrades" ${this.profileUpgradePage === pages - 1 ? "disabled" : ""} aria-label="Next upgrades">&rsaquo;</button>
-              </div>
-            ` : ""}
+            ${unique.length ? `
+              <ul class="pit-wall-upgrade-list">${unique.map((upgrade) => {
+                const hasStat = upgrade.stat && typeof upgrade.amount === "number";
+                const value = hasStat ? ` ${upgrade.effect}` : upgrade.stackable ? ` +${upgrade.level}` : "";
+                const level = hasStat && upgrade.stackable && upgrade.amount !== upgrade.level ? ` (Lv ${upgrade.level})` : "";
+                return `<li class="${upgrade.rarity}" aria-label="${labels[upgrade.rarity]}: ${upgrade.name}${value}${upgrade.stackable ? `, level ${upgrade.level}` : ""}">${upgrade.name}${value}${level}</li>`;
+              }).join("")}</ul>
+            ` : '<span class="pit-wall-upgrade-empty">None yet</span>'}
           </section>
         ` : ""}
       </div>
     `;
-    const changeUpgradePage = (direction) => {
-      this.profileUpgradePage += direction;
-      this.renderProfile(status);
-      const preferred = direction < 0 ? "previous-upgrades" : "next-upgrades";
-      const alternative = direction < 0 ? "next-upgrades" : "previous-upgrades";
-      const button = driverPanel.querySelector(`[data-action="${preferred}"]`);
-      const focusTarget = button && !button.disabled ? button : driverPanel.querySelector(`[data-action="${alternative}"]`);
-      focusTarget?.focus();
-    };
-    driverPanel.querySelector('[data-action="previous-upgrades"]')?.addEventListener("click", () => changeUpgradePage(-1));
-    driverPanel.querySelector('[data-action="next-upgrades"]')?.addEventListener("click", () => changeUpgradePage(1));
     if (status) this.rootElement.querySelector(".pit-wall-info-value").textContent = status;
-  }
-
-  upgradeEntries(upgrades) {
-    const counts = new Map();
-    upgrades.forEach((upgrade) => counts.set(upgrade.name, (counts.get(upgrade.name) || 0) + 1));
-    return [...counts];
-  }
-
-  upgradeList(entries, offset) {
-    const index = this.profileUpgradePage - offset;
-    const page = index < 0 ? [] : entries.slice(index, index + 1);
-    if (!page.length) return "";
-    return `<ul class="pit-wall-upgrade-list">${page.map(([name, count]) => `
-      <li>${name}${count > 1 ? ` &times;${count}` : ""}</li>
-    `).join("")}</ul>`;
   }
 
   renderDraft(kind) {
@@ -431,26 +422,10 @@ class PitWallConsole {
     const mainPanel = this.rootElement.querySelector(".pit-wall-track-display");
     mainPanel.innerHTML = `
       <section class="pit-wall-draft pit-wall-season" aria-labelledby="pit-wall-draft-title">
-        <p class="pit-wall-draft-eyebrow">Prepare your season</p>
         <h4 id="pit-wall-draft-title" tabindex="-1">2027 Season Setup</h4>
-        <p class="pit-wall-draft-intro">Choose the weekends you want to include.</p>
         <div class="pit-wall-season-races"></div>
-        <div class="pit-wall-season-navigation">
-          <button type="button" class="pit-wall-discovery-action" data-action="previous-calendar">Previous</button>
-          <span data-calendar-page></span>
-          <button type="button" class="pit-wall-discovery-action" data-action="next-calendar">Next</button>
-          <button type="button" class="pit-wall-discovery-action" data-action="select-all-races">Select All</button>
-          <button type="button" class="pit-wall-discovery-action" data-action="clear-races">Clear All</button>
-        </div>
-        <div class="pit-wall-season-summary" aria-live="polite">
-          <span class="pit-wall-season-summary-label">Selected Races</span>
-          <span data-season-names></span>
-          <span class="pit-wall-season-summary-label">Selected Race Count</span>
-          <span data-season-count></span>
-          <span class="pit-wall-season-summary-label">Season Length</span>
-          <span data-season-length></span>
-        </div>
         <div class="pit-wall-season-footer">
+          <span class="pit-wall-season-summary" data-season-count aria-live="polite"></span>
           <span class="pit-wall-season-warning" data-season-warning></span>
           <button type="button" class="pit-wall-menu-button pit-wall-season-confirm" data-action="confirm-season">Confirm Season</button>
         </div>
@@ -459,14 +434,15 @@ class PitWallConsole {
 
     const confirm = mainPanel.querySelector('[data-action="confirm-season"]');
     const renderCalendar = () => {
-      const pageSize = 6;
-      const pageCount = Math.ceil(WEEKENDS.length / pageSize);
       const racesElement = mainPanel.querySelector(".pit-wall-season-races");
-      racesElement.innerHTML = WEEKENDS.slice(this.seasonPage * pageSize, (this.seasonPage + 1) * pageSize).map((weekend) => `
-        <button type="button" class="pit-wall-season-race" data-weekend="${weekend.id}" aria-pressed="${this.selectedWeekends.has(weekend.id)}">
-          <span class="pit-wall-season-round">Round ${weekend.round}${weekend.sprint ? " · Sprint" : ""}</span>
+      racesElement.innerHTML = WEEKENDS.map((weekend) => `
+        <button type="button" class="pit-wall-season-race" data-weekend="${weekend.id}"
+          aria-pressed="${this.selectedWeekends.has(weekend.id)}"
+          aria-label="Round ${weekend.round}, ${weekend.name}, ${weekend.dates}${weekend.sprint ? ", Sprint weekend" : ""}">
+          <span class="pit-wall-season-round">R${weekend.round}</span>
           <span class="pit-wall-season-name">${weekend.name}</span>
-          <span class="pit-wall-season-date">${weekend.dates}</span>
+          ${weekend.sprint ? '<span class="pit-wall-season-sprint">Sprint</span>' : ""}
+          <span class="pit-wall-season-date">${weekend.dates.replace(/ \d{4}$/, "").replace(/\b[A-Za-z]{4,}\b/g, (month) => month.slice(0, 3))}</span>
         </button>
       `).join("");
       racesElement.querySelectorAll("[data-weekend]").forEach((button) => {
@@ -478,40 +454,14 @@ class PitWallConsole {
           updateSelection();
         });
       });
-      mainPanel.querySelector("[data-calendar-page]").textContent = `Calendar ${this.seasonPage + 1}/${pageCount}`;
-      mainPanel.querySelector('[data-action="previous-calendar"]').disabled = this.seasonPage === 0;
-      mainPanel.querySelector('[data-action="next-calendar"]').disabled = this.seasonPage === pageCount - 1;
     };
     const updateSelection = () => {
-      const selected = WEEKENDS.filter((weekend) => this.selectedWeekends.has(weekend.id));
-      const count = selected.length;
+      const count = this.selectedWeekends.size;
       const races = count === 1 ? "Race" : "Races";
-      const names = selected.slice(0, 2).map((weekend) => weekend.name).join(", ");
-      mainPanel.querySelector("[data-season-names]").textContent = names
-        ? `${names}${count > 2 ? ` + ${count - 2} more` : ""}` : "None";
-      mainPanel.querySelector("[data-season-count]").textContent = String(count);
-      mainPanel.querySelector("[data-season-length]").textContent = `${count} ${races} Selected`;
+      mainPanel.querySelector("[data-season-count]").textContent = `${count} ${races} Selected`;
       mainPanel.querySelector("[data-season-warning]").textContent = count ? "" : "Select at least one race.";
       confirm.disabled = count === 0;
     };
-    mainPanel.querySelector('[data-action="previous-calendar"]').addEventListener("click", () => {
-      this.seasonPage -= 1;
-      renderCalendar();
-    });
-    mainPanel.querySelector('[data-action="next-calendar"]').addEventListener("click", () => {
-      this.seasonPage += 1;
-      renderCalendar();
-    });
-    mainPanel.querySelector('[data-action="select-all-races"]').addEventListener("click", () => {
-      this.selectedWeekends = new Set(WEEKENDS.map((weekend) => weekend.id));
-      renderCalendar();
-      updateSelection();
-    });
-    mainPanel.querySelector('[data-action="clear-races"]').addEventListener("click", () => {
-      this.selectedWeekends.clear();
-      renderCalendar();
-      updateSelection();
-    });
     confirm.addEventListener("click", () => {
       this.seasonWeekends = WEEKENDS.filter((weekend) => this.selectedWeekends.has(weekend.id));
       if (!this.seasonWeekends.length) {
@@ -529,7 +479,6 @@ class PitWallConsole {
   renderWeekend(weekend) {
     this.clearSessionTimer();
     this.weekendDiscoveries = [];
-    this.profileUpgradePage = 0;
     this.weekendState = {
       weekend,
       sessionIndex: 0,
@@ -614,6 +563,9 @@ class PitWallConsole {
     const state = this.weekendState;
     const tracker = this.rootElement.querySelector(".pit-wall-session-tracker");
     const panel = this.rootElement.querySelector(".pit-wall-session-panel");
+    const circuit = this.rootElement.querySelector(".pit-wall-circuit");
+    circuit.hidden = state.phase === "discovery";
+    panel.classList.toggle("is-discovery", state.phase === "discovery");
     tracker.innerHTML = state.weekend.sessions.map((session, index) => {
       const completed = state.sessionResults[index] !== "pending";
       const current = index === state.sessionIndex && !completed && state.phase !== "complete";
@@ -650,9 +602,11 @@ class PitWallConsole {
         <div class="pit-wall-discovery-cards">
           ${state.options.map((discovery, index) => `
             <button type="button" class="pit-wall-discovery-card ${discovery.rarity}" data-discovery-index="${index}">
-              <strong>${discovery.name}</strong>
-              <span>${this.effectiveDiscovery(discovery).effect}</span>
-              <span>${rarityLabel(discovery.rarity)}</span>
+              <span class="pit-wall-discovery-type">${discoveryType(discovery.rarity)}</span>
+              <strong class="pit-wall-discovery-name">${discovery.name}</strong>
+              <span class="pit-wall-discovery-description">${discovery.description}</span>
+              <span class="pit-wall-discovery-effect">${this.effectiveDiscovery(discovery).effect}</span>
+              <span class="pit-wall-discovery-rarity">${rarityLabel(discovery.rarity)}</span>
             </button>
           `).join("")}
         </div>
@@ -718,7 +672,11 @@ class PitWallConsole {
         state.rerollsRemaining = this.permanentUpgrades.filter((item) => item.id === "research-charter").length;
         state.replacementsRemaining = this.permanentUpgrades.filter((item) => item.id === "design-review").length;
         state.replacementMode = false;
-        state.options = discoveryOffer(this.isPostGrandPrix());
+        state.options = discoveryOffer(this.isPostGrandPrix(), this.activeDiscoveries(), this.uniqueRewards);
+        if (!state.options.length) {
+          this.advanceSession("No discoveries available.");
+          return;
+        }
         this.renderSession();
         this.rootElement.querySelector(".pit-wall-discovery-heading").focus();
       }
@@ -740,12 +698,16 @@ class PitWallConsole {
     return index !== -1 && state.sessionResults[index] !== "pending";
   }
 
+  activeDiscoveries() {
+    return [...this.permanentUpgrades, ...this.weekendDiscoveries];
+  }
+
   rerollDiscoveries() {
     const state = this.weekendState;
     if (state.phase !== "discovery" || !state.rerollsRemaining) return;
     state.rerollsRemaining -= 1;
     state.replacementMode = false;
-    state.options = discoveryOffer(this.isPostGrandPrix());
+    state.options = discoveryOffer(this.isPostGrandPrix(), this.activeDiscoveries(), this.uniqueRewards);
     this.renderSession();
     this.rootElement.querySelector(".pit-wall-discovery-heading").focus();
   }
@@ -753,7 +715,8 @@ class PitWallConsole {
   replaceDiscovery(index) {
     const state = this.weekendState;
     if (state.phase !== "discovery" || !state.replacementMode || !state.replacementsRemaining || !state.options[index]) return;
-    state.options[index] = drawDiscovery(this.isPostGrandPrix(), state.options.filter((_, optionIndex) => optionIndex !== index));
+    state.options[index] = drawDiscovery(this.isPostGrandPrix(),
+      state.options.filter((_, optionIndex) => optionIndex !== index), this.activeDiscoveries(), this.uniqueRewards);
     state.replacementsRemaining -= 1;
     state.replacementMode = false;
     this.renderSession();
@@ -761,7 +724,7 @@ class PitWallConsole {
   }
 
   effectiveDiscovery(discovery) {
-    if (discovery.rarity !== "green") return discovery;
+    if (discovery.rarity !== "blue") return discovery;
     const multiplier = 1 + this.permanentUpgrades.filter((item) => item.id === "legacy-lab").length;
     const amount = discovery.amount * multiplier;
     return { ...discovery, amount, effect: `+${amount} ${discovery.stat}` };
@@ -772,9 +735,33 @@ class PitWallConsole {
     if (state.phase !== "discovery" || !state.options[index]) return;
     const discovery = this.effectiveDiscovery(state.options[index]);
     const upgrades = discovery.category === "permanent" ? this.permanentUpgrades : this.weekendDiscoveries;
-    upgrades.push(discovery);
+    const existing = upgrades.find((upgrade) => upgrade.id === discovery.id);
+    if ((!discovery.stackable && (existing || this.uniqueRewards.has(discovery.id)))
+      || (existing && discovery.maxLevel != null && existing.level >= discovery.maxLevel)) {
+      throw new Error(`Discovery is no longer available: ${discovery.name}`);
+    }
+    if (existing) {
+      existing.level += 1;
+      if (discovery.stat) {
+        existing.amount += discovery.amount;
+        existing.effect = `+${existing.amount} ${existing.stat}`;
+      }
+    } else {
+      upgrades.push(discovery.stackable ? { ...discovery, level: 1 } : discovery);
+      if (!discovery.stackable) this.uniqueRewards.add(discovery.id);
+      if (discovery.id === "legacy-lab") {
+        this.permanentUpgrades.filter((upgrade) => upgrade.rarity === "blue").forEach((upgrade) => {
+          const base = DISCOVERIES.find((item) => item.id === upgrade.id);
+          if (!base) throw new Error(`Unknown blue upgrade: ${upgrade.id}`);
+          upgrade.amount += base.amount * upgrade.level;
+          upgrade.effect = `+${upgrade.amount} ${upgrade.stat}`;
+        });
+      }
+    }
     this.renderProfile("Race Weekend Ready");
-    this.advanceSession(`${discovery.name} acquired: ${discovery.effect}.`);
+    this.advanceSession(existing
+      ? `${discovery.name} upgraded. Level ${existing.level}.`
+      : `${discovery.name} acquired: ${discovery.effect}.`);
   }
 
   advanceSession(message) {
@@ -786,9 +773,8 @@ class PitWallConsole {
     if (state.phase === "complete") {
       this.roundsCompleted += 1;
       this.weekendDiscoveries = [];
-      this.profileUpgradePage = 0;
       if (this.currentRoundIndex === this.seasonWeekends.length - 1) {
-        this.renderSeasonComplete();
+        this.renderSeasonComplete(message);
         return;
       }
       this.renderProfile("Round Complete");
@@ -798,7 +784,7 @@ class PitWallConsole {
     heading.focus();
   }
 
-  renderSeasonComplete() {
+  renderSeasonComplete(message) {
     this.renderProfile("Season Complete");
     const mainPanel = this.rootElement.querySelector(".pit-wall-track-display");
     const rareCount = this.permanentUpgrades.filter((upgrade) => upgrade.rarity === "purple").length;
@@ -806,9 +792,10 @@ class PitWallConsole {
     mainPanel.innerHTML = `
       <section class="pit-wall-season-finish" aria-labelledby="pit-wall-season-finish-title">
         <h4 id="pit-wall-season-finish-title" tabindex="-1">Season Complete</h4>
+        ${message ? `<p class="pit-wall-session-notice" role="status">${message}</p>` : ""}
         <p>Rounds Completed: ${this.roundsCompleted} / ${this.seasonWeekends.length}</p>
         <dl>
-          <dt>Total Permanent Upgrades</dt><dd>${this.permanentUpgrades.length}</dd>
+          <dt>Total Permanent Upgrades</dt><dd>${this.permanentUpgrades.reduce((total, upgrade) => total + (upgrade.stackable ? upgrade.level : 1), 0)}</dd>
           <dt>Total Rare Breakthroughs</dt><dd>${rareCount}</dd>
           <dt>Total Legendary Discoveries</dt><dd>${legendaryCount}</dd>
           <dt>Weekend Wins</dt><dd>Not available yet</dd>

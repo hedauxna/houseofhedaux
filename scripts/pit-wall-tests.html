@@ -19,7 +19,7 @@
       try {
         for (const [postGrandPrix, expected] of [
           [false, { blue: 4500, green: 4500, purple: 800, gold: 200 }],
-          [true, { blue: 0, green: 9000, purple: 800, gold: 200 }],
+          [true, { blue: 9000, green: 0, purple: 800, gold: 200 }],
         ]) {
           const counts = { blue: 0, green: 0, purple: 0, gold: 0 };
           for (let i = 0; i < 10000; i += 1) {
@@ -104,28 +104,27 @@
       "Confirming a team must lock both selections and open season setup");
 
       const confirmSeason = root.querySelector('[data-action="confirm-season"]');
-      assert(root.querySelector('[data-weekend="bahrain"]').getAttribute("aria-pressed") === "true"
-        && root.querySelector('[data-weekend="saudi-arabia"]').getAttribute("aria-pressed") === "true"
-        && root.querySelector("[data-season-count]").textContent === "24"
-        && root.querySelector("[data-season-length]").textContent === "24 Races Selected",
-      "All 24 races must be selected by default");
-      root.querySelector('[data-action="clear-races"]').click();
-      assert(confirmSeason.disabled && root.querySelector("[data-season-count]").textContent === "0"
+      const seasonButtons = [...root.querySelectorAll("[data-weekend]")];
+      assert(seasonButtons.length === 24 && seasonButtons.every((button) => button.getAttribute("aria-pressed") === "true")
+        && root.querySelector("[data-season-count]").textContent === "24 Races Selected"
+        && !root.querySelector(".pit-wall-season-navigation")
+        && !root.querySelector('[data-action="select-all-races"], [data-action="clear-races"]')
+        && root.querySelector('[data-weekend="miami"] .pit-wall-season-date').textContent === "30 Apr-2 May"
+        && root.querySelector('[data-weekend="abu-dhabi"]').getAttribute("aria-label").includes("Sprint weekend"),
+      "All 24 races must be selected and visible on one calendar");
+      seasonButtons.forEach((button) => button.click());
+      assert(confirmSeason.disabled && root.querySelector("[data-season-count]").textContent === "0 Races Selected"
         && root.querySelector("[data-season-warning]").textContent.includes("at least one race"),
       "An empty season must not be confirmable");
       root.querySelector('[data-weekend="saudi-arabia"]').click();
-      assert(root.querySelector("[data-season-names]").textContent === "Saudi Arabia"
-        && root.querySelector("[data-season-length]").textContent === "1 Race Selected",
+      assert(root.querySelector("[data-season-count]").textContent === "1 Race Selected" && !confirmSeason.disabled,
       "Selecting one race must update the season summary");
       root.querySelector('[data-weekend="bahrain"]').click();
-      assert(root.querySelector("[data-season-count]").textContent === "2",
+      assert(root.querySelector("[data-season-count]").textContent === "2 Races Selected",
         "Two races must be selectable");
-      root.querySelector('[data-action="next-calendar"]').click();
-      assert(root.querySelector('[data-weekend="canada"]') && root.querySelector("[data-calendar-page]").textContent === "Calendar 2/4",
-        "The calendar must expose later rounds without scrolling");
-      root.querySelector('[data-action="select-all-races"]').click();
-      assert(root.querySelector("[data-season-count]").textContent === "24",
-        "Select All must restore the full season");
+      seasonButtons.filter((button) => button.getAttribute("aria-pressed") === "false").forEach((button) => button.click());
+      assert(root.querySelector("[data-season-count]").textContent === "24 Races Selected",
+        "Manually reselecting races must restore the full season");
       confirmSeason.click();
       assert(root.querySelector("#pit-wall-weekend-title").textContent === "Bahrain Grand Prix"
         && driverPanel.textContent.includes(selectedDriver) && driverPanel.textContent.includes(selectedTeam)
@@ -162,8 +161,12 @@
         && root.querySelector(".pit-wall-discovery-heading").textContent.includes("Engineering Discovery Available"),
       "A natural session must last approximately five seconds and offer a discovery");
       const firstOptions = [...root.querySelectorAll("[data-discovery-index]")];
-      assert(firstOptions.length === 3 && new Set(game.weekendState.options.map((item) => item.id)).size === 3,
-        "A completed session must offer three distinct discoveries");
+      assert(firstOptions.length === 3 && new Set(game.weekendState.options.map((item) => item.id)).size === 3
+        && root.querySelector(".pit-wall-circuit").hidden
+        && firstOptions.every((card, index) => card.querySelector(".pit-wall-discovery-type").textContent
+          && card.querySelector(".pit-wall-discovery-description").textContent === game.weekendState.options[index].description
+          && card.querySelector(".pit-wall-discovery-effect").textContent === game.weekendState.options[index].effect),
+        "A completed session must replace the circuit with three described discoveries");
       const firstCategory = game.weekendState.options[0].category;
       const firstReward = game.weekendState.options[0];
       firstOptions[0].click();
@@ -172,7 +175,8 @@
         && driverPanel.textContent.includes(firstReward.name)
         && root.querySelector(".pit-wall-session-notice").textContent.includes(firstReward.name)
         && trackerLabels()[0] === "Practice 1: Completed"
-        && trackerLabels()[1] === "Sprint Qualifying: Current",
+        && trackerLabels()[1] === "Sprint Qualifying: Current"
+        && !root.querySelector(".pit-wall-circuit").hidden,
       "One discovery must be stored once, shown in the profile, and advance the session");
 
       const discoveryRandom = Math.random;
@@ -186,7 +190,7 @@
           await new Promise((resolve) => setTimeout(resolve, 150));
           assert(game.weekendState.phase === "discovery" && game.weekendState.options.length === 3
             && new Set(game.weekendState.options.map((item) => item.id)).size === 3
-            && (i !== 4 || game.weekendState.options.every((item) => item.rarity !== "blue")),
+            && (i !== 4 || game.weekendState.options.every((item) => item.rarity !== "green")),
           "Each completed session must offer three distinct discoveries");
           const otherCategory = game.weekendState.options.findIndex((item) => item.category !== firstCategory);
           root.querySelectorAll("[data-discovery-index]")[Math.max(otherCategory, 0)].click();
@@ -200,8 +204,8 @@
         && trackerLabels().every((label) => label.endsWith(": Completed"))
         && game.permanentUpgrades.length > 0 && game.weekendDiscoveries.length === 0
         && game.roundsCompleted === 1
-        && driverPanel.textContent.includes("Permanent Upgrades")
-        && driverPanel.textContent.includes("Weekend Discoveries"),
+        && driverPanel.textContent.includes("Active Upgrades")
+        && !driverPanel.querySelector(".pit-wall-upgrade-list .green"),
       "Five completed sessions must finish the round and expire weekend discoveries");
 
       const drawAt = (roll, selection) => {
@@ -220,11 +224,28 @@
       assert(research.id === "research-charter" && review.id === "design-review" && legacy.id === "legacy-lab",
         "Gold rewards must provide the three intended run-defining choices");
       const purple = drawAt(.95, 0);
-      const green = drawAt(.5, 0);
-      assert(purple.amount === 3 && green.amount === 1 && purple.stat === green.stat,
-        "Purple breakthroughs must provide three times the corresponding green upgrade");
+      const blue = drawAt(.5, 0);
+      const green = drawAt(.1, 0);
+      assert([[.1, 5], [.5, 5], [.95, 3], [.99, 3]].every(([roll, count]) =>
+        Array.from({ length: count }, (_, index) => drawAt(roll, (index + .5) / count))
+          .every((discovery) => discovery.description && discovery.effect)),
+      "Every discovery must have a description and effect");
+      assert(purple.amount === 3 && blue.amount === 1 && purple.stat === blue.stat
+        && blue.rarity === "blue" && blue.category === "permanent"
+        && green.rarity === "green" && green.category === "weekend",
+      "Colours must reflect reward lifetime and purple upgrades must be three times stronger");
+      const choose = (discovery) => {
+        game.weekendState.phase = "discovery";
+        game.weekendState.options = [discovery];
+        game.renderSession();
+        root.querySelector('[data-discovery-index="0"]').click();
+      };
       game.renderWeekend(bahrainWeekend);
-      game.permanentUpgrades = [research, research, review, legacy];
+      game.permanentUpgrades = [];
+      game.uniqueRewards.clear();
+      choose(research);
+      choose(review);
+      choose(legacy);
       let legendaryTime = 0;
       try {
         Object.defineProperty(performance, "now", { configurable: true, value: () => legendaryTime });
@@ -232,33 +253,138 @@
         root.querySelector('[data-action="start-session"]').click();
         legendaryTime = 5100;
         await new Promise((resolve) => setTimeout(resolve, 150));
-        assert(game.weekendState.rerollsRemaining === 2 && game.weekendState.replacementsRemaining === 1,
-          "Stacked gold upgrades must grant future-session reroll choices");
+        assert(game.weekendState.rerollsRemaining === 1 && game.weekendState.replacementsRemaining === 1
+          && game.weekendState.options.every((item) => ![research, review, legacy].some((owned) => owned.id === item.id)),
+          "Unique gold upgrades must grant rerolls and never reappear in an offer");
         root.querySelector('[data-action="replace-discovery"]').click();
         assert(root.querySelector('[data-action="replace-discovery"]').getAttribute("aria-pressed") === "true",
           "Single-card reroll mode must be clearly selected");
         root.querySelector('[data-discovery-index="1"]').click();
         assert(game.weekendState.replacementsRemaining === 0
           && new Set(game.weekendState.options.map((item) => item.id)).size === 3
-          && game.weekendState.sessionIndex === 0,
+          && game.weekendState.options.every((item) => ![research, review, legacy].some((owned) => owned.id === item.id))
+          && game.weekendState.sessionIndex === 3,
         "A single-card reroll must consume its charge without selecting a reward");
         game.weekendState.sessionResults[4] = "completed";
         root.querySelector('[data-action="reroll-discoveries"]').click();
-        assert(game.weekendState.rerollsRemaining === 1
-          && game.weekendState.options.every((item) => item.rarity !== "blue"),
-        "A full reroll after the Grand Prix must consume its charge and exclude blue");
+        assert(game.weekendState.rerollsRemaining === 0
+          && game.weekendState.options.every((item) => item.rarity !== "green"
+            && ![research, review, legacy].some((owned) => owned.id === item.id)),
+        "A full reroll after the Grand Prix must consume its charge and exclude green");
         assert(root.querySelector('[data-discovery-index="0"]').textContent.includes("+2 ")
-          && root.querySelector('[data-discovery-index="0"]').textContent.includes("Green · Permanent"),
-          "Green cards must preview their boosted effect");
+          && root.querySelector('[data-discovery-index="0"]').textContent.includes("Blue · Permanent"),
+          "Blue cards must preview their boosted effect");
         root.querySelector('[data-discovery-index="0"]').click();
         const boosted = game.permanentUpgrades[game.permanentUpgrades.length - 1];
-        assert(boosted.rarity === "green" && boosted.amount === 2
+        assert(boosted.rarity === "blue" && boosted.amount === 2
           && boosted.effect === `+2 ${boosted.stat}`,
-        "Legacy Lab must double the effect stored for a future green selection");
+        "Legacy Lab must double the effect stored for a future blue selection");
+        game.weekendState.sessionResults[4] = "pending";
+        root.querySelector('[data-action="start-session"]').click();
+        legendaryTime += 5100;
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        assert(game.weekendState.rerollsRemaining === 1 && game.weekendState.replacementsRemaining === 1,
+          "Research Charter and Design Review must replenish their rerolls each session");
       } finally {
         delete performance.now;
         Math.random = actualRandom;
       }
+
+      game.renderWeekend(bahrainWeekend);
+      game.permanentUpgrades = [];
+      game.uniqueRewards.clear();
+      choose(blue);
+      assert(driverPanel.querySelector(".pit-wall-upgrade-list").textContent.includes(`${blue.name} +1`)
+        && !driverPanel.querySelector(".pit-wall-upgrade-legend"),
+      "A new stackable upgrade must show level one without a colour legend");
+      choose(legacy);
+      assert(game.permanentUpgrades.find((item) => item.id === blue.id).amount === 2
+        && driverPanel.textContent.includes(`${blue.name} +2 ${blue.stat} (Lv 1)`),
+      "Legacy Lab must boost and display existing blue upgrades");
+      choose(blue);
+      assert(game.permanentUpgrades.filter((item) => item.id === blue.id).length === 1
+        && game.permanentUpgrades.find((item) => item.id === blue.id).level === 2
+        && game.permanentUpgrades.find((item) => item.id === blue.id).amount === 4
+        && driverPanel.textContent.includes(`${blue.name} +4 ${blue.stat} (Lv 2)`)
+        && root.querySelector(".pit-wall-session-notice").textContent.includes(`${blue.name} upgraded. Level 2`),
+      "A repeated upgrade must increase its level and preserve boosted effect increments");
+      choose(blue);
+      assert(game.permanentUpgrades.find((item) => item.id === blue.id).level === 3
+        && game.permanentUpgrades.find((item) => item.id === blue.id).amount === 6
+        && driverPanel.textContent.includes(`${blue.name} +6 ${blue.stat} (Lv 3)`)
+        && root.querySelector(".pit-wall-session-notice").textContent.includes("Level 3"),
+      "Further selections must increase the same upgrade and announce its level");
+      choose(green);
+      assert(game.weekendState.phase === "complete" && game.weekendDiscoveries.length === 0,
+        "Weekend discoveries must expire when the weekend ends");
+      game.renderWeekend(bahrainWeekend);
+      assert(game.permanentUpgrades.find((item) => item.id === blue.id).level === 3,
+        "Upgrade levels must persist across weekends");
+      for (const breakthrough of [purple, drawAt(.95, .4), drawAt(.95, .9)]) {
+        game.weekendState.phase = "discovery";
+        game.weekendState.options = [breakthrough];
+        game.renderSession();
+        assert(root.querySelector(".pit-wall-discovery-effect").textContent === breakthrough.effect,
+          "Rare discovery cards must show the full effect before selection");
+        root.querySelector('[data-discovery-index="0"]').click();
+        const entry = [...driverPanel.querySelectorAll(".pit-wall-upgrade-list .purple")]
+          .find((item) => item.textContent.includes(breakthrough.name));
+        assert(entry && entry.textContent.includes(breakthrough.effect)
+          && entry.getAttribute("aria-label").includes(breakthrough.effect),
+        "Each rare breakthrough must display its full effect");
+      }
+      game.renderWeekend(bahrainWeekend);
+      assert([...driverPanel.querySelectorAll(".pit-wall-upgrade-list .purple")].length === 3
+        && [purple, drawAt(.95, .4), drawAt(.95, .9)].every((item) => driverPanel.textContent.includes(item.effect)),
+      "Rare breakthrough effects must remain visible across weekends");
+      choose(green);
+      choose(green);
+      assert(game.weekendDiscoveries.length === 1 && game.weekendDiscoveries[0].level === 2
+        && driverPanel.textContent.includes(`${green.name} +2`),
+      "Weekend discoveries must stack in one entry for the current weekend");
+      game.renderWeekend(bahrainWeekend);
+      assert(game.weekendDiscoveries.length === 0 && !driverPanel.textContent.includes(green.name),
+        "A new weekend must clear temporary upgrade levels");
+      try {
+        Math.random = () => .9999;
+        assert(Array.from({ length: 10 }, () => drawDiscovery(false, [], [], game.uniqueRewards))
+          .every((item) => item.id !== legacy.id),
+        "A unique reward must remain excluded across weekends");
+        const rareAndGold = [purple, drawAt(.95, .4), drawAt(.95, .9), research, review, legacy];
+        assert(drawDiscovery(true, [], rareAndGold, game.uniqueRewards).rarity === "blue",
+          "Exhausted unique rarities must redistribute to eligible rewards");
+        blue.maxLevel = 3;
+        const maxed = game.permanentUpgrades.find((item) => item.id === blue.id);
+        assert(Array.from({ length: 10 }, () => drawDiscovery(true, [], [maxed, ...rareAndGold], game.uniqueRewards))
+          .every((item) => item.id !== blue.id && item.rarity === "blue"),
+        "Maxed upgrades and owned unique rewards must be excluded from offers");
+      } finally {
+        delete blue.maxLevel;
+        Math.random = actualRandom;
+      }
+
+      const savedPermanent = game.permanentUpgrades;
+      const savedUnique = game.uniqueRewards;
+      game.renderWeekend(bahrainWeekend);
+      game.permanentUpgrades = [];
+      game.uniqueRewards = new Set();
+      const suspension = drawAt(.5, .7);
+      choose(suspension);
+      choose(suspension);
+      choose(blue);
+      choose(purple);
+      choose(legacy);
+      const upgradedSuspension = game.permanentUpgrades.find((item) => item.id === suspension.id);
+      const upgradedBlue = game.permanentUpgrades.find((item) => item.id === blue.id);
+      assert(upgradedSuspension.level === 2 && upgradedSuspension.amount === 4
+        && upgradedBlue.level === 1 && upgradedBlue.amount === 2
+        && game.permanentUpgrades.find((item) => item.id === purple.id).amount === 3
+        && driverPanel.textContent.includes("Suspension Development +4 Handling (Lv 2)")
+        && Array.from({ length: 5 }, (_, index) => drawAt(.5, (index + .5) / 5))
+          .every((item) => game.effectiveDiscovery(item).effect === `+2 ${item.stat}`),
+      "Legacy Lab must boost every existing and future blue level without altering rare breakthroughs");
+      game.permanentUpgrades = savedPermanent;
+      game.uniqueRewards = savedUnique;
 
       const permanentCount = game.permanentUpgrades.length;
       game.renderWeekend(bahrainWeekend);
@@ -279,7 +405,8 @@
       root.querySelector('[data-action="start-session"]').click();
       game.startDraft();
       assert(game.sessionTimer === null && game.weekendState === null
-        && game.permanentUpgrades.length === 0 && game.weekendDiscoveries.length === 0,
+        && game.permanentUpgrades.length === 0 && game.weekendDiscoveries.length === 0
+        && game.uniqueRewards.size === 0,
       "Starting a new game during a session must cancel its timer and clear upgrades");
 
       const startSeason = () => {
@@ -336,7 +463,7 @@
             root.querySelector('[data-action="start-session"]').click();
             seasonTime += 5100;
             await new Promise((resolve) => setTimeout(resolve, 150));
-            assert(game.weekendState.options.every((item) => item.rarity !== "blue")
+            assert(game.weekendState.options.every((item) => item.rarity !== "green")
               && game.roundsCompleted === 23,
             "The final Grand Prix must offer post-race rewards before completing the season");
             root.querySelector('[data-discovery-index="0"]').click();
@@ -346,9 +473,11 @@
             `Completing round ${round} must count once and clear weekend discoveries`);
           if (round === 2) {
             const progressText = driverPanel.querySelector(".pit-wall-season-progress").textContent;
-            assert(progressText.includes("Rounds Completed: 2") && progressText.includes("Permanent Upgrades: 3")
-              && progressText.includes("Rare Breakthroughs: 1") && progressText.includes("Legendary Discoveries: 1"),
-            "Season progress must count permanent, rare and legendary rewards correctly");
+            assert(progressText.includes("Rounds Completed: 2")
+              && game.permanentUpgrades.length === 3
+              && game.permanentUpgrades.filter((item) => item.rarity === "purple").length === 1
+              && game.permanentUpgrades.filter((item) => item.rarity === "gold").length === 1,
+            "Season progress and stored permanent rewards must remain correct");
           }
           if (round < 24) {
             const next = root.querySelector('[data-action="next-round"]');
@@ -382,10 +511,9 @@
       }
 
       startSeason();
-      root.querySelector('[data-action="clear-races"]').click();
-      root.querySelector('[data-weekend="bahrain"]').click();
-      for (let i = 0; i < 3; i += 1) root.querySelector('[data-action="next-calendar"]').click();
-      root.querySelector('[data-weekend="abu-dhabi"]').click();
+      root.querySelectorAll("[data-weekend]").forEach((button) => {
+        if (!["bahrain", "abu-dhabi"].includes(button.dataset.weekend)) button.click();
+      });
       root.querySelector('[data-action="confirm-season"]').click();
       for (let i = 0; i < 5; i += 1) root.querySelector('[data-action="skip-session"]').click();
       root.querySelector('[data-action="next-round"]').click();
@@ -396,6 +524,18 @@
       for (let i = 0; i < 5; i += 1) root.querySelector('[data-action="skip-session"]').click();
       assert(root.querySelector(".pit-wall-season-finish").textContent.includes("Rounds Completed: 2 / 2"),
         "A customized season must finish after its last selected round");
+
+      startSeason();
+      root.querySelectorAll("[data-weekend]").forEach((button) => {
+        if (button.dataset.weekend !== "bahrain") button.click();
+      });
+      root.querySelector('[data-action="confirm-season"]').click();
+      game.permanentUpgrades = [{ ...blue, level: 1 }];
+      for (let i = 0; i < 4; i += 1) root.querySelector('[data-action="skip-session"]').click();
+      choose(blue);
+      assert(root.querySelector(".pit-wall-season-finish .pit-wall-session-notice").textContent.includes("Level 2")
+        && root.querySelector(".pit-wall-season-finish dd").textContent === "2",
+      "The final reward must announce its level and count stacked upgrades in the season summary");
 
       const originalRandom = Math.random;
       let seed = 12345;
@@ -463,6 +603,14 @@
         return a.left >= b.left - 1 && a.right <= b.right + 1
           && a.top >= b.top - 1 && a.bottom <= b.bottom + 1;
       };
+      const isCalendarGrid = (cards, columns = 3) => cards.length === 24 && cards.every((card, index) => {
+        const rows = 24 / columns;
+        const bounds = card.getBoundingClientRect();
+        const column = cards[Math.floor(index / rows) * rows].getBoundingClientRect();
+        const row = cards[index % rows].getBoundingClientRect();
+        return Math.abs(bounds.left - column.left) < 1 && Math.abs(bounds.top - row.top) < 1
+          && (index < rows || bounds.left > cards[index - rows].getBoundingClientRect().left);
+      });
       const assertCircuitCentred = (image, label) => {
         const canvas = doc.createElement("canvas");
         canvas.width = image.naturalWidth;
@@ -524,6 +672,8 @@
           && Math.abs(Math.min(left, right, top, bottom) - padding) < 1,
         `${label} circuit is clipped or not maximised within its padding`);
       };
+      let fullSeasonPermanent;
+      let fullSeasonWeekend;
       for (const [width, height] of [[568, 320], [844, 390]]) {
         frame.style.width = `${width}px`;
         frame.style.height = `${height}px`;
@@ -588,21 +738,25 @@
         const main = frameRoot.querySelector(".pit-wall-track-display");
         const season = frameRoot.querySelector(".pit-wall-season");
         const seasonConfirm = frameRoot.querySelector('[data-action="confirm-season"]');
-        for (let page = 0; page < 4; page += 1) {
-          const calendarCards = [...season.querySelectorAll("[data-weekend]")];
-          assert(within(season, main) && within(seasonConfirm, main)
-            && season.scrollHeight <= season.clientHeight + 1
-            && season.scrollWidth <= season.clientWidth + 1
-            && calendarCards.length === 6 && calendarCards.every((card, index) =>
-              within(card, main) && card.scrollHeight <= card.clientHeight + 1
-              && card.scrollWidth <= card.clientWidth + 1
-              && card.dataset.weekend === expectedRounds[page * 6 + index]
-              && card.querySelector(".pit-wall-season-round").textContent.includes("Sprint")
-                === sprintRounds.has(page * 6 + index + 1)),
-          `Calendar page ${page + 1} overflows at ${width}x${height}`);
-          if (page < 3) frameRoot.querySelector('[data-action="next-calendar"]').click();
-        }
-        for (let page = 0; page < 3; page += 1) frameRoot.querySelector('[data-action="previous-calendar"]').click();
+        const calendarCards = [...season.querySelectorAll("[data-weekend]")];
+        assert(within(season, main) && within(seasonConfirm, main)
+          && season.scrollHeight <= season.clientHeight + 1
+          && season.scrollWidth <= season.clientWidth + 1
+          && isCalendarGrid(calendarCards) && calendarCards.every((card, index) =>
+            within(card, main) && card.scrollHeight <= card.clientHeight + 1
+            && card.scrollWidth <= card.clientWidth + 1
+            && [...card.children].every((part) => within(part, card)
+              && part.scrollWidth <= part.clientWidth + 1)
+            && card.dataset.weekend === expectedRounds[index]
+            && Boolean(card.querySelector(".pit-wall-season-sprint")) === sprintRounds.has(index + 1)),
+        `The complete calendar must fit without clipped content at ${width}x${height}`);
+        calendarCards.forEach((card) => card.click());
+        assert(seasonConfirm.disabled && [...season.querySelector(".pit-wall-season-footer").children]
+          .every((part) => within(part, season.querySelector(".pit-wall-season-footer")))
+          && calendarCards.every((card) => within(card, main)
+            && card.scrollHeight <= card.clientHeight + 1),
+        `Empty-season warning must fit at ${width}x${height}`);
+        calendarCards.forEach((card) => card.click());
         const seasonFooter = season.querySelector(".pit-wall-season-footer").getBoundingClientRect();
         const confirmBounds = seasonConfirm.getBoundingClientRect();
         assert(Math.abs(confirmBounds.right - seasonFooter.right) < 1
@@ -642,19 +796,16 @@
           && circuit.naturalWidth > 0 && within(circuit, main),
         `Saudi Arabia must load when it is the first selected weekend at ${width}x${height}`);
         assertCircuitCentred(circuit, `Saudi Arabia at ${width}x${height}`);
-        const permanentExamples = [
-          { name: "Wind Tunnel Upgrade", effect: "+1 Aero", category: "permanent", rarity: "green" },
-          { name: "Brake Cooling", effect: "+1 Reliability", category: "permanent", rarity: "green" },
-          { name: "Battery Optimisation", effect: "+1 Energy Recovery", category: "permanent", rarity: "green" },
-          { name: "Suspension Development", effect: "+1 Handling", category: "permanent", rarity: "green" },
-          { name: "Pit Crew Training", effect: "+1 Pit Efficiency", category: "permanent", rarity: "green" },
-        ];
+        const permanentExamples = Array.from({ length: 5 }, (_, index) => {
+          const item = drawAt(.5, (index + .5) / 5);
+          return { ...item, amount: 240, effect: `+240 ${item.stat}`, level: 120 };
+        });
         const weekendExamples = [
-          { name: "Tyre Insight", effect: "+10% Tyre Life", category: "weekend", rarity: "blue" },
-          { name: "Track Evolution Notes", effect: "+0.15 Pace", category: "weekend", rarity: "blue" },
-          { name: "Braking Reference Data", effect: "+20% Corner Entry", category: "weekend", rarity: "blue" },
-          { name: "Fuel Mapping Discovery", effect: "+15% Fuel Efficiency", category: "weekend", rarity: "blue" },
-          { name: "Overtaking Analysis", effect: "+20% Racecraft", category: "weekend", rarity: "blue" },
+          { id: "tyre-insight", name: "Tyre Insight", effect: "+10% Tyre Life", category: "weekend", rarity: "green" },
+          { id: "track-evolution", name: "Track Evolution Notes", effect: "+0.15 Pace", category: "weekend", rarity: "green" },
+          { id: "braking-reference", name: "Braking Reference Data", effect: "+20% Corner Entry", category: "weekend", rarity: "green" },
+          { id: "fuel-mapping", name: "Fuel Mapping Discovery", effect: "+15% Fuel Efficiency", category: "weekend", rarity: "green" },
+          { id: "overtaking-analysis", name: "Overtaking Analysis", effect: "+20% Racecraft", category: "weekend", rarity: "green" },
         ];
         const originalDriver = layoutGame.driver;
         const originalTeam = layoutGame.team;
@@ -667,57 +818,49 @@
           for (const [permanent, temporary] of [
             [permanentExamples, []], [[], weekendExamples],
             [permanentExamples.slice(2), weekendExamples.slice(2)],
-            [[research, review, legacy, purple, { name: "Handling Breakthrough" }], []],
+            [[research, review, legacy, purple, drawAt(.95, .9)], []],
           ]) {
             layoutGame.permanentUpgrades = permanent;
             layoutGame.weekendDiscoveries = temporary;
             layoutGame.renderProfile("Race Weekend Complete");
-            const namesOnPages = new Set();
-            layoutGame.profileUpgradePage = 0;
-            layoutGame.renderProfile("Race Weekend Complete");
-            while (true) {
-              const profile = frameRoot.querySelector(".pit-wall-driver-profile");
-              const profilePanel = frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
-              assert(within(profile, profilePanel) && profilePanel.scrollHeight <= profilePanel.clientHeight + 1,
-                `Upgrade page overflows for ${driver.name} and ${team.name} at ${width}x${height}`);
-              [...permanent, ...temporary].forEach((item) => {
-                if (profile.textContent.includes(item.name)) namesOnPages.add(item.name);
-              });
-              const nextPage = frameRoot.querySelector('[data-action="next-upgrades"]');
-              if (!nextPage || nextPage.disabled) break;
-              nextPage.click();
-            }
-            assert([...permanent, ...temporary].every((item) => namesOnPages.has(item.name)),
-              `All upgrades must be accessible for ${driver.name} and ${team.name} at ${width}x${height}`);
+            const profile = frameRoot.querySelector(".pit-wall-driver-profile");
+            const profilePanel = frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
+            assert(within(profile, profilePanel) && profilePanel.scrollHeight <= profilePanel.clientHeight + 1
+              && [...permanent, ...temporary].every((item) => profile.textContent.includes(item.name)),
+            `All upgrades must be visible for ${driver.name} and ${team.name} at ${width}x${height}`);
           }
         }
         const allUpgradeNames = [
           ...permanentExamples, research, review, legacy, purple,
-          { name: "Durability Breakthrough", rarity: "purple" },
-          { name: "Handling Breakthrough", rarity: "purple" },
+          drawAt(.95, .4), drawAt(.95, .9),
         ];
-        layoutGame.permanentUpgrades = Array.from({ length: 120 }, (_, index) =>
-          allUpgradeNames[index % allUpgradeNames.length]);
+        layoutGame.permanentUpgrades = allUpgradeNames.map((upgrade) => ({ ...upgrade }));
         layoutGame.weekendDiscoveries = weekendExamples;
+        fullSeasonPermanent = layoutGame.permanentUpgrades;
+        fullSeasonWeekend = weekendExamples;
         layoutGame.roundsCompleted = 23;
-        layoutGame.profileUpgradePage = 0;
-        layoutGame.renderProfile("Race Weekend Ready");
-        const seenUpgrades = new Set();
-        while (true) {
+        for (const [driver, team] of layoutDrivers.flatMap((driver) =>
+          layoutTeams.map((team) => [driver, team]))) {
+          layoutGame.driver = driver;
+          layoutGame.team = team;
+          layoutGame.renderProfile("Race Weekend Ready");
           const profile = frameRoot.querySelector(".pit-wall-driver-profile");
           const profilePanel = frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
+          const entries = [...profile.querySelectorAll(".pit-wall-upgrade-list li")];
           assert(within(profile, profilePanel) && profilePanel.scrollHeight <= profilePanel.clientHeight + 1
-            && profile.textContent.includes("Permanent Upgrades: 120"),
-          `A full season of upgrades must fit at ${width}x${height}`);
-          [...allUpgradeNames, ...weekendExamples].forEach((item) => {
-            if (profile.textContent.includes(item.name)) seenUpgrades.add(item.name);
-          });
-          const nextPage = frameRoot.querySelector('[data-action="next-upgrades"]');
-          if (!nextPage || nextPage.disabled) break;
-          nextPage.click();
+            && entries.length === allUpgradeNames.length + weekendExamples.length
+            && entries.every((entry) => within(entry, profilePanel)
+              && entry.scrollWidth <= entry.clientWidth + 1)
+            && entries.every((entry, index) => index === 0
+              || (Math.abs(entry.getBoundingClientRect().left - entries[0].getBoundingClientRect().left) < 1
+                && entry.getBoundingClientRect().top >= entries[index - 1].getBoundingClientRect().bottom - 1))
+            && [...allUpgradeNames, ...weekendExamples].every((item) => entries.some((entry) =>
+              entry.textContent === `${item.name}${item.stat ? ` ${item.effect}` : item.stackable ? ` +${item.level}` : ""}${item.stat && item.stackable && item.amount !== item.level ? ` (Lv ${item.level})` : ""}`
+                && entry.classList.contains(item.rarity)))
+            && !profile.querySelector('[data-action="next-upgrades"], [data-action="previous-upgrades"]')
+            && !profile.textContent.includes("Permanent Upgrades: 120"),
+          `All distinct upgrades must fit for ${driver.name} and ${team.name} at ${width}x${height}`);
         }
-        assert([...allUpgradeNames, ...weekendExamples].every((item) => seenUpgrades.has(item.name)),
-          `All accumulated upgrades must remain accessible at ${width}x${height}`);
         layoutGame.roundsCompleted = 0;
         layoutGame.driver = originalDriver;
         layoutGame.team = originalTeam;
@@ -727,18 +870,18 @@
         layoutGame.weekendState.replacementMode = true;
         layoutGame.weekendState.options = [
           review,
-          { name: "Durability Breakthrough", effect: "+3 Reliability", rarity: "purple", category: "permanent" },
-          weekendExamples[2],
+          { name: "Durability Breakthrough", description: "Make a major reliability advance.", effect: "+3 Reliability", rarity: "purple", category: "permanent" },
+          { ...weekendExamples[2], description: "Find better braking points." },
         ];
         layoutGame.renderSession();
         const discoveryPanel = frameRoot.querySelector(".pit-wall-session-panel");
         const discoveryCards = [...frameRoot.querySelectorAll(".pit-wall-discovery-card")];
         const tracker = frameRoot.querySelector(".pit-wall-session-tracker");
-        assert(within(discoveryPanel, main) && within(circuit, main)
+        assert(within(discoveryPanel, main) && circuit.closest(".pit-wall-circuit").hidden
+          && discoveryPanel.getBoundingClientRect().height > main.getBoundingClientRect().height * .5
           && discoveryCards[0].classList.contains("gold") && discoveryCards[0].textContent.includes("Legendary")
           && discoveryCards[1].classList.contains("purple") && discoveryCards[1].textContent.includes("Rare")
-          && discoveryCards[2].classList.contains("blue") && discoveryCards[2].textContent.includes("Weekend Only")
-          && circuit.getBoundingClientRect().height > 30
+          && discoveryCards[2].classList.contains("green") && discoveryCards[2].textContent.includes("Weekend Only")
           && tracker.scrollHeight <= tracker.clientHeight + 1
           && [...tracker.children].every((step) => step.scrollWidth <= step.clientWidth + 1
             && step.scrollHeight <= step.clientHeight + 1)
@@ -746,12 +889,12 @@
             && card.scrollHeight <= card.clientHeight + 1 && card.scrollWidth <= card.clientWidth + 1)
           && discoveryCards.every((card) => Math.abs(card.getBoundingClientRect().top
             - discoveryCards[0].getBoundingClientRect().top) < 1),
-        `Discovery cards must fit beside the circuit at ${width}x${height}`);
+        `Discovery cards must replace the circuit and fit side-by-side at ${width}x${height}`);
         layoutGame.weekendState.options = [review, research, legacy];
         layoutGame.renderSession();
         const goldCards = [...frameRoot.querySelectorAll(".pit-wall-discovery-card")];
         assert(within(frameRoot.querySelector(".pit-wall-session-panel"), main)
-          && within(circuit, main) && circuit.getBoundingClientRect().height > 30
+          && circuit.closest(".pit-wall-circuit").hidden
           && goldCards.every((card) => card.scrollHeight <= card.clientHeight + 1
             && card.scrollWidth <= card.clientWidth + 1),
         `Three legendary cards and reroll controls must fit at ${width}x${height}`);
@@ -775,6 +918,15 @@
           && placeholder.textContent.includes("Albert Park Grand Prix Circuit")
           && placeholder.textContent.includes("5.278 km"),
         `The next-round placeholder must fit at ${width}x${height}`);
+        layoutGame.weekendState.phase = "discovery";
+        layoutGame.weekendState.options = [green, purple, review];
+        layoutGame.renderSession();
+        assert(placeholder.closest(".pit-wall-circuit").hidden
+          && frameRoot.querySelectorAll(".pit-wall-discovery-card").length === 3,
+        `A discovery must replace the track placeholder at ${width}x${height}`);
+        layoutGame.weekendState.phase = "ready";
+        layoutGame.renderSession();
+        assert(!placeholder.closest(".pit-wall-circuit").hidden, "The track placeholder must return for the next session");
         layoutGame.currentRoundIndex = layoutGame.seasonWeekends.length - 1;
         for (let i = 0; i < 5; i += 1) frameRoot.querySelector('[data-action="skip-session"]').click();
         const finish = frameRoot.querySelector(".pit-wall-season-finish");
@@ -791,6 +943,45 @@
         assert([...frameRoot.querySelectorAll(".pit-wall-panel-content")].every((panel) =>
           panel.scrollHeight <= panel.clientHeight + 1 && panel.scrollWidth <= panel.clientWidth + 1),
         `Panel content overflows at ${width}x${height}`);
+      }
+      for (const [width, height] of [[320, 700], [390, 844], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        layoutGame.startDraft();
+        frameRoot.querySelector("[data-driver-index]").click();
+        frameRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+        frameRoot.querySelector("[data-team-index]").click();
+        frameRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+        const main = frameRoot.querySelector(".pit-wall-track-display");
+        const season = main.querySelector(".pit-wall-season");
+        const calendarCards = [...season.querySelectorAll("[data-weekend]")];
+        assert(within(season, main) && isCalendarGrid(calendarCards, width < height ? 2 : 3)
+          && calendarCards.every((card) => within(card, main)
+            && card.scrollHeight <= card.clientHeight + 1 && card.scrollWidth <= card.clientWidth + 1
+            && [...card.children].every((part) => within(part, card)
+              && part.scrollWidth <= part.clientWidth + 1)),
+        `The complete calendar must fit without clipped content at ${width}x${height}`);
+        calendarCards.forEach((card) => card.click());
+        const footer = season.querySelector(".pit-wall-season-footer");
+        assert(season.querySelector('[data-action="confirm-season"]').disabled
+          && [...footer.children].every((part) => within(part, footer))
+          && calendarCards.every((card) => within(card, main)
+            && card.scrollHeight <= card.clientHeight + 1),
+        `Empty-season warning must fit at ${width}x${height}`);
+        calendarCards.forEach((card) => card.click());
+        season.querySelector('[data-action="confirm-season"]').click();
+        layoutGame.permanentUpgrades = fullSeasonPermanent;
+        layoutGame.weekendDiscoveries = fullSeasonWeekend;
+        layoutGame.renderProfile("Race Weekend Ready");
+        const profile = frameRoot.querySelector(".pit-wall-driver-profile");
+        const profilePanel = frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
+        const entries = [...profile.querySelectorAll(".pit-wall-upgrade-list li")];
+        assert(entries.length === 16 && within(profile, profilePanel)
+          && profilePanel.scrollHeight <= profilePanel.clientHeight + 1
+          && entries.every((entry) => within(entry, profilePanel)
+            && entry.scrollWidth <= entry.clientWidth + 1),
+        `All distinct upgrades must fit without scrolling at ${width}x${height}`);
       }
       frame.style.width = "1440px";
       frame.style.height = "900px";
@@ -813,6 +1004,16 @@
       const desktopCircuit = frameRoot.querySelector(".pit-wall-circuit img");
       await desktopCircuit.decode();
       assertCircuitCentred(desktopCircuit, "Bahrain on desktop");
+      layoutGame.weekendState.phase = "discovery";
+      layoutGame.weekendState.options = [green, purple, review];
+      layoutGame.renderSession();
+      const desktopCards = [...frameRoot.querySelectorAll(".pit-wall-discovery-card")];
+      const desktopPanel = frameRoot.querySelector(".pit-wall-session-panel");
+      assert(desktopCircuit.closest(".pit-wall-circuit").hidden && desktopCards.length === 3
+        && desktopCards.every((card) => within(card, desktopPanel)
+          && card.scrollHeight <= card.clientHeight + 1 && card.scrollWidth <= card.clientWidth + 1
+          && Math.abs(card.getBoundingClientRect().top - desktopCards[0].getBoundingClientRect().top) < 1),
+      "Desktop discoveries must replace the circuit with three side-by-side cards");
       assert(frame.contentWindow.location.href === originalUrl && !doc.querySelector("#games-pit-wall").hidden,
         "Confirmations must stay on the engineering screen without navigation");
       frameRoot.querySelector(".pit-wall-exit").click();
