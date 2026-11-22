@@ -51,6 +51,22 @@ The live site deploys from the `static-site-rollout` branch. Test changes locall
 
 For the focused browser regression checks, serve the repository locally and open `scripts/life-sim-tests.html`. The page reports whether calendar, schedules, finances, reminders and report transitions pass.
 
+## Pit Wall
+
+In the Games Room, choose **Pit Wall** and select **New Game** to draft a driver. Three distinct candidates are drawn at random from a pool of ten; choosing a card updates the Driver panel. Confirm a driver to draft a team from three candidates drawn from a pool of five. After confirming a team, choose from the 24 2027 weekends using the calendar pages; all are selected by default. Confirm the season to open the first selected event. The calendar ordering and sprint designations follow the [2027 F1 calendar](https://www.formula1.com/en/racing/2027) and [sprint list](https://www.astonmartinf1.com/en-GB/news/announcement/f1-2027-calendar-revealed).
+
+Bahrain uses a sprint format and Saudi Arabia a standard format, each with five sessions. Start a session for a five-second progress indicator, then choose one of three engineering discoveries; alternatively, skip a session at any time without a reward. Each card independently rolls its rarity: before the Grand Prix, 45% blue weekend discoveries, 45% green common upgrades, 8% purple breakthroughs and 2% gold legendaries; after the Grand Prix, 90% green, 8% purple and 2% gold. The three cards in one offer are distinct, but previously acquired rewards can reappear and stack.
+
+Blue discoveries expire when the weekend ends; the other rarities last for the current game. Purple upgrades are three times the corresponding green upgrade. Gold upgrades change future choices: Research Charter grants a full-offer reroll per copy per session, Design Review grants a single-card reroll per copy per session, and Legacy Lab adds another base increment to each subsequently selected green upgrade per copy. Rerolls use the same rarity rates, can redraw the same reward, and cannot produce blue after the Grand Prix. Upgrades and their effects are stored in memory and listed in the Driver panel, with pages for longer lists; their performance effects are not yet used by a race simulation. Starting a new game clears them.
+
+Complete or skip the five sessions to proceed to the next selected round. After the last selected event, the season summary shows upgrade totals; wins and championship position are not simulated. Bahrain and Saudi Arabia have circuit images and static weather; later weekends show circuit placeholders, with unavailable details marked TBC. Game state remains in memory.
+
+The Command Centre starts collapsed; use its arrow to expand or collapse it. The Games Room link in the console header returns to the games overview.
+
+Circuit previews use display copies with transparent margins removed; the original supplied images are retained in `assets/`.
+
+For focused browser regression checks, serve the repository locally and open `scripts/pit-wall-tests.html`.
+
 ## Keep secrets out of the frontend
 
 There are no passwords or credentials in this game. HTML, CSS, and JavaScript sent to a browser are public, so never put a password, API key, or other secret in them.
