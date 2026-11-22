@@ -1979,16 +1979,41 @@
       text-align: left;
     }
 
+    .racing-manager-panel {
+      margin: 8px 0;
+      border: 1px solid rgba(0, 191, 255, .3);
+      background: rgba(3, 26, 52, .6);
+      color: var(--paper);
+      display: flex;
+      flex-direction: column;
+      min-height: 600px;
+    }
+
     .room-dialog:has(#games-life-sim:not([hidden])) {
       width: min(1380px, calc(100% - 32px));
       max-height: min(850px, calc(100dvh - 16px));
+    }
+
+    .room-dialog:has(#games-racing-manager:not([hidden])) {
+      width: min(1500px, calc(100% - 32px));
+      max-height: min(900px, calc(100dvh - 16px));
     }
 
     #games-life-sim:not([hidden]) > .observatory-section-header {
       display: none;
     }
 
+    #games-racing-manager:not([hidden]) > .observatory-section-header {
+      display: none;
+    }
+
     #room-gamesroom:has(#games-life-sim:not([hidden])) > .room-copy {
+      width: 100%;
+      max-width: none;
+      padding: 8px 18px;
+    }
+
+    #room-gamesroom:has(#games-racing-manager:not([hidden])) > .room-copy {
       width: 100%;
       max-width: none;
       padding: 8px 18px;
@@ -1999,7 +2024,16 @@
       border-bottom: 1px solid rgba(243, 239, 227, .16);
     }
 
+    .racing-manager-heading {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(0, 191, 255, .25);
+    }
+
     .life-sim-heading .room-kicker {
+      margin-bottom: 4px;
+    }
+
+    .racing-manager-heading .room-kicker {
       margin-bottom: 4px;
     }
 
@@ -2009,6 +2043,13 @@
       font: 400 clamp(20px, 2.4vw, 25px)/1.2 var(--serif);
     }
 
+    .racing-manager-heading h4 {
+      margin: 0;
+      color: #00bfff;
+      font: 400 clamp(20px, 2.4vw, 25px)/1.2 var(--serif);
+      text-shadow: 0 0 10px rgba(0, 191, 255, 0.3);
+    }
+
     .life-sim-placeholder {
       padding: 18px 20px;
       color: rgba(243, 239, 227, .82);
@@ -2016,8 +2057,893 @@
       line-height: 1.65;
     }
 
+    .racing-manager-placeholder {
+      padding: 18px 20px;
+      color: rgba(243, 239, 227, .82);
+      font-size: 13px;
+      line-height: 1.65;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .life-sim-placeholder p {
       margin: 0;
+    }
+
+    .racing-manager-placeholder p {
+      margin: 0;
+    }
+
+    /* ===== PHASE 2: LIVE RACE CONTROL CENTRE ===== */
+
+    .rrm-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: 8px;
+      padding: 10px;
+      color: var(--paper);
+      font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .rrm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 12px;
+      background: rgba(0, 191, 255, 0.08);
+      border: 1px solid rgba(0, 191, 255, 0.2);
+      border-radius: 4px;
+      gap: 16px;
+    }
+
+    .rrm-header-left {
+      flex: 1;
+    }
+
+    .rrm-race-title {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #00bfff;
+      font-family: Georgia, serif;
+    }
+
+    .rrm-race-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: rgba(243, 239, 227, 0.7);
+    }
+
+    .rrm-weather-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(0, 191, 255, 0.15);
+      border: 1px solid rgba(0, 191, 255, 0.3);
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .rrm-header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .rrm-championship-position {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .rrm-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: rgba(243, 239, 227, 0.6);
+      letter-spacing: 0.5px;
+    }
+
+    .rrm-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2ecc71;
+    }
+
+    .rrm-main-layout {
+      display: grid;
+      grid-template-columns: 160px 1fr 180px;
+      gap: 8px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .rrm-driver-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(3, 26, 52, 0.7);
+      border: 1px solid rgba(0, 191, 255, 0.2);
+      border-radius: 4px;
+      overflow-y: auto;
+    }
+
+    .rrm-driver-info h3 {
+      margin: 0 0 6px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #00bfff;
+      font-family: Georgia, serif;
+    }
+
+    .rrm-driver-traits {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-bottom: 8px;
+    }
+
+    .rrm-trait-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      border-radius: 3px;
+      font-size: 10px;
+      color: #2ecc71;
+      font-weight: 500;
+    }
+
+    .rrm-car-condition {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rrm-status-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .rrm-status-bar label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: rgba(243, 239, 227, 0.6);
+      letter-spacing: 0.3px;
+      font-weight: 600;
+    }
+
+    .rrm-bar-background {
+      height: 6px;
+      background: rgba(243, 239, 227, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      border: 1px solid rgba(243, 239, 227, 0.1);
+    }
+
+    .rrm-bar-fill {
+      height: 100%;
+      border-radius: 1px;
+      transition: width 0.3s ease;
+    }
+
+    .rrm-status-bar span {
+      font-size: 11px;
+      color: rgba(243, 239, 227, 0.8);
+      text-align: right;
+    }
+
+    .rrm-track-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(3, 26, 52, 0.7);
+      border: 1px solid rgba(0, 191, 255, 0.2);
+      border-radius: 4px;
+      min-height: 0;
+    }
+
+    .rrm-track-map {
+      width: 100%;
+      height: 100%;
+      max-width: 350px;
+      max-height: 300px;
+    }
+
+    .rrm-track-line {
+      filter: drop-shadow(0 0 2px rgba(0, 191, 255, 0.5));
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .rrm-driver-marker {
+      animation: pulse 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 3px rgba(255, 107, 107, 0.6));
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; r: 4; }
+      50% { opacity: 0.7; r: 5; }
+    }
+
+    .rrm-track-info {
+      font-size: 11px;
+      color: rgba(243, 239, 227, 0.7);
+      text-align: center;
+    }
+
+    .rrm-track-info p {
+      margin: 0;
+    }
+
+    .rrm-timing-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(3, 26, 52, 0.7);
+      border: 1px solid rgba(0, 191, 255, 0.2);
+      border-radius: 4px;
+      overflow-y: auto;
+    }
+
+    .rrm-timing-panel h4 {
+      margin: 0 0 4px 0;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #00bfff;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    .rrm-timing-tower {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+      font-family: "Courier New", monospace;
+    }
+
+    .rrm-timing-row {
+      display: grid;
+      grid-template-columns: 20px 1fr 40px 50px 50px;
+      gap: 4px;
+      padding: 4px;
+      background: rgba(0, 191, 255, 0.05);
+      border-left: 2px solid #00bfff;
+      align-items: center;
+    }
+
+    .rrm-timing-col {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: rgba(243, 239, 227, 0.9);
+    }
+
+    .rrm-col-pos {
+      text-align: center;
+      font-weight: 600;
+      color: #00bfff;
+    }
+
+    .rrm-col-gap {
+      text-align: right;
+      color: #f39c12;
+    }
+
+    .rrm-col-last {
+      text-align: right;
+      color: #2ecc71;
+    }
+
+    .rrm-col-best {
+      text-align: right;
+      color: #00bfff;
+      font-weight: 600;
+    }
+
+    .rrm-fastest-lap {
+      padding: 6px 8px;
+      background: rgba(46, 204, 113, 0.08);
+      border-left: 2px solid #2ecc71;
+      font-size: 11px;
+      color: #2ecc71;
+      font-weight: 500;
+    }
+
+    .rrm-fl-badge {
+      display: inline-block;
+      margin-right: 4px;
+      font-weight: 700;
+    }
+
+    .rrm-command-deck {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px;
+      background: rgba(0, 191, 255, 0.05);
+      border: 1px solid rgba(0, 191, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    .rrm-command-section {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rrm-command-section label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: rgba(243, 239, 227, 0.6);
+      letter-spacing: 0.3px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .rrm-command-buttons {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+
+    .rrm-btn {
+      padding: 6px 10px;
+      background: rgba(0, 191, 255, 0.1);
+      border: 1px solid rgba(0, 191, 255, 0.4);
+      border-radius: 3px;
+      color: #00bfff;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 0.3px;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    .rrm-btn:hover {
+      background: rgba(0, 191, 255, 0.15);
+      border-color: rgba(0, 191, 255, 0.6);
+    }
+
+    .rrm-btn-active {
+      background: #00bfff;
+      color: #031a34;
+      border-color: #00bfff;
+      box-shadow: 0 0 8px rgba(0, 191, 255, 0.3);
+    }
+
+    .rrm-btn-primary {
+      background: #2ecc71;
+      border-color: #2ecc71;
+      color: #031a34;
+    }
+
+    .rrm-btn-primary:hover {
+      background: #27ae60;
+      border-color: #27ae60;
+    }
+
+    .rrm-race-results {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .rrm-race-results h2 {
+      margin: 0;
+      font-size: 32px;
+      color: #2ecc71;
+      font-family: Georgia, serif;
+    }
+
+    .rrm-result-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .rrm-result-summary p {
+      margin: 0;
+      color: rgba(243, 239, 227, 0.9);
+    }
+
+    .rrm-result-summary strong {
+      color: #00bfff;
+    }
+
+    /* ===== START SEQUENCE & GRID LIGHTS ===== */
+
+    .rrm-start-sequence {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      height: 100%;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .rrm-start-title h2 {
+      margin: 0 0 8px 0;
+      font-size: 32px;
+      color: #00bfff;
+      font-family: Georgia, serif;
+    }
+
+    .rrm-start-title p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(243, 239, 227, 0.8);
+    }
+
+    .rrm-grid-lights {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      height: 80px;
+    }
+
+    .rrm-light {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255, 107, 107, 0.2);
+      border: 2px solid rgba(255, 107, 107, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .rrm-light-on {
+      background: #ff6b6b;
+      border-color: #ff4444;
+      box-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+    }
+
+    .rrm-sequence-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .rrm-sequence-info p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(243, 239, 227, 0.8);
+    }
+
+    .rrm-drivers-info {
+      font-size: 12px;
+      color: rgba(243, 239, 227, 0.6);
+    }
+
+    /* ===== RACE CONTROLS & STATUS ===== */
+
+    .rrm-status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(255, 107, 107, 0.15);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #ff6b6b;
+      animation: pulse-status 2s ease-in-out infinite;
+    }
+
+    .rrm-status-badge[data-status="paused"] {
+      background: rgba(243, 196, 48, 0.15);
+      border-color: rgba(243, 196, 48, 0.3);
+      color: #f3c430;
+      animation: none;
+    }
+
+    @keyframes pulse-status {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .rrm-race-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .rrm-btn-small {
+      padding: 4px 8px;
+      font-size: 14px;
+      min-width: auto;
+    }
+
+    .rrm-speed-control {
+      padding: 4px 8px;
+      background: rgba(0, 191, 255, 0.1);
+      border: 1px solid rgba(0, 191, 255, 0.4);
+      border-radius: 3px;
+      color: #00bfff;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    .rrm-speed-control:hover {
+      background: rgba(0, 191, 255, 0.15);
+    }
+
+    .rrm-speed-control option {
+      background: #031a34;
+      color: #00bfff;
+    }
+
+    /* ===== DRIVER STATS ===== */
+
+    .rrm-driver-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(0, 191, 255, 0.1);
+    }
+
+    .rrm-stat-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      align-items: center;
+    }
+
+    .rrm-stat-label {
+      color: rgba(243, 239, 227, 0.6);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      font-weight: 600;
+    }
+
+    .rrm-stat-value {
+      color: #00bfff;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    /* ===== EVENT FEED ===== */
+
+    .rrm-event-feed {
+      grid-column: 1 / -1;
+      padding: 10px;
+      background: rgba(0, 191, 255, 0.05);
+      border: 1px solid rgba(0, 191, 255, 0.15);
+      border-radius: 4px;
+      font-size: 11px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    .rrm-event-feed h4 {
+      margin: 0 0 4px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #00bfff;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    .rrm-event-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .rrm-event-item {
+      margin: 0;
+      padding: 2px 0;
+      color: rgba(243, 239, 227, 0.8);
+      font-size: 10px;
+      border-left: 2px solid transparent;
+      padding-left: 4px;
+    }
+
+    /* ===== STANDINGS ===== */
+
+    .rrm-standings {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      font-size: 10px;
+      font-family: "Courier New", monospace;
+    }
+
+    /* ===== PRE-RACE SCREEN ===== */
+
+    .rrm-pre-race-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+      height: 100%;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .rrm-circuit-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .rrm-circuit-preview h2 {
+      margin: 0;
+      font-size: 32px;
+      color: #00bfff;
+      font-family: Georgia, serif;
+      text-shadow: 0 0 10px rgba(0, 191, 255, 0.3);
+    }
+
+    .rrm-preview-track {
+      width: 100%;
+      height: 300px;
+      border: 1px solid rgba(0, 191, 255, 0.3);
+      border-radius: 4px;
+      background: rgba(0, 191, 255, 0.05);
+    }
+
+    .rrm-preview-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      color: rgba(243, 239, 227, 0.8);
+    }
+
+    .rrm-preview-weather {
+      color: #f39c12;
+      font-weight: 600;
+    }
+
+    .rrm-driver-briefing {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px;
+      background: rgba(0, 191, 255, 0.08);
+      border: 1px solid rgba(0, 191, 255, 0.2);
+      border-radius: 4px;
+      min-width: 300px;
+    }
+
+    .rrm-driver-briefing h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #2ecc71;
+      font-weight: 600;
+    }
+
+    .rrm-briefing-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: rgba(243, 239, 227, 0.8);
+    }
+
+    .rrm-briefing-stats p {
+      margin: 0;
+    }
+
+    .rrm-btn-start-race {
+      padding: 14px 40px;
+      background: #2ecc71;
+      border: none;
+      border-radius: 4px;
+      color: #031a34;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);
+    }
+
+    .rrm-btn-start-race:hover {
+      background: #27ae60;
+      box-shadow: 0 6px 16px rgba(46, 204, 113, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .rrm-btn-start-race:active {
+      transform: translateY(0);
+    }
+
+    /* ===== TRACK CONTAINER & LIGHTS ===== */
+
+    .rrm-track-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .rrm-track-lights {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      gap: 20px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .rrm-track-lights .rrm-light {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 107, 107, 0.2);
+      border: 3px solid rgba(255, 107, 107, 0.5);
+      transition: all 0.2s ease;
+      box-shadow: inset 0 0 8px rgba(255, 107, 107, 0.2);
+    }
+
+    .rrm-track-lights .rrm-light-on {
+      background: #ff6b6b;
+      border-color: #ff4444;
+      box-shadow: 0 0 24px rgba(255, 107, 107, 1), inset 0 0 12px rgba(255, 107, 107, 0.6);
+    }
+
+    .rrm-lights-out-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 24px;
+      font-weight: 700;
+      color: #2ecc71;
+      text-shadow: 0 0 20px rgba(46, 204, 113, 0.8);
+      pointer-events: none;
+      animation: lights-out-fade 2s ease-out forwards;
+    }
+
+    @keyframes lights-out-fade {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ===== TRACK MAP ENHANCEMENTS ===== */
+
+    .rrm-track-view {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      min-height: 400px;
+    }
+
+    .rrm-track-container {
+      flex: 1;
+      border: 1px solid rgba(0, 191, 255, 0.2);
+      border-radius: 4px;
+      background: rgba(0, 191, 255, 0.03);
+      overflow: hidden;
+    }
+
+    .rrm-track-map {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+
+    .rrm-driver-car {
+      transition: cx 0.08s linear, cy 0.08s linear;
+    }
+
+    .rrm-driver-car:hover {
+      r: 12 !important;
+      filter: drop-shadow(0 0 12px currentColor) !important;
+    }
+
+    /* ===== MAIN LAYOUT ADJUSTMENTS ===== */
+
+    .rrm-main-layout {
+      display: grid;
+      grid-template-columns: minmax(140px, 160px) 1fr minmax(140px, 180px);
+      gap: 8px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    @media (max-width: 1024px) {
+      .rrm-main-layout {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .rrm-driver-panel,
+      .rrm-timing-panel {
+        order: -1;
+        min-height: auto;
+        max-height: 100px;
+      }
+
+      .rrm-track-view {
+        order: 1;
+        min-height: 300px;
+      }
+
+      .rrm-event-feed {
+        order: 2;
+        max-height: 60px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .rrm-container {
+        gap: 4px;
+        padding: 6px;
+      }
+
+      .rrm-header {
+        gap: 8px;
+        padding: 8px;
+      }
+
+      .rrm-command-deck {
+        gap: 4px;
+        padding: 6px;
+      }
+
+      .rrm-command-section {
+        gap: 2px;
+      }
+
+      .rrm-command-section label {
+        display: none;
+      }
+
+      .rrm-track-view {
+        min-height: 250px;
+      }
+
+      .rrm-driver-panel .rrm-car-condition {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px;
+      }
+
+      .rrm-status-bar {
+        gap: 2px;
+      }
+
+      .rrm-status-bar label {
+        font-size: 9px;
+      }
     }
 
     .life-sim-app[hidden] {
@@ -4211,6 +5137,397 @@
       }
     }
 
+    /* Rogue Racing Manager Styles */
+    .rrm-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(10, 20, 35, 0.95), rgba(15, 30, 50, 0.95));
+      color: var(--paper);
+      font-family: var(--sans);
+    }
+
+    .rrm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0, 191, 255, 0.3);
+      background: rgba(3, 26, 52, 0.7);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .rrm-header-left,
+    .rrm-header-right {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .rrm-race-title {
+      margin: 0;
+      font: 600 24px/1.2 var(--serif);
+      color: #00bfff;
+      text-shadow: 0 0 10px rgba(0, 191, 255, 0.4);
+    }
+
+    .rrm-race-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: rgba(243, 239, 227, 0.7);
+    }
+
+    .rrm-weather-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      background: rgba(0, 191, 255, 0.15);
+      border: 1px solid rgba(0, 191, 255, 0.4);
+    }
+
+    .rrm-weather-badge[data-weather="wet"] {
+      background: rgba(100, 150, 200, 0.2);
+      border-color: rgba(100, 150, 200, 0.5);
+    }
+
+    .rrm-weather-badge[data-weather="stormy"] {
+      background: rgba(200, 100, 100, 0.2);
+      border-color: rgba(200, 100, 100, 0.5);
+    }
+
+    .rrm-championship-position {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .rrm-label {
+      font-size: 10px;
+      color: rgba(243, 239, 227, 0.6);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .rrm-value {
+      font: 600 20px/1 var(--serif);
+      color: #2ecc71;
+    }
+
+    .rrm-main-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr) 240px;
+      gap: 12px;
+      padding: 12px;
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .rrm-driver-panel,
+    .rrm-timing-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid rgba(0, 191, 255, 0.25);
+      border-radius: 4px;
+      background: rgba(3, 26, 52, 0.6);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(0, 191, 255, 0.05);
+    }
+
+    .rrm-driver-info h3 {
+      margin: 0 0 8px;
+      font: 600 18px/1.2 var(--serif);
+      color: #00bfff;
+    }
+
+    .rrm-driver-traits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .rrm-trait-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 2px;
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.4);
+      color: #2ecc71;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .rrm-car-condition {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rrm-status-bar {
+      display: grid;
+      grid-template-columns: 50px minmax(0, 1fr) 40px;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .rrm-status-bar label {
+      color: rgba(243, 239, 227, 0.6);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .rrm-bar-background {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      overflow: hidden;
+    }
+
+    .rrm-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    .rrm-track-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid rgba(0, 191, 255, 0.25);
+      border-radius: 4px;
+      background: rgba(3, 26, 52, 0.6);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(0, 191, 255, 0.05);
+    }
+
+    .rrm-track-map {
+      width: 100%;
+      max-width: 280px;
+      aspect-ratio: 4/3;
+      filter: drop-shadow(0 0 8px rgba(0, 191, 255, 0.3));
+    }
+
+    .rrm-track-line {
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 4px rgba(0, 191, 255, 0.5));
+    }
+
+    .rrm-driver-marker {
+      animation: pulse-marker 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 6px rgba(255, 107, 107, 0.6));
+    }
+
+    @keyframes pulse-marker {
+      0%, 100% { r: 4; opacity: 1; }
+      50% { r: 5; opacity: 0.8; }
+    }
+
+    .rrm-track-info {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(243, 239, 227, 0.7);
+    }
+
+    .rrm-track-info p {
+      margin: 0;
+    }
+
+    .rrm-timing-panel h4 {
+      margin: 0 0 10px;
+      font: 600 16px/1.2 var(--serif);
+      color: #00bfff;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 12px;
+    }
+
+    .rrm-timing-tower {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .rrm-timing-row {
+      display: grid;
+      grid-template-columns: 25px 80px 50px 50px 50px;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 2px;
+      background: rgba(0, 191, 255, 0.08);
+      border: 1px solid rgba(0, 191, 255, 0.2);
+      color: rgba(243, 239, 227, 0.9);
+    }
+
+    .rrm-timing-col {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rrm-col-pos {
+      font: 600 12px/1 var(--serif);
+      color: #2ecc71;
+      justify-content: center;
+    }
+
+    .rrm-col-driver {
+      font-weight: 600;
+      color: #00bfff;
+    }
+
+    .rrm-fastest-lap {
+      margin-top: 8px;
+      padding: 6px 8px;
+      border-radius: 2px;
+      background: rgba(46, 204, 113, 0.1);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      color: #2ecc71;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+    }
+
+    .rrm-fl-badge {
+      display: inline-block;
+      margin-right: 4px;
+      font-weight: 600;
+    }
+
+    .rrm-command-deck {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 14px 16px;
+      border-top: 1px solid rgba(0, 191, 255, 0.3);
+      background: rgba(3, 26, 52, 0.7);
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .rrm-command-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rrm-command-section > label {
+      font-size: 10px;
+      color: rgba(243, 239, 227, 0.6);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .rrm-command-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .rrm-btn {
+      padding: 8px 12px;
+      border: 1px solid rgba(0, 191, 255, 0.4);
+      border-radius: 3px;
+      background: rgba(0, 191, 255, 0.08);
+      color: #00bfff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .rrm-btn:hover:not(:disabled) {
+      background: rgba(0, 191, 255, 0.15);
+      border-color: rgba(0, 191, 255, 0.6);
+      box-shadow: 0 0 12px rgba(0, 191, 255, 0.3);
+    }
+
+    .rrm-btn-active {
+      background: rgba(0, 191, 255, 0.25);
+      border-color: rgba(0, 191, 255, 0.8);
+      box-shadow: 0 0 16px rgba(0, 191, 255, 0.4), inset 0 0 10px rgba(0, 191, 255, 0.1);
+      color: #fff;
+    }
+
+    .rrm-btn-primary {
+      background: rgba(46, 204, 113, 0.15);
+      border-color: rgba(46, 204, 113, 0.5);
+      color: #2ecc71;
+    }
+
+    .rrm-btn-primary:hover:not(:disabled) {
+      background: rgba(46, 204, 113, 0.25);
+      border-color: rgba(46, 204, 113, 0.8);
+      box-shadow: 0 0 12px rgba(46, 204, 113, 0.3);
+    }
+
+    .rrm-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .rrm-race-results {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .rrm-race-results h2 {
+      margin: 0;
+      font: 600 32px/1.2 var(--serif);
+      color: #00bfff;
+    }
+
+    .rrm-result-summary {
+      display: grid;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .rrm-result-summary p {
+      margin: 0;
+      color: rgba(243, 239, 227, 0.9);
+    }
+
+    .rrm-result-summary strong {
+      color: #2ecc71;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1200px) {
+      .rrm-main-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .rrm-driver-panel,
+      .rrm-timing-panel {
+        grid-column: 1 / -1;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *,
       *::before,
@@ -4834,6 +6151,13 @@
                 <span class="observatory-feature-description">Make everyday choices and experience a full year of life.</span>
                 <span class="observatory-feature-link">Start playing <span aria-hidden="true">→</span></span>
               </a>
+              <a class="observatory-feature-card" href="#games-racing-manager">
+                <span class="observatory-feature-icon" aria-hidden="true">🏁</span>
+                <span class="observatory-feature-label">Roguelike team simulator</span>
+                <strong class="observatory-feature-title">Rogue Racing Manager</strong>
+                <span class="observatory-feature-description">Strategic racing simulation with roguelike mechanics.</span>
+                <span class="observatory-feature-link">Start racing <span aria-hidden="true">→</span></span>
+              </a>
             </nav>
             <details class="room-original-story" open>
               <summary>Original room story</summary>
@@ -4943,6 +6267,24 @@
             </div>
           </section>
           <a class="observatory-back-link" href="#games-room-start">↑ Games Room overview</a>
+          </section>
+
+          <section class="games-page" id="games-racing-manager" data-games-page="racing-manager" data-games-title="Games Room · Rogue Racing Manager" aria-labelledby="games-racing-manager-title" hidden>
+            <header class="observatory-section-header">
+              <span class="observatory-section-kicker">Roguelike racing team management</span>
+              <h4 id="games-racing-manager-title">Strategic pit wall decisions</h4>
+              <p>Command your racing team through a season of randomized events, strategic upgrades, and high-stakes races.</p>
+            </header>
+            <section class="racing-manager-panel" data-racing-manager-root aria-labelledby="racing-manager-heading">
+              <header class="racing-manager-heading">
+                <p class="room-kicker">Playable prototype</p>
+                <h4 id="racing-manager-heading">Rogue Racing Manager</h4>
+              </header>
+              <div class="racing-manager-placeholder" data-racing-manager-placeholder role="status">
+                <p>Loading the racing simulator…</p>
+              </div>
+            </section>
+            <a class="observatory-back-link" href="#games-room-start">↑ Games Room overview</a>
           </section>
         </div>
       </article>
@@ -5763,6 +7105,20 @@
             placeholder.textContent = "The life sim could not be loaded. Check the browser console for details.";
           }
           console.error("Could not load the local Games Room life sim.", error);
+        });
+    }
+
+    const racingManagerRoot = document.querySelector("[data-racing-manager-root]");
+
+    if (racingManagerRoot) {
+      import("./games/racing-manager.js")
+        .then(({ mountRacingManager }) => mountRacingManager(racingManagerRoot))
+        .catch((error) => {
+          const placeholder = racingManagerRoot.querySelector("[data-racing-manager-placeholder]");
+          if (placeholder) {
+            placeholder.textContent = "The racing simulator could not be loaded. Check the browser console for details.";
+          }
+          console.error("Could not load the Racing Manager game.", error);
         });
     }
   </script>
