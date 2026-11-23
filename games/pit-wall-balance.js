@@ -1,0 +1,91 @@
+export const DISCOVERY_PACE_FIELDS = {
+  "track-evolution": "trackEvolutionMsPerLevel",
+  "braking-reference": "brakingReferenceMsPerLevel",
+  "overtaking-analysis": "overtakingAnalysisMsPerLevel",
+};
+
+export const DEFAULT_BALANCE = {
+  lap: {
+    baseTimeMs: 94500,
+    referenceLengthKm: 5.412,
+    variationMs: 200,
+    maxUpgradeGainMs: 4000,
+    statPointCap: 10,
+    baseClampMs: 5500,
+    minimumLapMs: 1000,
+    tyreWearMsPerPercent: 35,
+    fuelSavingMsPerPercent: 12,
+    fuelPerLap: 1.8,
+    pitBaseMs: 21500,
+    pitMinimumMs: 5000,
+  },
+  vehicleStats: {
+    Handling: { base: 0, lapGainMs: 180 },
+    Aero: { base: 0, lapGainMs: 180 },
+    "Energy Recovery": { base: 0, lapGainMs: 180 },
+    Reliability: { base: 0, variationReductionPerPoint: .5 },
+    "Pit Efficiency": { base: 0, pitGainMs: 1000 },
+  },
+  driverTraits: {
+    "Qualifying pace": 450,
+    Braking: 350,
+    Consistency: 200,
+    Adaptability: 150,
+    "Technical feedback": 100,
+    Racecraft: 100,
+    "Wet conditions": 100,
+    "Tyre management": 150,
+    "Quick starts": 100,
+    "Aggressive overtakes": 100,
+  },
+  teamTraits: {
+    "Qualifying pace": 450,
+    "Straight-line speed": 400,
+    Consistency: 200,
+    "Race strategy": 100,
+    "Wet conditions": 100,
+    "Tyre wear": 150,
+    "Slow starts": 100,
+    Cornering: 350,
+  },
+  tyres: {
+    Soft: { pace: -900, wear: 6 },
+    Medium: { pace: 0, wear: 4 },
+    Hard: { pace: 700, wear: 2.5 },
+    Intermediate: { pace: 0, wear: 4 },
+    Wet: { pace: 0, wear: 4 },
+  },
+  modes: {
+    Attack: { pace: -400, wear: 1.4, fuel: 1.3 },
+    Balanced: { pace: 0, wear: 1, fuel: 1 },
+    Defend: { pace: 300, wear: .7, fuel: .75 },
+  },
+  discoveries: {
+    statPoints: {
+      "wind-tunnel": 1,
+      "brake-cooling": 1,
+      "battery-optimisation": 1,
+      "suspension-development": 1,
+      "pit-crew-training": 1,
+      "aero-breakthrough": 3,
+      "durability-breakthrough": 3,
+      "handling-breakthrough": 3,
+    },
+    tyreLifePerLevel: .1,
+    fuelEfficiencyPerLevel: .15,
+    trackEvolutionMsPerLevel: 150,
+    brakingReferenceMsPerLevel: 125,
+    overtakingAnalysisMsPerLevel: 100,
+    fullRerolls: 1,
+    singleRerolls: 1,
+    blueBonusMultiplier: 1,
+  },
+  rewardWeights: {
+    beforeGrandPrix: { green: 45, blue: 45, purple: 8, gold: 2 },
+    afterGrandPrix: { blue: 90, purple: 8, gold: 2 },
+  },
+};
+
+export function createBalance() {
+  return structuredClone(DEFAULT_BALANCE);
+}

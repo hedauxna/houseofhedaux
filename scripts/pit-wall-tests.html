@@ -7,14 +7,289 @@
   <div id="fixture" hidden></div>
   <script type="module">
     import { PitWallConsole, drawDiscovery } from "../games/pit-wall.js";
+    import { mountRouteMarker } from "../games/route-marker.js";
+    import { createBalance } from "../games/pit-wall-balance.js";
+    import { PRACTICE_DURATION, createPracticeSession, advancePracticeSession, formatLapTime,
+      setDriverMode, callToPit, selectPitTyre } from "../games/practice-session.js";
 
     const results = document.querySelector("#results");
     const root = document.querySelector("#fixture");
     const assert = (condition, message) => {
       if (!condition) throw new Error(message);
     };
+    const waitForMarker = async (container) => {
+      for (let i = 0; i < 100 && !container.querySelector(".pit-wall-moving-driver"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      assert(container.querySelector(".pit-wall-moving-driver"), "Bahrain marker did not load");
+    };
 
     try {
+      const neutralDriver = { strengths: [], weakness: "None" };
+      const neutralTeam = { bonus: "None", weakness: "None" };
+      for (const [tyre, fuel] of [["Soft", 10], ["Hard", 100], ["Intermediate", 45], ["Wet", 75]]) {
+        const configured = createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5, { tyre, fuel });
+        assert(configured.tyre === tyre && configured.fuel === fuel && configured.tyreWear === 0,
+          `${tyre} and ${fuel}% must initialise the practice session`);
+      }
+      for (const setup of [{ tyre: "Unknown", fuel: 50 }, { tyre: "Soft", fuel: 9 }, { tyre: "Soft", fuel: 101 }]) {
+        let rejected = false;
+        try { createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5, setup); } catch { rejected = true; }
+        assert(rejected, "Invalid practice setup must be rejected");
+      }
+      const practiceBaseline = () => createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5);
+      const baseline = practiceBaseline();
+      const improved = createPracticeSession(
+        { strengths: ["Braking"], weakness: "None" },
+        { bonus: "Straight-line speed", weakness: "None" },
+        [{ stat: "Handling", amount: 2 }, { stat: "Aero", amount: 3 }, { stat: "Energy Recovery", amount: 1 }],
+        5.412, () => .5);
+      assert(improved.lapTarget < baseline.lapTarget && baseline.lapTarget >= 89000 && baseline.lapTarget <= 100000,
+        "Driver, team and relevant upgrades must improve realistic Bahrain lap times");
+      for (const roll of [0, .5, .999999]) {
+        const lap = createPracticeSession(
+          { strengths: ["Qualifying pace", "Braking"], weakness: "None" },
+          { bonus: "Straight-line speed", weakness: "None" },
+          [{ stat: "Handling", amount: 20 }, { stat: "Aero", amount: 20 }, { stat: "Energy Recovery", amount: 20 }],
+          5.412, () => roll).lapTarget;
+        assert(lap >= 89000 && lap <= 100000, "Bahrain lap times must remain in the requested realistic range");
+      }
+      assert(createPracticeSession({ strengths: ["Braking"], weakness: "None" }, neutralTeam, [], 5.412, () => .5).lapTarget < baseline.lapTarget
+        && createPracticeSession(neutralDriver, { bonus: "Straight-line speed", weakness: "None" }, [], 5.412, () => .5).lapTarget < baseline.lapTarget
+        && createPracticeSession({ strengths: [], weakness: "Braking" }, neutralTeam, [], 5.412, () => .5).lapTarget > baseline.lapTarget
+        && createPracticeSession(neutralDriver, { bonus: "None", weakness: "Cornering" }, [], 5.412, () => .5).lapTarget > baseline.lapTarget,
+      "Driver and team strengths and weaknesses must each affect practice pace");
+      for (const upgrade of [{ stat: "Handling", amount: 1 }, { stat: "Aero", amount: 1 }, { stat: "Energy Recovery", amount: 1 }]) {
+        assert(createPracticeSession(neutralDriver, neutralTeam, [upgrade], 5.412, () => .5).lapTarget < baseline.lapTarget,
+          `${upgrade.stat} must affect lap performance`);
+      }
+      const boosted = createPracticeSession(neutralDriver, neutralTeam, [{ stat: "Handling", amount: 2 }], 5.412, () => .5);
+      const unboosted = createPracticeSession(neutralDriver, neutralTeam, [{ stat: "Handling", amount: 1 }], 5.412, () => .5);
+      assert(boosted.lapTarget < unboosted.lapTarget, "Amplified upgrade values must affect practice performance");
+      for (let lap = 0; lap < 3; lap += 1) advancePracticeSession(baseline, baseline.lapTarget);
+      assert(baseline.lapTimes.length === 3 && baseline.lapElapsed === 0,
+        "Crossing exactly three lap boundaries must count three completed laps");
+      advancePracticeSession(baseline, PRACTICE_DURATION);
+      assert(baseline.elapsed === PRACTICE_DURATION && baseline.lapTimes.length > 3
+        && formatLapTime(91442) === "1:31.442",
+      "Practice must stop precisely at 60 simulated minutes and format lap times");
+
+      const attack = practiceBaseline();
+      const balanced = practiceBaseline();
+      const defend = practiceBaseline();
+      setDriverMode(attack, "Attack");
+      setDriverMode(defend, "Defend");
+      assert(balanced.lapTarget - attack.lapTarget >= 300 && balanced.lapTarget - attack.lapTarget <= 500
+        && defend.lapTarget - balanced.lapTarget >= 200 && defend.lapTarget - balanced.lapTarget <= 400,
+      "A full Attack or Defend lap must meet the specified pace differences");
+      for (const practice of [attack, balanced, defend]) advancePracticeSession(practice, practice.lapTarget);
+      assert(attack.tyreWear > balanced.tyreWear && balanced.tyreWear > defend.tyreWear
+        && attack.fuel < balanced.fuel && balanced.fuel < defend.fuel
+        && attack.lapTimes[0] < balanced.lapTimes[0] && balanced.lapTimes[0] < defend.lapTimes[0],
+      "Driver modes must affect tyre wear and fuel consumption");
+      const configuredPractice = (tyre, fuel, random = () => .5) =>
+        createPracticeSession(neutralDriver, neutralTeam, [], 5.412, random, { tyre, fuel });
+      const pace = (tyre, fuel) => configuredPractice(tyre, fuel).lapTarget;
+      assert(pace("Medium", 100) - pace("Soft", 100) >= 500
+        && pace("Hard", 100) - pace("Medium", 100) >= 500
+        && pace("Intermediate", 100) === pace("Medium", 100)
+        && pace("Wet", 100) === pace("Medium", 100)
+        && pace("Medium", 100) - pace("Medium", 10) >= 1000,
+      "Compounds, tyre wear and fuel load must affect pace");
+      const soft = configuredPractice("Soft", 100);
+      const hard = configuredPractice("Hard", 100);
+      advancePracticeSession(soft, soft.lapTarget);
+      advancePracticeSession(hard, hard.lapTarget);
+      assert(soft.tyreWear > balanced.tyreWear && balanced.tyreWear > hard.tyreWear
+        && soft.lapTimes[0] < balanced.lapTimes[0] && balanced.lapTimes[0] < hard.lapTimes[0],
+      "Soft and hard must produce distinct lap times and degradation");
+      const modeAtRoll = (mode, roll) => {
+        const practice = configuredPractice("Medium", 100, () => roll);
+        setDriverMode(practice, mode);
+        advancePracticeSession(practice, practice.lapTarget);
+        return practice.lapTimes[0];
+      };
+      assert(modeAtRoll("Attack", 1) < modeAtRoll("Balanced", 0)
+        && modeAtRoll("Defend", 0) > modeAtRoll("Balanced", 1),
+      "Even opposite extremes of lap variation must not mask a full-lap mode change");
+      const midpoint = practiceBaseline();
+      const midpointTarget = midpoint.lapTarget;
+      advancePracticeSession(midpoint, midpointTarget / 2);
+      setDriverMode(midpoint, "Attack");
+      assert(midpoint.lapTarget === midpointTarget - 400, "A mid-lap command must not reapply wear or fuel");
+      advancePracticeSession(midpoint, (1 - midpoint.lapProgress) * midpoint.lapTarget);
+      assert(midpoint.lapTimes[0] === midpointTarget - 200,
+        "A half-lap Attack command must affect only the remaining half of the lap");
+      const stint = configuredPractice("Soft", 100);
+      for (let lap = 0; lap < 18; lap += 1) advancePracticeSession(stint, stint.lapTarget);
+      assert(stint.lapTimes[1] > stint.lapTimes[0] && stint.tyreWear === 100,
+        "Tyre degradation must increase successive lap times and eventually reach full wear");
+      const wornLap = stint.lapTarget;
+      advancePracticeSession(stint, stint.lapTarget);
+      assert(stint.lapTarget < wornLap && stint.fuel < 100,
+        "With tyre condition unchanged, burning fuel must naturally improve lap pace");
+      const changed = configuredPractice("Soft", 100);
+      setDriverMode(changed, "Attack");
+      advancePracticeSession(changed, changed.lapTarget);
+      setDriverMode(changed, "Defend");
+      advancePracticeSession(changed, changed.lapTarget);
+      assert(changed.lapTimes[1] > changed.lapTimes[0],
+        "Switching from Attack to Defend must produce a slower lap in history");
+      const fullyUpgraded = createPracticeSession(
+        { strengths: ["Qualifying pace", "Braking"], weakness: "None" },
+        { bonus: "Straight-line speed", weakness: "None" },
+        [{ stat: "Handling", amount: 20 }], 5.412, () => 0);
+      const maxedBalanced = fullyUpgraded.lapTarget;
+      setDriverMode(fullyUpgraded, "Attack");
+      assert(fullyUpgraded.lapTarget < maxedBalanced, "Driver mode must still affect pace at the upgrade limit");
+      const economy = createPracticeSession(neutralDriver, neutralTeam,
+        [{ id: "tyre-insight", level: 2 }, { id: "fuel-mapping", level: 2 }], 5.412, () => .5);
+      advancePracticeSession(economy, economy.lapTarget);
+      assert(economy.tyreWear < balanced.tyreWear && economy.fuel > balanced.fuel,
+        "Tyre and fuel efficiency discoveries must reduce consumption");
+      const pit = practiceBaseline();
+      advancePracticeSession(pit, pit.lapTarget / 2);
+      const progressBeforeMode = pit.lapProgress;
+      setDriverMode(pit, "Attack");
+      assert(pit.lapProgress === progressBeforeMode && callToPit(pit) && !callToPit(pit),
+        "Changing mode must not move the car and a pit call must not duplicate");
+      advancePracticeSession(pit, (1 - pit.lapProgress) * pit.lapTarget);
+      assert(pit.pitState === "stopped" && pit.lapProgress === 0 && pit.lapTimes.length === 1
+        && pit.pitRemaining === 21500, "A called car must stop at the lap boundary");
+      const pitFuel = pit.fuel;
+      advancePracticeSession(pit, 10000);
+      assert(pit.pitState === "stopped" && pit.pitRemaining === 11500 && pit.fuel === pitFuel,
+        "The pit countdown must consume session time without movement or refuelling");
+      assert(selectPitTyre(pit, "Soft") && pit.tyre === "Medium", "The selected tyre must wait for the pit timer");
+      advancePracticeSession(pit, 11500);
+      assert(pit.pitState === "none" && pit.tyre === "Soft" && pit.tyreWear === 0 && pit.fuel === pitFuel,
+        "The car must leave on fresh selected tyres without refuelling");
+      advancePracticeSession(pit, pit.lapTarget);
+      assert(pit.lapTimes[1] > pit.lapTarget + 20000, "Pit time must count in the next completed lap");
+      const waiting = practiceBaseline();
+      callToPit(waiting);
+      advancePracticeSession(waiting, waiting.lapTarget + 30000);
+      assert(waiting.pitState === "stopped" && waiting.pitRemaining === 0,
+        "The car must wait at the pit after the timer if no tyre is selected");
+      selectPitTyre(waiting, "Hard");
+      assert(waiting.pitState === "none" && waiting.tyre === "Hard",
+        "A tyre selected after the countdown must release the car");
+      const endingInPit = practiceBaseline();
+      callToPit(endingInPit);
+      advancePracticeSession(endingInPit, endingInPit.lapTarget);
+      advancePracticeSession(endingInPit, PRACTICE_DURATION);
+      assert(endingInPit.elapsed === PRACTICE_DURATION && endingInPit.pitState === "stopped"
+        && endingInPit.lapTimes.length === 1,
+      "The practice clock must expire while waiting in the pit without inventing laps");
+      const efficient = createPracticeSession(neutralDriver, neutralTeam,
+        [{ stat: "Pit Efficiency", amount: 3 }], 5.412, () => .5);
+      callToPit(efficient);
+      advancePracticeSession(efficient, efficient.lapTarget);
+      assert(efficient.pitRemaining === 18500, "Effective pit efficiency upgrades must reduce the pit time");
+      const editableBalance = createBalance();
+      const tuned = createPracticeSession(neutralDriver, neutralTeam, [{ stat: "Handling", amount: 1 }],
+        5.412, () => .5, { tyre: "Medium", fuel: 100 }, editableBalance);
+      const untuned = createPracticeSession(neutralDriver, neutralTeam, [{ stat: "Handling", amount: 1 }],
+        5.412, () => .5);
+      editableBalance.vehicleStats.Handling.lapGainMs = 480;
+      assert(tuned.lapTarget === untuned.lapTarget, "Balance edits must not rewrite a lap already underway");
+      advancePracticeSession(tuned, tuned.lapTarget);
+      advancePracticeSession(untuned, untuned.lapTarget);
+      assert(untuned.lapTarget - tuned.lapTarget === 300,
+        "Edited vehicle stat gains must affect the very next generated lap");
+      const targetBeforeEdit = tuned.lapTarget;
+      setDriverMode(tuned, "Attack");
+      editableBalance.modes.Attack.pace = -1000;
+      setDriverMode(tuned, "Balanced");
+      assert(tuned.lapTarget === targetBeforeEdit,
+        "Changing a mode's balance mid-lap must not distort a subsequent mode switch");
+      editableBalance.tyres.Soft.wear = 10;
+      editableBalance.modes.Attack.fuel = 2;
+      const tunedConsumption = createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5,
+        { tyre: "Soft", fuel: 100 }, editableBalance);
+      setDriverMode(tunedConsumption, "Attack");
+      advancePracticeSession(tunedConsumption, tunedConsumption.lapTarget);
+      assert(Math.abs(tunedConsumption.tyreWear - 14) < .001 && Math.abs(tunedConsumption.fuel - 96.4) < .001,
+        "Edited tyre and mode multipliers must drive actual wear and fuel consumption");
+      const traitBalance = createBalance();
+      const traitDriver = { strengths: ["Braking"], weakness: "None" };
+      const traitTeam = { bonus: "Consistency", weakness: "None" };
+      const traitPace = () => createPracticeSession(traitDriver, traitTeam, [], 5.412, () => .5,
+        { tyre: "Medium", fuel: 100 }, traitBalance).lapTarget;
+      const originalTraitPace = traitPace();
+      traitBalance.driverTraits.Braking += 200;
+      traitBalance.teamTraits.Consistency += 100;
+      assert(originalTraitPace - traitPace() === 300, "Edited driver and team effects must alter lap pace");
+      traitBalance.vehicleStats.Handling.base = 2;
+      assert(originalTraitPace - traitPace() === 660,
+        "Edited base vehicle points must contribute to lap pace");
+      for (const [driver, team, upgrades] of [
+        [{ strengths: ["Unregistered"], weakness: "None" }, neutralTeam, []],
+        [neutralDriver, { bonus: "Unregistered", weakness: "None" }, []],
+        [neutralDriver, neutralTeam, [{ stat: "Unregistered", amount: 1 }]],
+      ]) {
+        let error;
+        try { createPracticeSession(driver, team, upgrades, 5.412, () => .5); } catch (caught) { error = caught; }
+        assert(error && error.message.includes("Unregistered balance"),
+          "Traits and upgrade stats missing from the balance registry must fail explicitly");
+      }
+      const greenBalance = createBalance();
+      greenBalance.discoveries.trackEvolutionMsPerLevel = 500;
+      greenBalance.discoveries.tyreLifePerLevel = 1;
+      greenBalance.discoveries.fuelEfficiencyPerLevel = 1;
+      greenBalance.lap.pitBaseMs = 18000;
+      greenBalance.vehicleStats["Pit Efficiency"].pitGainMs = 2000;
+      const greenSession = createPracticeSession(neutralDriver, neutralTeam,
+        [{ id: "track-evolution", level: 1 }, { id: "tyre-insight", level: 1 },
+          { id: "fuel-mapping", level: 1 }, { stat: "Pit Efficiency", amount: 1 }],
+        5.412, () => .5, { tyre: "Medium", fuel: 100 }, greenBalance);
+      assert(greenSession.lapTarget === 94000, "Edited Track Evolution pace must affect lap generation");
+      callToPit(greenSession);
+      advancePracticeSession(greenSession, greenSession.lapTarget);
+      assert(greenSession.tyreWear === 2 && greenSession.fuel === 99.1 && greenSession.pitRemaining === 16000,
+        "Edited weekend efficiencies and pit values must affect the live simulation");
+      const reliabilityBalance = createBalance();
+      const reliabilityPace = (roll, points) => createPracticeSession(neutralDriver, neutralTeam,
+        points ? [{ stat: "Reliability", amount: points }] : [], 5.412, () => roll,
+        { tyre: "Medium", fuel: 100 }, reliabilityBalance).lapTarget;
+      const unreliableFast = reliabilityPace(0, 0);
+      const unreliableSlow = reliabilityPace(1, 0);
+      const reliableFast = reliabilityPace(0, 1);
+      const reliableSlow = reliabilityPace(1, 1);
+      assert(reliableFast > unreliableFast && reliableSlow < unreliableSlow
+        && reliableSlow - reliableFast < unreliableSlow - unreliableFast
+        && reliabilityPace(1, 3) < reliableSlow,
+      "Reliability upgrades must reduce both fast and slow lap deviations, including stronger breakthroughs");
+      reliabilityBalance.vehicleStats.Reliability.variationReductionPerPoint = 1;
+      assert(reliabilityPace(1, 1) < reliableSlow,
+        "Edited reliability balance must change the actual lap variation");
+      const weekendBalance = createBalance();
+      const weekendPace = (upgrades) => createPracticeSession(neutralDriver, neutralTeam, upgrades, 5.412, () => .5,
+        { tyre: "Medium", fuel: 100 }, weekendBalance).lapTarget;
+      const ordinaryPace = weekendPace([]);
+      assert(ordinaryPace - weekendPace([{ id: "braking-reference", level: 1 }]) === 125
+        && ordinaryPace - weekendPace([{ id: "overtaking-analysis", level: 1 }]) === 100
+        && ordinaryPace - weekendPace([{ id: "braking-reference", level: 2 },
+          { id: "overtaking-analysis", level: 1 }]) === 350,
+      "Braking and overtaking discoveries must produce their advertised stackable pace gains");
+      weekendBalance.discoveries.brakingReferenceMsPerLevel = 200;
+      weekendBalance.discoveries.overtakingAnalysisMsPerLevel = 80;
+      assert(ordinaryPace - weekendPace([{ id: "braking-reference", level: 2 },
+        { id: "overtaking-analysis", level: 1 }]) === 480,
+      "Edited weekend discovery values must affect generated laps");
+      const extreme = createBalance();
+      extreme.lap.baseTimeMs = 1000;
+      extreme.lap.baseClampMs = 0;
+      extreme.modes.Attack.pace = -30000;
+      const extremeSession = createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5,
+        { tyre: "Medium", fuel: 100 }, extreme);
+      setDriverMode(extremeSession, "Attack");
+      setDriverMode(extremeSession, "Balanced");
+      assert(extremeSession.lapTarget === extreme.lap.minimumLapMs,
+        "Switching from a clamped mode must not add its entire pace penalty to the lap");
+      advancePracticeSession(extremeSession, 1000);
+      assert(extremeSession.lapTimes.length === 1, "Extreme edits must not cause a zero-length lap or hang");
+
       const actualRandom = Math.random;
       try {
         for (const [postGrandPrix, expected] of [
@@ -41,6 +316,8 @@
 
       const game = new PitWallConsole(root);
       game.mount();
+      assert(!root.querySelector('[data-action="balance-toggle"]') && !root.querySelector("#pit-wall-balance-panel"),
+        "The developer balance panel must not be present without developer mode");
       const toggle = root.querySelector('[data-action="toggle-command"]');
       const commandBody = root.querySelector("#pit-wall-command-content");
       assert(toggle.getAttribute("aria-expanded") === "false" && commandBody.inert,
@@ -132,34 +409,232 @@
         && root.querySelector(".pit-wall-weekend-banner").textContent.includes("12-14 March 2027")
         && root.querySelector(".pit-wall-weekend-banner").textContent.includes("Sunny")
         && root.querySelector(".pit-wall-weekend-banner").textContent.includes("Forecast: Stable")
-        && root.querySelector(".pit-wall-panel-right").textContent.includes("5.412 km")
-        && root.querySelector(".pit-wall-panel-right").textContent.includes("57 Laps")
-        && root.querySelector(".pit-wall-panel-right").textContent.includes("Sprint Weekend"),
+        && root.querySelector('[data-timing="remaining"]').textContent === "60:00"
+        && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "100",
       "A confirmed season must load the first selected weekend");
       await root.querySelector(".pit-wall-circuit img").decode();
 
       const bahrainWeekend = game.weekendState.weekend;
+      const setupTyres = [...root.querySelectorAll("[data-setup-tyre]")];
+      const setupFuel = root.querySelector("[data-setup-fuel]");
+      assert(setupTyres.length === 5 && root.querySelector('[data-setup-tyre="Medium"]').getAttribute("aria-pressed") === "true"
+        && setupFuel.min === "10" && setupFuel.max === "100" && setupFuel.value === "100",
+      "Practice setup must default to Medium and 100% fuel");
+      root.querySelector('[data-setup-tyre="Soft"]').click();
+      setupFuel.value = "35";
+      setupFuel.dispatchEvent(new Event("input", { bubbles: true }));
+      assert(root.querySelectorAll('[data-setup-tyre][aria-pressed="true"]').length === 1
+        && root.querySelector('[data-setup-tyre="Soft"]').getAttribute("aria-pressed") === "true"
+        && root.querySelector("[data-setup-fuel-value]").textContent === "35%"
+        && root.querySelector('[data-timing="tyre"]').textContent === "Soft"
+        && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "35",
+      "Setup choices must update their selection and telemetry preview");
+      game.renderSession();
+      assert(root.querySelector('[data-setup-tyre="Soft"]').getAttribute("aria-pressed") === "true"
+        && root.querySelector("[data-setup-fuel]").value === "35", "Setup must survive a session rerender");
+      root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
+      assert(game.weekendState.practice.tyre === "Soft" && game.weekendState.practice.fuel <= 35
+        && game.weekendState.practice.fuel > 34.9, "Starting practice must use the chosen setup");
+      root.querySelector('[data-action="toggle-command"]').click();
+      root.querySelector('[data-driver-mode="Attack"]').click();
+      const chosenPractice = game.weekendState.practice;
+      chosenPractice.random = () => .5;
+      advancePracticeSession(chosenPractice, (1 - chosenPractice.lapProgress) * chosenPractice.lapTarget);
+      root.querySelector('[data-driver-mode="Defend"]').click();
+      advancePracticeSession(chosenPractice, chosenPractice.lapTarget);
+      game.updateTiming();
+      const recordedLaps = [...root.querySelectorAll(".pit-wall-lap-entry")];
+      assert(chosenPractice.lapTimes.length === 2 && chosenPractice.lapTimes[1] > chosenPractice.lapTimes[0]
+        && recordedLaps[1].textContent.includes(formatLapTime(chosenPractice.lapTimes[1]))
+        && recordedLaps[2].textContent.includes(formatLapTime(chosenPractice.lapTimes[0]))
+        && root.querySelector("[data-mode-feedback]").textContent.includes("less tyre wear & fuel"),
+      "A Soft Attack lap followed by Defend must show the slower lap and the mode trade-off");
+      root.querySelector('[data-action="toggle-command"]').click();
+      game.renderWeekend(bahrainWeekend);
       const trackerLabels = () => [...root.querySelectorAll(".pit-wall-session-step")]
         .map((step) => step.getAttribute("aria-label"));
       assert(trackerLabels().join("|") === [
         "Practice 1: Current", "Sprint Qualifying: Pending", "Sprint Race: Pending",
         "Qualifying: Pending", "Grand Prix: Pending",
       ].join("|"), "Bahrain must start with the correct sprint session order");
-      const started = performance.now();
       root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
+      const marker = root.querySelector(".pit-wall-moving-driver");
+      const position = marker.getAttribute("transform");
       await new Promise((resolve) => setTimeout(resolve, 350));
       assert(root.querySelector(".pit-wall-session-running").textContent.includes("Practice 1 Running")
-        && root.querySelector(".pit-wall-session-panel progress").value > 0
-        && root.querySelector(".pit-wall-session-panel progress").value < 5000,
-      "Starting a session must show a progressing running state");
-      while (game.weekendState.phase === "running" && performance.now() - started < 6500) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        && marker.querySelector("text").textContent === game.driver.name.split(" ").map((part) => part[0]).join("")
+        && marker.querySelector("circle").getAttribute("fill") === game.team.colour
+        && marker.getAttribute("transform") !== position
+        && !root.querySelector(".pit-wall-route-line, .pit-wall-session-panel progress")
+        && !root.querySelector('[data-action="toggle-route"]'),
+      "Bahrain Practice 1 must show a moving team-coloured driver marker without debug or timing");
+      assert(root.querySelector('[data-timing="tyre"]').textContent === "Medium"
+        && root.querySelector('[aria-label="Tyre condition"]').getAttribute("aria-valuenow") === "100"
+        && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "100"
+        && !root.querySelector('[data-timing="current-lap"], [data-timing="completed-laps"]'),
+      "Practice telemetry must start with medium tyres and full fuel rather than duplicate lap counts");
+      assert(!root.querySelector('[data-action="skip-session"]')
+        && root.querySelector('[data-action="complete-session"]')
+        && [...root.querySelectorAll("[data-speed]")].map((button) => button.textContent).join("|") === "Pause|1x|10x|50x",
+      "Running practice must expose pause, speed and completion controls without Skip Session");
+      root.querySelector('[data-action="toggle-command"]').click();
+      root.querySelector('[data-driver-mode="Attack"]').click();
+      assert(root.querySelector("[data-command-mode]").textContent.includes("Attack")
+        && game.weekendState.practice.mode === "Attack"
+        && root.querySelector("[data-mode-feedback]").textContent.includes("more tyre wear & fuel"),
+      "The command centre must show the active mode and its trade-offs");
+      root.querySelector('[data-action="call-pit"]').click();
+      assert(game.weekendState.practice.pitState === "called", "Call To Pit must queue the stop");
+      game.weekendState.timerStartedAt -= (1 - game.weekendState.practice.lapProgress) * game.weekendState.practice.lapTarget + 1;
+      game.syncPracticeClock();
+      await new Promise((resolve) => setTimeout(resolve, 35));
+      const pitPath = root.querySelector(".pit-wall-marker-overlay path");
+      const pitStart = pitPath.getPointAtLength(0);
+      const stoppedMarker = marker.transform.baseVal.consolidate().matrix;
+      assert(game.weekendState.practice.pitState === "stopped"
+        && Math.hypot(stoppedMarker.e - pitStart.x, stoppedMarker.f - pitStart.y) < 1
+        && root.querySelector("[data-pit-status]").textContent.includes("Pit Stop In Progress")
+        && !root.querySelector("[data-pit-tyres]").hidden,
+      "The marker must stop at waypoint zero and offer tyre choices");
+      const fuelBeforeStop = game.weekendState.practice.fuel;
+      root.querySelector('[data-speed="0"]').click();
+      const pausedPitTime = game.weekendState.practice.pitRemaining;
+      game.weekendState.timerStartedAt -= 5000;
+      game.syncPracticeClock();
+      assert(game.weekendState.practice.pitRemaining === pausedPitTime, "Pause must freeze the pit countdown");
+      root.querySelector('[data-speed="10"]').click();
+      const pitRemainingBefore = game.weekendState.practice.pitRemaining;
+      game.weekendState.timerStartedAt -= 1000;
+      game.syncPracticeClock();
+      assert(game.weekendState.practice.pitRemaining <= pitRemainingBefore - 10000,
+        "Session speed must accelerate the pit countdown");
+      root.querySelector('[data-pit-tyre="Soft"]').click();
+      game.weekendState.timerStartedAt -= 1200;
+      game.syncPracticeClock();
+      assert(game.weekendState.practice.pitState === "none"
+        && root.querySelector('[data-timing="tyre"]').textContent === "Soft"
+        && game.weekendState.practice.fuel <= fuelBeforeStop
+        && game.weekendState.practice.fuel > fuelBeforeStop - .1,
+      "The countdown and tyre selection must release the car without refuelling");
+      root.querySelector('[data-action="toggle-command"]').click();
+      game.renderWeekend(bahrainWeekend);
+      root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
+      const lapHistory = () => [...root.querySelectorAll(".pit-wall-lap-entry")];
+      assert(lapHistory().length === 1 && lapHistory()[0].textContent.includes("Lap 1")
+        && lapHistory()[0].textContent.includes("In Progress"),
+      "A running practice must start with the current lap in the history");
+      game.weekendState.practice.lapTimes.push(95882, 94921, 94230);
+      game.updateTiming();
+      assert(lapHistory().map((entry) => entry.textContent.trim().replace(/\s+/g, " ")).join("|")
+        === "Lap 4 In Progress|Lap 3 1:34.230|Lap 2 1:34.921|Lap 1 1:35.882"
+        && lapHistory()[1].classList.contains("is-fastest")
+        && lapHistory()[1].getAttribute("aria-label").includes("fastest lap"),
+      "Lap history must be newest first and identify the fastest lap");
+      game.weekendState.practice.lapTimes.push(93000);
+      game.updateTiming();
+      assert(lapHistory()[1].textContent.includes("1:33.000")
+        && lapHistory()[1].classList.contains("is-fastest")
+        && lapHistory().filter((entry) => entry.classList.contains("is-fastest")).length === 1,
+      "A new best lap must take over the fastest highlight");
+      game.weekendState.practice.lapTimes.push(93000);
+      game.updateTiming();
+      assert(lapHistory()[1].classList.contains("is-fastest")
+        && lapHistory().filter((entry) => entry.classList.contains("is-fastest")).length === 1,
+      "A tied best must highlight the newest matching lap");
+      game.weekendState.practice.lapTimes.length = 0;
+      game.updateTiming();
+      root.querySelector('[data-action="complete-session"]').click();
+      assert(game.weekendState.phase === "review"
+        && root.querySelector(".pit-wall-session-review").textContent.includes("Insufficient Data Collected")
+        && root.querySelector(".pit-wall-session-review").textContent.includes("Minimum 3 laps")
+        && !root.querySelector("[data-discovery-index]") && !root.querySelector(".pit-wall-lap-entry.is-current"),
+      "Completing before three laps must show a review without discoveries");
+      root.querySelector('[data-action="continue-review"]').click();
+      assert(game.weekendState.sessionIndex === 1 && game.permanentUpgrades.length === 0
+        && game.weekendDiscoveries.length === 0, "Insufficient practice data must not award a reward");
+      game.renderWeekend(bahrainWeekend);
+      root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
+      for (let lap = 0; lap < 2; lap += 1) {
+        game.weekendState.timerStartedAt -= game.weekendState.practice.lapTarget + 1;
+        game.syncPracticeClock();
       }
-      const elapsed = performance.now() - started;
-      assert(elapsed >= 4000 && elapsed <= 6200 && game.weekendState.phase === "discovery"
+      root.querySelector('[data-action="complete-session"]').click();
+      assert(game.weekendState.practice.lapTimes.length === 2
+        && root.querySelector(".pit-wall-review-eligibility").textContent.includes("Insufficient")
+        && !root.querySelector("[data-discovery-index]"),
+      "Two completed laps must still be insufficient for a discovery");
+      game.renderWeekend(bahrainWeekend);
+      root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
+      root.querySelector('[data-speed="0"]').click();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const pausedPosition = root.querySelector(".pit-wall-moving-driver").getAttribute("transform");
+      const pausedPractice = game.weekendState.practice;
+      const pausedValues = [pausedPractice.elapsed, pausedPractice.lapProgress, pausedPractice.tyreWear, pausedPractice.fuel];
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert(root.querySelector('[data-speed="0"]').getAttribute("aria-pressed") === "true"
+        && root.querySelector('[data-timing="speed"]').textContent === "Paused"
+        && root.querySelector(".pit-wall-session-running").textContent.includes("Paused")
+        && root.querySelector(".pit-wall-moving-driver").getAttribute("transform") === pausedPosition
+        && [pausedPractice.elapsed, pausedPractice.lapProgress, pausedPractice.tyreWear, pausedPractice.fuel]
+          .every((value, index) => value === pausedValues[index]),
+      "Pause must freeze the timer, marker and consumption");
+      for (const speed of [1, 10, 50]) {
+        root.querySelector(`[data-speed="${speed}"]`).click();
+        const before = game.weekendState.practice.elapsed;
+        game.weekendState.timerStartedAt -= 1000;
+        game.syncPracticeClock();
+        const change = game.weekendState.practice.elapsed - before;
+        assert(change >= 1000 * speed && change < 1100 * speed
+          && root.querySelector('[data-timing="speed"]').textContent === `${speed}x`,
+        `${speed}x must scale simulated time`);
+        await new Promise((resolve) => setTimeout(resolve, 35));
+        const path = root.querySelector(".pit-wall-marker-overlay path");
+        const point = path.getPointAtLength(game.practiceProgress() * path.getTotalLength());
+        const actual = root.querySelector(".pit-wall-moving-driver").transform.baseVal.consolidate().matrix;
+        assert(Math.hypot(actual.e - point.x, actual.f - point.y) < 30,
+          `The marker must follow the timed lap at ${speed}x`);
+      }
+      const lapsBeforeFastForward = game.weekendState.practice.lapTimes.length;
+      game.weekendState.timerStartedAt -= 2000;
+      game.syncPracticeClock();
+      assert(game.weekendState.practice.lapTimes.length > lapsBeforeFastForward,
+        "50x must accelerate lap completion as well as the session clock");
+      game.weekendState.timerStartedAt -= 360000;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      assert(game.weekendState.phase === "review" && game.weekendState.practice.elapsed === PRACTICE_DURATION
+        && root.querySelector('[data-timing="remaining"]').textContent === "00:00"
+        && root.querySelector(".pit-wall-session-review").textContent.includes("Practice Session Complete"),
+      "The 60-minute countdown must automatically finish with a review");
+      root.querySelector('[data-action="continue-review"]').click();
+      assert(game.weekendState.phase === "discovery", "A full practice must offer a discovery after review");
+      game.renderWeekend(bahrainWeekend);
+      root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
+      game.weekendState.timerStartedAt -= 300000;
+      game.syncPracticeClock();
+      const completedTimes = game.weekendState.practice.lapTimes;
+      assert(completedTimes.length === 3
+        && root.querySelector('[data-timing="best-lap"]').textContent === formatLapTime(Math.min(...completedTimes))
+        && root.querySelector('[data-timing="last-lap"]').textContent === formatLapTime(completedTimes[completedTimes.length - 1])
+        && root.querySelector("[data-practice-goal]").textContent.includes("achieved"),
+      "Completed laps must update live timing and the discovery goal");
+      root.querySelector('[data-action="complete-session"]').click();
+      assert(game.weekendState.phase === "review" && !root.querySelector(".pit-wall-moving-driver")
+        && root.querySelector(".pit-wall-session-review").textContent.includes("Average Lap")
+        && root.querySelector(".pit-wall-session-review").textContent.includes(
+          formatLapTime(completedTimes.reduce((sum, lap) => sum + lap, 0) / completedTimes.length))
+        && root.querySelector(".pit-wall-session-review").textContent.includes("Driver Feedback"),
+      "Completing a practice must stop the marker and show its review");
+      root.querySelector('[data-action="continue-review"]').click();
+      assert(game.weekendState.phase === "discovery"
         && root.querySelector(".pit-wall-discovery-heading").textContent.includes("Session Complete")
         && root.querySelector(".pit-wall-discovery-heading").textContent.includes("Engineering Discovery Available"),
-      "A natural session must last approximately five seconds and offer a discovery");
+      "Eligible practice must offer a discovery after review");
       const firstOptions = [...root.querySelectorAll("[data-discovery-index]")];
       assert(firstOptions.length === 3 && new Set(game.weekendState.options.map((item) => item.id)).size === 3
         && root.querySelector(".pit-wall-circuit").hidden
@@ -246,6 +721,24 @@
       choose(research);
       choose(review);
       choose(legacy);
+      game.balance.discoveries.fullRerolls = 2;
+      game.balance.discoveries.singleRerolls = 3;
+      game.offerDiscoveries();
+      assert(game.weekendState.rerollsRemaining === 2 && game.weekendState.replacementsRemaining === 3,
+        "Edited legendary values must change the rerolls granted in the next offer");
+      for (const rarity of Object.keys(game.balance.rewardWeights.beforeGrandPrix)) {
+        game.balance.rewardWeights.beforeGrandPrix[rarity] = 0;
+      }
+      game.rerollDiscoveries();
+      assert(game.weekendState.rerollsRemaining === 2
+        && root.querySelector(".pit-wall-discovery-heading").textContent.includes("No eligible discoveries"),
+      "Zero rarity weights must not consume a reroll or crash");
+      game.balance.rewardWeights.beforeGrandPrix = createBalance().rewardWeights.beforeGrandPrix;
+      game.balance.discoveries.fullRerolls = 1;
+      game.balance.discoveries.singleRerolls = 1;
+      game.weekendState.phase = "ready";
+      game.weekendState.message = "";
+      game.renderSession();
       let legendaryTime = 0;
       try {
         Object.defineProperty(performance, "now", { configurable: true, value: () => legendaryTime });
@@ -301,6 +794,15 @@
       assert(game.permanentUpgrades.find((item) => item.id === blue.id).amount === 2
         && driverPanel.textContent.includes(`${blue.name} +2 ${blue.stat} (Lv 1)`),
       "Legacy Lab must boost and display existing blue upgrades");
+      game.balance.discoveries.statPoints[blue.id] = 2;
+      game.balance.discoveries.blueBonusMultiplier = 2;
+      game.refreshBalanceUpgrades();
+      assert(game.permanentUpgrades.find((item) => item.id === blue.id).amount === 6
+        && game.effectiveDiscovery(blue).amount === 6,
+      "Edited upgrade points and Legacy Lab effects must update owned and future upgrades");
+      game.balance.discoveries.statPoints[blue.id] = 1;
+      game.balance.discoveries.blueBonusMultiplier = 1;
+      game.refreshBalanceUpgrades();
       choose(blue);
       assert(game.permanentUpgrades.filter((item) => item.id === blue.id).length === 1
         && game.permanentUpgrades.find((item) => item.id === blue.id).level === 2
@@ -345,6 +847,28 @@
       game.renderWeekend(bahrainWeekend);
       assert(game.weekendDiscoveries.length === 0 && !driverPanel.textContent.includes(green.name),
         "A new weekend must clear temporary upgrade levels");
+      const braking = drawAt(.1, .5);
+      const overtaking = drawAt(.1, .9);
+      assert(braking.id === "braking-reference" && overtaking.id === "overtaking-analysis",
+        "Braking and overtaking discoveries must remain available as weekend rewards");
+      game.balance.discoveries.brakingReferenceMsPerLevel = 200;
+      game.weekendState.phase = "discovery";
+      game.weekendState.options = [braking, overtaking];
+      game.renderSession();
+      assert(root.querySelector('[data-discovery-index="0"] .pit-wall-discovery-effect').textContent === "-200 ms / lap"
+        && root.querySelector('[data-discovery-index="1"] .pit-wall-discovery-effect').textContent === "-100 ms / lap",
+      "Weekend reward cards must show their current actual pace gains");
+      choose(braking);
+      choose(braking);
+      choose(overtaking);
+      const selectedPace = () => createPracticeSession(neutralDriver, neutralTeam, game.weekendDiscoveries, 5.412, () => .5,
+        { tyre: "Medium", fuel: 100 }, game.balance).lapTarget;
+      assert(ordinaryPace - selectedPace() === 500 && game.weekendDiscoveries.length === 2,
+        "Selecting and stacking both weekend rewards must influence lap generation");
+      game.renderWeekend(bahrainWeekend);
+      assert(game.weekendDiscoveries.length === 0 && selectedPace() === ordinaryPace,
+        "Braking and overtaking pace gains must expire at the end of the weekend");
+      game.balance.discoveries.brakingReferenceMsPerLevel = 125;
       try {
         Math.random = () => .9999;
         assert(Array.from({ length: 10 }, () => drawDiscovery(false, [], [], game.uniqueRewards))
@@ -365,6 +889,23 @@
 
       const savedPermanent = game.permanentUpgrades;
       const savedUnique = game.uniqueRewards;
+      game.renderWeekend(bahrainWeekend);
+      game.permanentUpgrades = [];
+      game.uniqueRewards = new Set();
+      const brakeCooling = drawAt(.5, .3);
+      const durability = drawAt(.95, .4);
+      choose(brakeCooling);
+      choose(brakeCooling);
+      choose(durability);
+      const reliabilityUpgrades = game.activeDiscoveries();
+      const baselinePoorLap = createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => 1);
+      const reliablePoorLap = createPracticeSession(neutralDriver, neutralTeam, reliabilityUpgrades, 5.412, () => 1);
+      advancePracticeSession(baselinePoorLap, baselinePoorLap.lapTarget);
+      advancePracticeSession(reliablePoorLap, reliablePoorLap.lapTarget);
+      assert(game.permanentUpgrades.find((upgrade) => upgrade.id === brakeCooling.id).level === 2
+        && game.permanentUpgrades.find((upgrade) => upgrade.id === durability.id).amount === 3
+        && reliablePoorLap.lapTimes[0] < baselinePoorLap.lapTimes[0],
+      "Stacked Brake Cooling and Durability Breakthrough rewards must improve actual poor-lap consistency");
       game.renderWeekend(bahrainWeekend);
       game.permanentUpgrades = [];
       game.uniqueRewards = new Set();
@@ -390,12 +931,13 @@
       game.renderWeekend(bahrainWeekend);
       assert(game.permanentUpgrades.length === permanentCount && game.weekendDiscoveries.length === 0,
         "A new weekend must retain permanent upgrades and clear weekend discoveries");
-      root.querySelector('[data-action="start-session"]').click();
+      assert(root.querySelector('[data-action="start-session"]') && root.querySelector('[data-action="skip-session"]'),
+        "Ready sessions must offer both Start Session and Skip Session");
       root.querySelector('[data-action="skip-session"]').click();
       assert(game.sessionTimer === null && game.weekendState.sessionResults[0] === "skipped"
         && game.weekendState.sessionIndex === 1 && game.weekendDiscoveries.length === 0
         && game.permanentUpgrades.length === permanentCount,
-      "Skipping a running session must cancel its timer and award nothing");
+      "Skipping a session before it starts must award nothing");
       for (let i = 1; i < 5; i += 1) root.querySelector('[data-action="skip-session"]').click();
       assert(game.weekendState.phase === "complete"
         && game.weekendState.sessionResults.every((result) => result === "skipped")
@@ -452,8 +994,16 @@
             for (const roll of round === 1 ? [.1, .5] : [.95, .99]) {
               Math.random = () => roll;
               root.querySelector('[data-action="start-session"]').click();
-              seasonTime += 5100;
-              await new Promise((resolve) => setTimeout(resolve, 150));
+              if (game.isPractice()) {
+                if (game.isBahrainPractice()) await waitForMarker(root);
+                seasonTime += 600000;
+                game.syncPracticeClock();
+                root.querySelector('[data-action="complete-session"]').click();
+                root.querySelector('[data-action="continue-review"]').click();
+              } else {
+                seasonTime += 5100;
+                await new Promise((resolve) => setTimeout(resolve, 150));
+              }
               root.querySelector('[data-discovery-index="0"]').click();
             }
           }
@@ -602,6 +1152,10 @@
         const b = outer.getBoundingClientRect();
         return a.left >= b.left - 1 && a.right <= b.right + 1
           && a.top >= b.top - 1 && a.bottom <= b.bottom + 1;
+      };
+      const tyreColours = {
+        Soft: "rgb(240, 78, 80)", Medium: "rgb(245, 211, 73)", Hard: "rgb(255, 255, 255)",
+        Intermediate: "rgb(75, 207, 121)", Wet: "rgb(84, 167, 244)",
       };
       const isCalendarGrid = (cards, columns = 3) => cards.length === 24 && cards.every((card, index) => {
         const rows = 24 / columns;
@@ -763,18 +1317,28 @@
           && Math.abs(confirmBounds.bottom - season.getBoundingClientRect().bottom) < 1,
           `Confirm Season is not at the bottom-right at ${width}x${height}`);
         seasonConfirm.click();
+        for (const [tyre, colour] of Object.entries(tyreColours)) {
+          const button = frameRoot.querySelector(`[data-setup-tyre="${tyre}"]`);
+          button.click();
+          assert(frame.contentWindow.getComputedStyle(button, "::before").backgroundColor === colour
+            && frame.contentWindow.getComputedStyle(frameRoot.querySelector('[data-timing="tyre"]'), "::before").backgroundColor === colour,
+          `${tyre} must use its compound colour in setup and telemetry`);
+        }
+        frameRoot.querySelector('[data-setup-tyre="Medium"]').click();
         let circuit = frameRoot.querySelector(".pit-wall-circuit img");
         await circuit.decode();
         const imageBounds = circuit.getBoundingClientRect();
         const mainBounds = main.getBoundingClientRect();
         assert(frameRoot.querySelector("#pit-wall-weekend-title").textContent === "Bahrain Grand Prix"
           && circuit.naturalWidth > 0 && within(circuit, main)
-          && imageBounds.width * imageBounds.height >= mainBounds.width * mainBounds.height * .35
+          && imageBounds.width * imageBounds.height >= mainBounds.width * mainBounds.height * .25
+          && [...frameRoot.querySelectorAll(".pit-wall-garage-setup button, .pit-wall-garage-setup input, .pit-wall-garage-setup output")]
+            .every((item) => within(item, main) && item.scrollWidth <= item.clientWidth + 1)
           && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
         `Bahrain circuit is not displayed correctly at ${width}x${height}`);
         assertCircuitCentred(circuit, `Bahrain at ${width}x${height}`);
         assert(within(frameRoot.querySelector(".pit-wall-weekend-banner"), main)
-          && within(frameRoot.querySelector(".pit-wall-weekend-overview"),
+          && within(frameRoot.querySelector(".pit-wall-telemetry"),
             frameRoot.querySelector(".pit-wall-panel-right .pit-wall-panel-content")),
         `Weekend details overflow at ${width}x${height}`);
 
@@ -788,9 +1352,9 @@
         circuit = frameRoot.querySelector(".pit-wall-circuit img");
         await circuit.decode();
         assert(frameRoot.querySelector("#pit-wall-weekend-title").textContent === "Saudi Arabian Grand Prix"
-          && frameRoot.querySelector(".pit-wall-panel-right").textContent.includes("6.174 km")
-          && frameRoot.querySelector(".pit-wall-panel-right").textContent.includes("50 Laps")
-          && frameRoot.querySelector(".pit-wall-panel-right").textContent.includes("Standard Weekend")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("6.174 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("50 Laps")
+          && frameRoot.querySelector('[data-timing="remaining"]').textContent === "60:00"
           && [...frameRoot.querySelectorAll(".pit-wall-session-step")].map((step) => step.textContent.trim().slice(2)).join("|")
             === "Practice 1|Practice 2|Practice 3|Qualifying|Grand Prix"
           && circuit.naturalWidth > 0 && within(circuit, main),
@@ -904,17 +1468,108 @@
         assert(within(frameRoot.querySelector(".pit-wall-session-panel"), main)
           && within(circuit, main)
           && circuit.getBoundingClientRect().height > 30
-          && within(frameRoot.querySelector('[data-action="skip-session"]'), main),
+          && within(frameRoot.querySelector('[data-action="complete-session"]'), main)
+          && [...frameRoot.querySelectorAll("[data-speed]")].every((button) => within(button, main))
+          && [...frameRoot.querySelectorAll(".pit-wall-telemetry dt, .pit-wall-telemetry dd")]
+            .every((item) => within(item, frameRoot.querySelector(".pit-wall-panel-right .pit-wall-panel-content"))),
         `Running session controls must fit at ${width}x${height}`);
-        frameRoot.querySelector('[data-action="skip-session"]').click();
+        const timingContent = frameRoot.querySelector(".pit-wall-panel-right .pit-wall-panel-content");
+        const summary = frameRoot.querySelector(".pit-wall-telemetry");
+        const history = frameRoot.querySelector(".pit-wall-lap-history");
+        const liveTiming = frameRoot.querySelector(".pit-wall-timing-live");
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const summaryFont = parseFloat(frame.contentWindow.getComputedStyle(summary.querySelector("dt")).fontSize);
+        const bestFont = parseFloat(frame.contentWindow.getComputedStyle(summary.querySelector(".pit-wall-best-lap")).fontSize);
+        const initialHistoryFont = parseFloat(frame.contentWindow.getComputedStyle(history.querySelector(".pit-wall-lap-list")).fontSize);
+        assert(within(summary, liveTiming) && within(history, liveTiming)
+          && Math.abs(summary.getBoundingClientRect().width - liveTiming.getBoundingClientRect().width) < 1
+          && summary.getBoundingClientRect().height < (width === 568 ? 135 : 155)
+          && summaryFont > (width === 568 ? 8 : 8.58) && bestFont > summaryFont
+          && initialHistoryFont > (width === 568 ? 7.6 : 9)
+          && [...summary.querySelectorAll("dl > div")].every((row) =>
+            row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1),
+        `Telemetry must be larger and more compact without clipping at ${width}x${height}`);
+        const lapList = frameRoot.querySelector(".pit-wall-lap-list");
+        assert(lapList.scrollHeight <= lapList.clientHeight + 1
+          && frame.contentWindow.getComputedStyle(lapList).overflowY === "auto"
+          && !frameRoot.querySelector('[data-action="expand-lap-history"]'),
+        `Short lap history must fit without scrolling at ${width}x${height}`);
+        layoutGame.weekendState.practice.lapTimes = Array.from({ length: 70 }, (_, index) => 95000 - index);
+        layoutGame.updateTiming();
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        assert(lapList.children.length === 71 && lapList.scrollHeight > lapList.clientHeight
+          && lapList.firstElementChild.textContent.includes("Lap 71")
+          && lapList.lastElementChild.textContent.includes("Lap 1")
+          && [...lapList.children].every((item) =>
+            item.children[0].getBoundingClientRect().right <= item.children[1].getBoundingClientRect().left + 1)
+          && frame.contentWindow.getComputedStyle(lapList.querySelector(".is-fastest")).color === "rgb(211, 169, 237)"
+          && frame.contentWindow.getComputedStyle(frameRoot.querySelector('[data-timing="best-lap"]')).color === "rgb(211, 169, 237)"
+          && [...summary.querySelectorAll("dl > div")].every((row) =>
+            row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1)
+          && timingContent.scrollHeight <= timingContent.clientHeight + 1
+          && timingContent.scrollWidth <= timingContent.clientWidth + 1,
+        `Lap history alone must overflow when full at ${width}x${height}`);
+        lapList.scrollTop = lapList.scrollHeight;
+        assert(within(lapList.lastElementChild, lapList), `Oldest lap must be reachable at ${width}x${height}`);
+        lapList.scrollTop = 0;
+        layoutGame.weekendState.practice.lapTimes = [];
+        layoutGame.updateTiming();
+        if (frameRoot.querySelector('[data-action="toggle-command"]').getAttribute("aria-expanded") !== "true") {
+          frameRoot.querySelector('[data-action="toggle-command"]').click();
+        }
+        frameRoot.querySelector('[data-action="call-pit"]').click();
+        layoutGame.weekendState.timerStartedAt -= (1 - layoutGame.weekendState.practice.lapProgress)
+          * layoutGame.weekendState.practice.lapTarget + 1;
+        layoutGame.syncPracticeClock();
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
+        const consolePanel = frameRoot.querySelector(".pit-wall-console");
+        assert(Object.entries(tyreColours).every(([tyre, colour]) =>
+          frame.contentWindow.getComputedStyle(frameRoot.querySelector(`[data-pit-tyre="${tyre}"]`), "::before").backgroundColor === colour),
+        `Pit tyre choices must use the same compound colours at ${width}x${height}`);
+        assert(within(command, consolePanel)
+          && within(liveTiming, timingContent) && within(circuit, main)
+          && circuit.getBoundingClientRect().height > 30
+          && timingContent.scrollHeight <= timingContent.clientHeight + 1
+          && timingContent.scrollWidth <= timingContent.clientWidth + 1
+          && [...command.querySelectorAll("button, strong, [data-pit-status], [data-mode-feedback]")].every((item) =>
+            within(item, command) && item.scrollWidth <= item.clientWidth + 1
+              && item.scrollHeight <= item.clientHeight + 1)
+          && [...summary.querySelectorAll("dl > div")].every((row) =>
+            row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1)
+          && consolePanel.scrollHeight <= consolePanel.clientHeight + 1
+          && consolePanel.scrollWidth <= consolePanel.clientWidth + 1,
+        `Pit controls and telemetry must fit without scrolling at ${width}x${height}`);
+        frameRoot.querySelector('[data-pit-tyre="Intermediate"]').click();
+        layoutGame.weekendState.timerStartedAt -= 22000;
+        layoutGame.syncPracticeClock();
+        assert(frameRoot.querySelector('[data-timing="tyre"]').textContent === "Intermediate"
+          && [...summary.querySelectorAll("dl > div")].every((row) =>
+            row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1),
+        `Long tyre names must fit telemetry at ${width}x${height}`);
+        layoutGame.weekendState.practice.lapTimes = [];
+        layoutGame.updateTiming();
+        layoutGame.weekendState.timerStartedAt -= 600000;
+        layoutGame.syncPracticeClock();
+        frameRoot.querySelector('[data-action="complete-session"]').click();
+        const reviewPanel = frameRoot.querySelector(".pit-wall-session-review");
+        assert(within(reviewPanel, main) && [...reviewPanel.querySelectorAll("dt, dd, p, button, h4")]
+          .every((item) => within(item, reviewPanel) && item.scrollHeight <= item.clientHeight + 1
+            && item.scrollWidth <= item.clientWidth + 1),
+        `Practice review must fit without clipping at ${width}x${height}`);
+        frameRoot.querySelector('[data-action="continue-review"]').click();
+        frameRoot.querySelector('[data-discovery-index="0"]').click();
         for (let i = 1; i < 5; i += 1) frameRoot.querySelector('[data-action="skip-session"]').click();
         assert(layoutGame.weekendState.phase === "complete"
-          && layoutGame.weekendState.sessionResults.every((result) => result === "skipped"),
+          && layoutGame.weekendState.sessionResults[0] === "completed"
+          && layoutGame.weekendState.sessionResults.slice(1).every((result) => result === "skipped"),
         `All five Saudi sessions must advance in order at ${width}x${height}`);
         frameRoot.querySelector('[data-action="next-round"]').click();
         const placeholder = frameRoot.querySelector(".pit-wall-circuit-placeholder");
         assert(placeholder && within(placeholder, main)
           && main.scrollHeight <= main.clientHeight + 1
+          && [...frameRoot.querySelectorAll(".pit-wall-garage-setup button, .pit-wall-garage-setup input, .pit-wall-garage-setup output")]
+            .every((item) => within(item, main) && item.scrollWidth <= item.clientWidth + 1)
           && placeholder.textContent.includes("Albert Park Grand Prix Circuit")
           && placeholder.textContent.includes("5.278 km"),
         `The next-round placeholder must fit at ${width}x${height}`);
@@ -1004,6 +1659,92 @@
       const desktopCircuit = frameRoot.querySelector(".pit-wall-circuit img");
       await desktopCircuit.decode();
       assertCircuitCentred(desktopCircuit, "Bahrain on desktop");
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const desktopSummary = frameRoot.querySelector(".pit-wall-telemetry");
+      const desktopTiming = frameRoot.querySelector(".pit-wall-timing-live");
+      assert(desktopSummary.getBoundingClientRect().height < 155
+        && parseFloat(frame.contentWindow.getComputedStyle(desktopSummary.querySelector("dt")).fontSize) > 10
+        && parseFloat(frame.contentWindow.getComputedStyle(desktopSummary.querySelector(".pit-wall-best-lap")).fontSize)
+          > parseFloat(frame.contentWindow.getComputedStyle(desktopSummary.querySelector("dt")).fontSize)
+        && parseFloat(frame.contentWindow.getComputedStyle(desktopTiming.querySelector(".pit-wall-lap-list")).fontSize) > 11,
+      "Desktop telemetry must use larger type and a compact summary");
+      layoutGame.permanentUpgrades = fullSeasonPermanent;
+      layoutGame.weekendDiscoveries = fullSeasonWeekend;
+      layoutGame.renderProfile("Race Weekend Ready");
+      for (const [width, height] of [[1210, 600], [1280, 720], [1366, 768], [1440, 900], [1920, 1080]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const dialog = doc.querySelector(".room-dialog");
+        const dialogContent = doc.querySelector(".dialog-content");
+        const desktopConsole = frameRoot.querySelector(".pit-wall-console");
+        const command = frameRoot.querySelector(".pit-wall-panel-bottom");
+        const main = frameRoot.querySelector(".pit-wall-track-display");
+        const toggle = frameRoot.querySelector('[data-action="toggle-command"]');
+        for (const expanded of [false, true]) {
+          if ((toggle.getAttribute("aria-expanded") === "true") !== expanded) toggle.click();
+          await new Promise((resolve) => setTimeout(resolve, 220));
+          assert(within(desktopConsole, dialog) && within(command, desktopConsole)
+            && dialog.getBoundingClientRect().bottom <= height + 1
+            && dialog.getBoundingClientRect().right <= width + 1
+            && dialogContent.scrollHeight <= dialogContent.clientHeight + 1
+            && dialogContent.scrollWidth <= dialogContent.clientWidth + 1
+            && frame.contentWindow.getComputedStyle(doc.documentElement).overflowY === "hidden"
+            && within(desktopCircuit, main) && desktopCircuit.getBoundingClientRect().height > 30
+            && [...frameRoot.querySelectorAll(".pit-wall-panel-left > .pit-wall-panel-content, .pit-wall-panel-centre > .pit-wall-panel-content, .pit-wall-panel-right > .pit-wall-panel-content")]
+              .every((panel) => panel.scrollHeight <= panel.clientHeight + 1 && panel.scrollWidth <= panel.clientWidth + 1)
+            && [...frameRoot.querySelectorAll(".pit-wall-garage-setup button, .pit-wall-garage-setup input, .pit-wall-garage-setup output")]
+              .every((item) => within(item, main)),
+          `Desktop console and setup must fit at ${width}x${height} with command ${expanded ? "open" : "closed"}`);
+        }
+      }
+      frame.style.width = "1440px";
+      frame.style.height = "900px";
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      frameRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(frameRoot);
+      for (const level of [100, 75, 50, 25, 0]) {
+        layoutGame.weekendState.practice.tyreWear = 100 - level;
+        layoutGame.weekendState.practice.fuel = level;
+        layoutGame.updateTiming();
+        for (const name of ["Tyre condition", "Fuel load"]) {
+          const meter = frameRoot.querySelector(`[aria-label="${name}"]`);
+          const [red, green, blue] = frame.contentWindow.getComputedStyle(meter).borderColor.match(/\d+/g).map(Number);
+          assert(meter.getAttribute("aria-valuenow") === String(level)
+            && !meter.parentElement.textContent.includes("%")
+            && Math.abs(parseFloat(meter.firstElementChild.style.width) - level) < .01
+            && meter.getBoundingClientRect().height >= 8
+            && Math.abs(meter.getBoundingClientRect().width / meter.parentElement.getBoundingClientRect().width - .5) < .05
+            && Math.abs(meter.getBoundingClientRect().top + meter.getBoundingClientRect().height / 2
+              - (meter.previousElementSibling.getBoundingClientRect().top + meter.previousElementSibling.getBoundingClientRect().height / 2)) < 2
+            && (level === 100 ? green > red && green > blue
+              : level === 75 ? green > red && red > blue
+                : level === 50 ? Math.abs(red - green) < 2 && red > blue
+                  : level === 25 ? red > green && green > blue
+                    : red > green && red > blue),
+          `${name} must show the correct value and green-to-red colour at ${level}%`);
+        }
+      }
+      layoutGame.weekendState.practice.lapTimes = Array.from({ length: 70 }, (_, index) => 95000 - index);
+      layoutGame.updateTiming();
+      for (const [width, height] of [[1210, 600], [1366, 768], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const lapList = frameRoot.querySelector(".pit-wall-lap-list");
+        const timing = frameRoot.querySelector(".pit-wall-panel-right > .pit-wall-panel-content");
+        const command = frameRoot.querySelector(".pit-wall-panel-bottom");
+        assert(lapList.scrollHeight > lapList.clientHeight && within(command, frameRoot.querySelector(".pit-wall-console"))
+          && timing.scrollHeight <= timing.clientHeight + 1
+          && [...frameRoot.querySelectorAll(".pit-wall-panel-left > .pit-wall-panel-content, .pit-wall-panel-centre > .pit-wall-panel-content")]
+            .every((panel) => panel.scrollHeight <= panel.clientHeight + 1 && panel.scrollWidth <= panel.clientWidth + 1)
+          && [...command.querySelectorAll("button:not([hidden]), [data-driver-mode]")]
+            .filter((button) => button.getClientRects().length)
+            .every((button) => within(button, command)),
+        `Only the lap log should scroll during practice at ${width}x${height}`);
+      }
+      layoutGame.clearSessionTimer();
+      layoutGame.clearRouteMarker();
       layoutGame.weekendState.phase = "discovery";
       layoutGame.weekendState.options = [green, purple, review];
       layoutGame.renderSession();
@@ -1019,6 +1760,408 @@
       frameRoot.querySelector(".pit-wall-exit").click();
       assert(!doc.querySelector("#games-room-start").hidden, "Games Room link must return to the overview");
       frame.remove();
+
+      const debugFrame = document.createElement("iframe");
+      debugFrame.style.cssText = "position:fixed;left:-10000px;top:0;width:844px;height:390px;border:0";
+      debugFrame.src = "../index.html?pitWallDebug=1";
+      await new Promise((resolve, reject) => {
+        debugFrame.onload = resolve;
+        debugFrame.onerror = () => reject(new Error("Could not load route debug console"));
+        document.body.append(debugFrame);
+      });
+      const debugDoc = debugFrame.contentDocument;
+      const debugRoot = debugDoc.querySelector("[data-pit-wall-root]");
+      debugDoc.querySelector('[data-room="gamesroom"]').dispatchEvent(
+        new debugFrame.contentWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
+      debugDoc.querySelector('a[href="#games-pit-wall"]').click();
+      const debugGame = new PitWallConsole(debugRoot);
+      debugGame.balance.driverTraits["New Driver Trait"] = 125;
+      debugGame.balance.teamTraits["New Team Trait"] = 75;
+      debugGame.balance.vehicleStats.Experimental = { base: 0, lapGainMs: 120, newAdjustment: 4 };
+      debugGame.balance.tyres.Prototype = { pace: -100, wear: 3, newFactor: 2 };
+      debugGame.balance.modes.Experimental = { pace: -200, wear: 1, fuel: 1 };
+      debugGame.balance.discoveries.statPoints["new-upgrade"] = 2;
+      debugGame.balance.newFuelModel = { rate: 3, enabled: true, description: "<prototype>", curve: [1, 2] };
+      debugGame.mount();
+      const balanceToggle = debugRoot.querySelector('[data-action="balance-toggle"]');
+      const balancePanel = debugRoot.querySelector("#pit-wall-balance-panel");
+      assert(balanceToggle && balanceToggle.getAttribute("aria-expanded") === "false" && balancePanel.hidden,
+        "Developer balance must be available but collapsed by default");
+      debugGame.balance.lap.newPaceAdjustment = 250;
+      balanceToggle.click();
+      assert(!balancePanel.hidden && balanceToggle.getAttribute("aria-expanded") === "true"
+        && [...balancePanel.querySelectorAll("summary")].length >= 8,
+      "The developer panel must open with the balance categories");
+      const balancePaths = (value, path = []) => Object.entries(value).flatMap(([key, item]) =>
+        item !== null && typeof item === "object" ? balancePaths(item, path.concat(key)) : [path.concat(key).join(".")]);
+      const expectedPaths = balancePaths(debugGame.balance).sort();
+      const shownPaths = [...balancePanel.querySelectorAll("[data-balance-path]")]
+        .map((input) => input.dataset.balancePath).sort();
+      assert(JSON.stringify(shownPaths) === JSON.stringify(expectedPaths),
+        "The panel must automatically expose every balance value, including new nested categories and arrays");
+      const byPath = (path) => [...balancePanel.querySelectorAll("[data-balance-path]")]
+        .find((input) => input.dataset.balancePath === path);
+      assert(balancePaths(createBalance()).every((path) => {
+        const row = byPath(path).closest(".pit-wall-balance-field");
+        return row.dataset.balanceCoverage === "simulated"
+          && row.querySelector(".pit-wall-balance-coverage").textContent === "Simulated";
+      }), "Every shipped balance value must be labelled Simulated");
+      for (const path of ["newFuelModel.rate", "vehicleStats.Experimental.newAdjustment",
+        "tyres.Prototype.newFactor", "discoveries.statPoints.new-upgrade", "lap.newPaceAdjustment"]) {
+        const row = byPath(path).closest(".pit-wall-balance-field");
+        assert(row.dataset.balanceCoverage === "not-simulated"
+          && row.querySelector(".pit-wall-balance-coverage").textContent === "Not Simulated",
+        `Unimplemented value ${path} must not be presented as simulated`);
+      }
+      for (const path of ["driverTraits.New Driver Trait", "teamTraits.New Team Trait",
+        "vehicleStats.Experimental.newAdjustment", "tyres.Prototype.newFactor",
+        "modes.Experimental.pace", "discoveries.statPoints.new-upgrade",
+        "newFuelModel.rate", "newFuelModel.curve.0", "lap.newPaceAdjustment"]) {
+        assert(byPath(path), `New balance value ${path} must appear without panel-specific registration`);
+      }
+      const newTraitDriver = { strengths: ["New Driver Trait"], weakness: "None" };
+      const newTraitTeam = { bonus: "New Team Trait", weakness: "None" };
+      const experimentalPace = () => createPracticeSession(newTraitDriver, newTraitTeam,
+        [{ stat: "Experimental", amount: 1 }], 5.412, () => .5,
+        { tyre: "Medium", fuel: 100 }, debugGame.balance).lapTarget;
+      const baselinePace = createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5,
+        { tyre: "Medium", fuel: 100 }, debugGame.balance).lapTarget;
+      const experimentalInput = byPath("vehicleStats.Experimental.lapGainMs");
+      experimentalInput.value = "250";
+      experimentalInput.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
+      assert(baselinePace - experimentalPace() === 450,
+        "Automatically registered stat and trait values must feed the real lap calculation");
+      const flag = byPath("newFuelModel.enabled");
+      flag.checked = false;
+      flag.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
+      const descriptionInput = byPath("newFuelModel.description");
+      descriptionInput.value = "<updated>";
+      descriptionInput.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
+      assert(debugGame.balance.newFuelModel.enabled === false
+        && debugGame.balance.newFuelModel.description === "<updated>"
+        && !balancePanel.querySelector("prototype"),
+      "New boolean and text values must be editable without injecting markup");
+      balancePanel.querySelectorAll("details").forEach((section) => { section.open = true; });
+      for (const [width, height] of [[844, 390], [568, 320]]) {
+        debugFrame.style.width = `${width}px`;
+        debugFrame.style.height = `${height}px`;
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        assert(within(balancePanel, debugRoot.querySelector(".pit-wall-console"))
+          && balancePanel.scrollWidth <= balancePanel.clientWidth + 1
+          && [...balancePanel.querySelectorAll(".pit-wall-balance-field")]
+            .every((row) => row.scrollWidth <= row.clientWidth + 1)
+          && [...balancePanel.querySelectorAll(".pit-wall-balance-header button")].every((button) => within(button, balancePanel)),
+        `Developer balance must fit the console at ${width}x${height}`);
+      }
+      debugFrame.style.width = "844px";
+      debugFrame.style.height = "390px";
+      const balanceField = (label) => {
+        const row = [...balancePanel.querySelectorAll(".pit-wall-balance-field")]
+          .find((item) => item.firstElementChild.textContent === label);
+        assert(row, `Missing balance field: ${label}`);
+        return row.querySelector("input");
+      };
+      const changeBalance = (label, value) => {
+        const input = balanceField(label);
+        input.value = String(value);
+        input.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
+      };
+      changeBalance("Reference circuit length", 0);
+      assert(debugGame.balance.lap.referenceLengthKm === 5.412
+        && balanceField("Reference circuit length").getAttribute("aria-invalid") === "true"
+        && balancePanel.querySelector('[role="status"]').textContent.includes("must be between"),
+      "Invalid balance values must be rejected with visible feedback");
+      balancePanel.querySelector('[data-action="export-balance"]').click();
+      assert(balancePanel.querySelector('[role="status"]').textContent.includes("Correct invalid"),
+        "Export must not silently ignore an invalid field");
+      changeBalance("Reference circuit length", 5.412);
+      changeBalance("Attack pace", -1000);
+      changeBalance("Handling pace gain", 350);
+      changeBalance("Reliability consistency", 1);
+      changeBalance("Braking Reference Data", 200);
+      changeBalance("Overtaking Analysis", 80);
+      assert(debugGame.balance.modes.Attack.pace === -1000
+        && debugGame.balance.vehicleStats.Handling.lapGainMs === 350
+        && debugGame.balance.vehicleStats.Reliability.variationReductionPerPoint === 1
+        && debugGame.balance.discoveries.brakingReferenceMsPerLevel === 200
+        && debugGame.balance.discoveries.overtakingAnalysisMsPerLevel === 80,
+      "Editing the panel must update the active balance values");
+      const balanceURL = debugFrame.contentWindow.URL;
+      const balanceAnchor = debugFrame.contentWindow.HTMLAnchorElement.prototype;
+      const originalCreateURL = balanceURL.createObjectURL;
+      const originalAnchorClick = balanceAnchor.click;
+      let exportedBalance;
+      let balanceFilename;
+      try {
+        balanceURL.createObjectURL = (blob) => {
+          exportedBalance = blob.text();
+          return originalCreateURL.call(balanceURL, blob);
+        };
+        balanceAnchor.click = function () { balanceFilename = this.download; };
+        balancePanel.querySelector('[data-action="export-balance"]').click();
+        assert(balanceFilename === "pit-wall-balance.json"
+          && JSON.stringify(JSON.parse(await exportedBalance)) === JSON.stringify(debugGame.balance),
+        "Balance export must contain every current edited value");
+      } finally {
+        balanceURL.createObjectURL = originalCreateURL;
+        balanceAnchor.click = originalAnchorClick;
+      }
+      changeBalance("Attack pace", -400);
+      changeBalance("Handling pace gain", 180);
+      changeBalance("Reliability consistency", .5);
+      changeBalance("Braking Reference Data", 125);
+      changeBalance("Overtaking Analysis", 100);
+      balancePanel.querySelector('[data-action="close-balance"]').click();
+      assert(balancePanel.hidden && balanceToggle.getAttribute("aria-expanded") === "false",
+        "The developer panel must close without changing the console layout");
+      delete debugGame.balance.driverTraits["New Driver Trait"];
+      delete debugGame.balance.teamTraits["New Team Trait"];
+      delete debugGame.balance.vehicleStats.Experimental;
+      delete debugGame.balance.tyres.Prototype;
+      delete debugGame.balance.modes.Experimental;
+      delete debugGame.balance.discoveries.statPoints["new-upgrade"];
+      delete debugGame.balance.newFuelModel;
+      delete debugGame.balance.lap.newPaceAdjustment;
+      balanceToggle.click();
+      assert(!byPath("newFuelModel.rate")
+        && !balancePanel.querySelector('[data-balance-coverage="not-simulated"]'),
+      "Removed test values must disappear, leaving no shipped modifiers marked Not Simulated");
+      balancePanel.querySelector('[data-action="close-balance"]').click();
+      debugGame.startDraft();
+      debugRoot.querySelector("[data-driver-index]").click();
+      debugRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+      debugRoot.querySelector("[data-team-index]").click();
+      debugRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+      debugRoot.querySelector('[data-action="confirm-season"]').click();
+      debugRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(debugRoot);
+      debugRoot.querySelector('[data-speed="0"]').click();
+      debugRoot.querySelector('[data-action="toggle-command"]').click();
+      debugRoot.querySelector('[data-driver-mode="Attack"]').click();
+      const runningTarget = debugGame.weekendState.practice.lapTarget;
+      balanceToggle.click();
+      assert(balancePanel.querySelector("[data-balance-context]").textContent.includes(debugGame.driver.name)
+        && balancePanel.querySelector("[data-balance-context]").textContent.includes(debugGame.team.name)
+        && balancePanel.querySelector("[data-balance-context]").textContent.includes("Driver mode: Attack"),
+      "The panel must identify the active driver, team and mode");
+      changeBalance("Attack pace", -1000);
+      assert(debugGame.weekendState.practice.lapTarget === runningTarget,
+        "Editing a running session must leave its current lap unchanged");
+      const livePractice = debugGame.weekendState.practice;
+      advancePracticeSession(livePractice, (1 - livePractice.lapProgress) * livePractice.lapTarget);
+      assert(livePractice.lapTarget === Math.max(debugGame.balance.lap.minimumLapMs,
+        Math.round(livePractice.lapTargetBeforeMode - 1000)),
+      "Editing the panel during practice must affect the next generated lap");
+      changeBalance("Attack pace", -400);
+      balancePanel.querySelector('[data-action="close-balance"]').click();
+      debugRoot.querySelector('[data-action="toggle-command"]').click();
+      debugGame.renderWeekend(bahrainWeekend);
+      debugRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(debugRoot);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert(!debugGame.weekendState.debugPaused && debugGame.sessionTimer != null
+        && !debugRoot.querySelector(".pit-wall-route-line")
+        && Math.abs(debugRoot.querySelector(".pit-wall-moving-driver circle").getBoundingClientRect().width - 26) < 1,
+      "Bahrain Practice 1 must start moving with the debug route hidden");
+      debugRoot.querySelector('[data-speed="0"]').click();
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+      for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-overlay:not(.pit-wall-marker-overlay)"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      const overlay = debugRoot.querySelector(".pit-wall-route-overlay:not(.pit-wall-marker-overlay)");
+      const markers = overlay && [...overlay.querySelectorAll("[data-waypoint]")];
+      assert(overlay && markers.length === debugGame.bahrainRoute.points.length
+        && markers.every((marker, index) => marker.textContent.trim() === String(index))
+        && overlay.querySelector(".pit-wall-route-player text").textContent
+          === debugGame.driver.name.split(" ").map((part) => part[0]).join("")
+        && overlay.querySelector(".pit-wall-route-player").getAttribute("transform")
+          === markers[0].getAttribute("transform")
+        && debugGame.sessionTimer == null,
+      "Route debug must show numbered points and the stationary driver at waypoint zero");
+      debugRoot.querySelector('[data-action="edit-route"]').click();
+      assert(overlay.classList.contains("is-editing")
+        && debugRoot.querySelector('[data-action="export-route"]'),
+      "Editing and route export must be available in debug mode");
+      let captured = false;
+      overlay.setPointerCapture = () => { captured = true; };
+      overlay.hasPointerCapture = () => captured;
+      overlay.releasePointerCapture = () => { captured = false; };
+      const oldPath = overlay.querySelector(".pit-wall-route-line").getAttribute("d");
+      const oldPoint = [...debugGame.bahrainRoute.points[0]];
+      const screenPoint = new DOMPoint(oldPoint[0] + 10, oldPoint[1] - 10)
+        .matrixTransform(overlay.getScreenCTM());
+      markers[0].querySelector("circle").dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerdown",
+        { bubbles: true, pointerId: 1, button: 0 }));
+      overlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointermove",
+        { bubbles: true, pointerId: 1, clientX: screenPoint.x, clientY: screenPoint.y }));
+      overlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
+      assert(debugGame.bahrainRoute.points[0][0] === oldPoint[0] + 10
+        && debugGame.bahrainRoute.points[0][1] === oldPoint[1] - 10
+        && overlay.querySelector(".pit-wall-route-line").getAttribute("d") !== oldPath
+        && overlay.querySelector(".pit-wall-route-player").getAttribute("transform") === markers[0].getAttribute("transform")
+        && debugRoot.querySelector(".pit-wall-route-controls").textContent.includes("Waypoint 0"),
+      "Dragging waypoint zero must update the route, marker and selected waypoint");
+      const createObjectURL = URL.createObjectURL;
+      const anchorClick = HTMLAnchorElement.prototype.click;
+      let exportedRoute;
+      try {
+        URL.createObjectURL = (blob) => {
+          exportedRoute = blob.text();
+          return createObjectURL(blob);
+        };
+        HTMLAnchorElement.prototype.click = () => {};
+        debugRoot.querySelector('[data-action="export-route"]').click();
+        const exported = JSON.parse(await exportedRoute);
+        assert(JSON.stringify(exported) === JSON.stringify(debugGame.bahrainRoute),
+          "Route export must contain the current editable coordinates");
+      } finally {
+        URL.createObjectURL = createObjectURL;
+        HTMLAnchorElement.prototype.click = anchorClick;
+      }
+      debugRoot.querySelector('[data-action="pause-route-session"]').click();
+      assert(!debugRoot.querySelector(".pit-wall-route-overlay:not(.pit-wall-marker-overlay)") && !debugGame.weekendState.debugPaused
+        && debugRoot.querySelector(".pit-wall-moving-driver")
+        && debugGame.weekendState.practice.speed === 0
+        && debugRoot.querySelector('[data-speed="0"]').getAttribute("aria-pressed") === "true"
+        && debugRoot.querySelector(".pit-wall-marker-overlay path").getAttribute("d")
+          === overlay.querySelector(".pit-wall-route-line").getAttribute("d"),
+      "Resuming route debug must preserve the player's pause and the edited route");
+      const debugPausedElapsed = debugGame.weekendState.practice.elapsed;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      assert(debugGame.weekendState.practice.elapsed === debugPausedElapsed,
+        "Closing route debug must not resume a player-paused session");
+      debugRoot.querySelector('[data-speed="1"]').click();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const pausedValue = debugRoot.querySelector(".pit-wall-moving-driver").getAttribute("transform");
+      const pausedTime = debugGame.weekendState.practice.elapsed;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert(debugGame.weekendState.debugPaused && debugGame.sessionTimer == null
+        && debugRoot.querySelector(".pit-wall-moving-driver").getAttribute("transform") === pausedValue
+        && debugGame.weekendState.practice.elapsed === pausedTime,
+      "Showing the route must pause the marker and simulated clock");
+      debugRoot.querySelector('[data-action="complete-session"]').click();
+      assert(!debugRoot.querySelector(".pit-wall-route-overlay") && debugGame.weekendState.phase === "review",
+        "Completing must remove the route overlay and show the review");
+      debugRoot.querySelector('[data-action="continue-review"]').click();
+      debugRoot.querySelector('[data-action="start-session"]').click();
+      debugRoot.querySelector('[data-action="pause-route-session"]').click();
+      debugGame.weekendState.timerStartedAt -= 5100;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      assert(debugGame.weekendState.phase === "discovery"
+        && debugRoot.querySelectorAll("[data-discovery-index]").length === 3,
+      "A resumed debug session must finish and offer rewards normally");
+      debugRoot.querySelector('[data-discovery-index="0"]').click();
+      while (debugGame.weekendState.phase === "ready") debugRoot.querySelector('[data-action="skip-session"]').click();
+      debugRoot.querySelector('[data-action="next-round"]').click();
+      debugRoot.querySelector('[data-action="start-session"]').click();
+      assert(!debugGame.weekendState.debugPaused && debugGame.sessionTimer != null
+        && !debugRoot.querySelector('[data-action="toggle-route"]'),
+      "Other circuits must not expose or pause for Bahrain route debugging");
+      for (let session = 0; session < 3; session += 1) {
+        if (session) debugRoot.querySelector('[data-action="start-session"]').click();
+        assert(debugGame.isPractice() && debugGame.weekendState.sessionIndex === session
+          && !debugRoot.querySelector(".pit-wall-moving-driver")
+          && debugRoot.querySelector('[data-timing="remaining"]').textContent === "60:00",
+        `Saudi Practice ${session + 1} must start its own timed session without a fabricated route`);
+        debugGame.weekendState.timerStartedAt -= 600000;
+        debugGame.syncPracticeClock();
+        debugRoot.querySelector('[data-action="complete-session"]').click();
+        assert(debugGame.weekendState.phase === "review" && debugGame.weekendState.practice.lapTimes.length >= 3,
+          `Saudi Practice ${session + 1} must produce a timed review`);
+        debugRoot.querySelector('[data-action="continue-review"]').click();
+        debugRoot.querySelector('[data-discovery-index="0"]').click();
+      }
+
+      const debugWindow = debugFrame.contentWindow;
+      const originalRaf = debugWindow.requestAnimationFrame;
+      const originalCancel = debugWindow.cancelAnimationFrame;
+      let nextFrame;
+      debugWindow.requestAnimationFrame = (callback) => { nextFrame = callback; return 1; };
+      debugWindow.cancelAnimationFrame = () => { nextFrame = null; };
+      const markerContainer = debugDoc.createElement("div");
+      debugDoc.body.append(markerContainer);
+      try {
+        const testRoute = JSON.parse(JSON.stringify(debugGame.bahrainRoute));
+        let simulatedTime = 0;
+        const lapDuration = 90000;
+        const moving = mountRouteMarker(markerContainer, testRoute, "AV", "#285ca7",
+          () => (simulatedTime % lapDuration) / lapDuration);
+        const path = markerContainer.querySelector(".pit-wall-marker-overlay path");
+        const movingDriver = markerContainer.querySelector(".pit-wall-moving-driver");
+        const length = path.getTotalLength();
+        moving.resume();
+        let lastDistance = 0;
+        let wraps = 0;
+        let lastPoint = path.getPointAtLength(0);
+        const frames = Math.ceil(3 * lapDuration / 16) + 2;
+        for (let i = 0; i <= frames; i += 1) {
+          const callback = nextFrame;
+          assert(callback, "Marker animation must continue scheduling frames");
+          simulatedTime = i * 16;
+          callback(i * 16);
+          const distance = (simulatedTime % lapDuration) / lapDuration * length;
+          const expected = path.getPointAtLength(distance);
+          const actual = movingDriver.transform.baseVal.consolidate().matrix;
+          assert(Math.hypot(actual.e - expected.x, actual.f - expected.y) < .02
+            && Math.hypot(actual.e - lastPoint.x, actual.f - lastPoint.y) <= 2.6,
+          "Marker frames must interpolate continuously along the approved spline");
+          if (distance < lastDistance) wraps += 1;
+          lastDistance = distance;
+          lastPoint = expected;
+        }
+        assert(wraps >= 3, "The marker must complete multiple continuous laps");
+        moving.remove();
+        assert(nextFrame === null, "Removing the marker must cancel animation");
+      } finally {
+        debugWindow.requestAnimationFrame = originalRaf;
+        debugWindow.cancelAnimationFrame = originalCancel;
+        markerContainer.remove();
+      }
+
+      debugGame.bahrainRoute = null;
+      debugGame.renderWeekend(bahrainWeekend);
+      const originalFetch = window.fetch;
+      try {
+        window.fetch = () => Promise.reject(new Error("Test route unavailable"));
+        debugRoot.querySelector('[data-action="start-session"]').click();
+        for (let i = 0; i < 100 && !debugRoot.querySelector('[data-action="retry-marker"]'); i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        assert(debugRoot.querySelector('[role="alert"]').textContent.includes("Could not load")
+          && debugRoot.querySelector('[data-action="complete-session"]').disabled,
+        "Route loading failures must be visible and must not complete the session");
+      } finally {
+        window.fetch = originalFetch;
+      }
+      debugRoot.querySelector('[data-action="retry-marker"]').click();
+      await waitForMarker(debugRoot);
+      assert(!debugRoot.querySelector('[role="alert"]')
+        && !debugRoot.querySelector('[data-action="complete-session"]').disabled,
+      "Retrying a failed route load must restore the marker and completion control");
+      debugRoot.querySelector('[data-action="complete-session"]').click();
+      debugRoot.querySelector('[data-action="continue-review"]').click();
+
+      for (const action of ["restart-weekend", "new-game"]) {
+        debugGame.bahrainRoute = null;
+        debugGame.renderWeekend(bahrainWeekend);
+        const response = await originalFetch("../games/bahrain-route.json");
+        let finishFetch;
+        try {
+          window.fetch = () => new Promise((resolve) => { finishFetch = resolve; });
+          debugRoot.querySelector('[data-action="start-session"]').click();
+          if (action === "new-game") debugGame.startDraft();
+          else debugGame.renderWeekend(bahrainWeekend);
+          finishFetch(response);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          assert(!debugRoot.querySelector(".pit-wall-moving-driver") && !debugGame.routeMarker,
+            `A stale route load must not restore the marker after ${action}`);
+        } finally {
+          window.fetch = originalFetch;
+        }
+      }
+      debugFrame.remove();
       results.textContent = "All Pit Wall regression tests passed.";
     } catch (error) {
       results.textContent = `FAILED: ${error.stack || error.message}`;

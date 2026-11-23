@@ -349,6 +349,7 @@
     }
 
     .pit-wall-console {
+      position: relative;
       display: flex;
       flex-direction: column;
       height: 100%;
@@ -356,6 +357,48 @@
       background: linear-gradient(135deg, rgba(3, 26, 52, 0.95), rgba(6, 38, 74, 0.95));
       border: 1px solid rgba(215, 189, 133, .24);
       box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+    }
+
+    .pit-wall-balance-panel:not([hidden]) {
+      position: absolute;
+      z-index: 20;
+      inset: 30px 8px 8px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid var(--gold);
+      background: #031a34;
+      color: var(--paper);
+      font: 12px/1.3 var(--sans);
+    }
+
+    .pit-wall-balance-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pit-wall-balance-header strong { margin-right: auto; }
+    .pit-wall-console .pit-wall-balance-panel p { margin: 4px 0; font-size: 11px; }
+    .pit-wall-balance-status { color: var(--gold); }
+    .pit-wall-balance-sections details { margin-top: 5px; border: 1px solid rgba(215, 189, 133, .3); }
+    .pit-wall-balance-sections summary { padding: 5px; color: var(--gold); cursor: pointer; }
+    .pit-wall-balance-sections details > p { padding: 0 5px; }
+    .pit-wall-balance-field {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 80px minmax(110px, .7fr);
+      align-items: center;
+      gap: 6px;
+      padding: 3px 5px;
+    }
+    .pit-wall-balance-field input { width: 100%; color: #031a34; font: inherit; }
+    .pit-wall-balance-field input[type="checkbox"] { width: auto; justify-self: start; }
+    .pit-wall-balance-field input[aria-invalid="true"] { outline: 2px solid #f04e50; }
+    .pit-wall-balance-coverage { display: block; color: #8ed321; }
+    [data-balance-coverage="not-simulated"] .pit-wall-balance-coverage { color: #f5ba66; }
+
+    @media (max-width: 600px) {
+      .pit-wall-balance-field { grid-template-columns: minmax(0, 1fr) 65px minmax(80px, .7fr); }
     }
 
     .pit-wall-header {
@@ -1035,7 +1078,8 @@
       font: 11px/1.3 var(--sans);
     }
 
-    .pit-wall-session-panel.is-discovery {
+    .pit-wall-session-panel.is-discovery,
+    .pit-wall-session-panel.is-review {
       display: flex;
       flex: 1;
       flex-direction: column;
@@ -1081,7 +1125,8 @@
       font-size: 10px;
     }
 
-    .pit-wall-session-actions:has(progress) {
+    .pit-wall-session-actions:has(progress),
+    .pit-wall-session-actions:has([data-action="complete-session"]) {
       flex-direction: column;
       align-items: stretch;
     }
@@ -1092,11 +1137,283 @@
       accent-color: var(--gold);
     }
 
+    .pit-wall-garage-setup,
+    .pit-wall-setup-tyres,
+    .pit-wall-setup-fuel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pit-wall-garage-setup {
+      gap: 5px 12px;
+      margin-top: 5px;
+    }
+
+    .pit-wall-setup-fuel input {
+      width: 90px;
+      margin: 0;
+      accent-color: var(--gold);
+    }
+
+    .pit-wall-tyre-button,
+    .pit-wall-tyre-label {
+      --tyre-colour: #fff;
+    }
+
+    [data-tyre="Soft"] { --tyre-colour: #f04e50; }
+    [data-tyre="Medium"] { --tyre-colour: #f5d349; }
+    [data-tyre="Hard"] { --tyre-colour: #fff; }
+    [data-tyre="Intermediate"] { --tyre-colour: #4bcf79; }
+    [data-tyre="Wet"] { --tyre-colour: #54a7f4; }
+
+    .pit-wall-tyre-button::before,
+    .pit-wall-tyre-label::before {
+      display: inline-block;
+      width: .65em;
+      height: .65em;
+      margin-right: .25em;
+      border: 1px solid rgba(0, 0, 0, .35);
+      border-radius: 50%;
+      background: var(--tyre-colour);
+      content: "";
+    }
+
+    .pit-wall-tyre-button[aria-pressed="true"] {
+      border-color: var(--tyre-colour);
+      box-shadow: inset 0 0 0 1px var(--tyre-colour);
+    }
+
     .pit-wall-console .pit-wall-session-notice {
       display: block;
       margin: 4px 0 0;
       color: #b8d5b3;
       font: 10px/1.2 var(--sans);
+    }
+
+    .pit-wall-timing-live {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .pit-wall-telemetry {
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      padding: 4px 6px;
+      border: 1px solid rgba(215, 189, 133, .2);
+      background: rgba(3, 26, 52, .55);
+    }
+
+    .pit-wall-console .pit-wall-timing-live .pit-wall-placeholder-label {
+      margin: 0 0 2px;
+      color: var(--gold);
+      font: 600 10px/1.2 var(--sans);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .pit-wall-telemetry dl {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-height: 0;
+      margin: 0;
+      font: 12px/1.1 var(--sans);
+    }
+
+    .pit-wall-telemetry dl > div {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 2px;
+    }
+
+    .pit-wall-telemetry .pit-wall-gauge-row {
+      align-items: center;
+    }
+
+    .pit-wall-gauge {
+      flex: 0 1 50%;
+      min-width: 20px;
+      height: 8px;
+      border: 1px solid transparent;
+      background: rgba(243, 239, 227, .18);
+    }
+
+    .pit-wall-gauge > span {
+      display: block;
+      height: 100%;
+    }
+
+    .pit-wall-telemetry dd:not(.pit-wall-gauge) {
+      flex-shrink: 0;
+    }
+
+    .pit-wall-telemetry dt,
+    .pit-wall-review-stats dt {
+      min-width: 0;
+      color: rgba(243, 239, 227, .7);
+    }
+
+    .pit-wall-telemetry dd,
+    .pit-wall-review-stats dd {
+      margin: 0;
+      color: var(--paper);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .pit-wall-telemetry dd.pit-wall-best-lap {
+      color: #d3a9ed;
+      font-weight: 700;
+      font-size: 1.15em;
+      text-shadow: 0 0 10px rgba(190, 130, 235, .35);
+    }
+
+    .pit-wall-lap-history {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      padding: 4px 6px;
+      border: 1px solid rgba(215, 189, 133, .2);
+      background: rgba(3, 26, 52, .55);
+    }
+
+    .pit-wall-lap-list {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      height: 0;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      list-style: none;
+      color: rgba(243, 239, 227, .8);
+      font: 12px/1.2 var(--sans);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pit-wall-lap-entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .2em;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .pit-wall-lap-entry.is-current { color: var(--gold); }
+    .pit-wall-lap-entry.is-fastest { color: #d3a9ed; font-weight: 700; }
+    .pit-wall-lap-empty { color: rgba(243, 239, 227, .6); }
+
+    .pit-wall-speed-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 3px;
+      color: var(--gold);
+      font: 600 10px/1.2 var(--sans);
+    }
+
+    .pit-wall-speed-controls button[data-speed],
+    .pit-wall-session-review button {
+      padding: 4px 8px;
+      border: 1px solid rgba(215, 189, 133, .4);
+      border-radius: 2px;
+      background: rgba(3, 26, 52, .7);
+      color: var(--gold);
+      font: 600 10px/1.2 var(--sans);
+      cursor: pointer;
+    }
+
+    .pit-wall-speed-controls button[data-speed]:hover,
+    .pit-wall-session-review button:hover {
+      border-color: var(--gold);
+      background: rgba(215, 189, 133, .16);
+    }
+
+    .pit-wall-speed-controls button[data-speed][aria-pressed="true"] {
+      border-color: var(--gold);
+      background: var(--gold);
+      color: #031a34;
+    }
+
+    .pit-wall-speed-controls button[data-speed]:focus-visible,
+    .pit-wall-session-review button:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+
+    .pit-wall-session-review {
+      display: grid;
+      flex: 1;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: auto auto auto 1fr;
+      align-content: center;
+      gap: 8px 16px;
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      color: var(--paper);
+    }
+
+    .pit-wall-session-review h4 {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: var(--gold);
+      font: 600 clamp(16px, 2vw, 22px)/1.2 var(--serif);
+    }
+
+    .pit-wall-review-stats {
+      grid-column: 1;
+      grid-row: 2 / 5;
+      padding: 10px;
+      border: 1px solid rgba(215, 189, 133, .22);
+      background: rgba(20, 54, 83, .5);
+    }
+
+    .pit-wall-review-stats dl {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px 12px;
+      margin: 0;
+      font: 11px/1.3 var(--sans);
+    }
+
+    .pit-wall-review-feedback,
+    .pit-wall-review-eligibility,
+    .pit-wall-session-review button {
+      grid-column: 2;
+      align-self: start;
+    }
+
+    .pit-wall-console .pit-wall-review-feedback p,
+    .pit-wall-console .pit-wall-review-eligibility {
+      margin: 0;
+      color: rgba(243, 239, 227, .85);
+      font: 11px/1.4 var(--sans);
+    }
+
+    .pit-wall-console .pit-wall-review-eligibility {
+      color: #b8d5b3;
+    }
+
+    .pit-wall-session-review button {
+      justify-self: start;
     }
 
     .pit-wall-discovery-heading,
@@ -1258,6 +1575,7 @@
     }
 
     .pit-wall-circuit {
+      position: relative;
       display: flex;
       flex: 1;
       align-items: center;
@@ -1271,6 +1589,87 @@
 
     .pit-wall-circuit[hidden] {
       display: none;
+    }
+
+    .pit-wall-route-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 3px 6px;
+      margin-top: 4px;
+      color: var(--gold);
+    }
+
+    .pit-wall-route-error {
+      color: #ffb6a3;
+    }
+
+    .pit-wall-route-overlay {
+      position: absolute;
+      inset: clamp(4px, 1vw, 12px);
+      width: calc(100% - 2 * clamp(4px, 1vw, 12px));
+      height: calc(100% - 2 * clamp(4px, 1vw, 12px));
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .pit-wall-route-line {
+      fill: none;
+      stroke: #ffe15a;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .pit-wall-route-point circle {
+      fill: #ffe15a;
+      stroke: #151927;
+      stroke-width: 2;
+    }
+
+    .pit-wall-route-point text {
+      fill: #ffe15a;
+      stroke: #031a34;
+      stroke-width: 3;
+      paint-order: stroke;
+      font: 700 16px/1 var(--sans);
+    }
+
+    .pit-wall-route-overlay.is-editing .pit-wall-route-point {
+      pointer-events: all;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .pit-wall-route-point.is-selected circle {
+      stroke: white;
+      stroke-width: 4;
+    }
+
+    .pit-wall-route-player {
+      pointer-events: none;
+    }
+
+    .pit-wall-route-player circle {
+      fill: #172f43;
+      stroke: #d7bd85;
+      stroke-width: 2;
+    }
+
+    .pit-wall-route-player text {
+      fill: #d7bd85;
+      font: 600 12px/1 var(--serif);
+      text-anchor: middle;
+    }
+
+    .pit-wall-moving-driver circle {
+      stroke: white;
+      stroke-width: 2;
+    }
+
+    .pit-wall-moving-driver text {
+      fill: white;
+      font: 700 16px/1 var(--sans);
+      text-anchor: middle;
     }
 
     .pit-wall-circuit img {
@@ -1344,7 +1743,7 @@
       justify-content: flex-start;
       align-items: flex-start;
       gap: 12px;
-      min-height: 100px;
+      min-height: 32px;
     }
 
     .pit-wall-command-body {
@@ -1370,7 +1769,46 @@
     }
 
     .pit-wall-panel-bottom .pit-wall-placeholder-block {
-      min-height: 84px;
+      min-height: 0;
+    }
+
+    .pit-wall-console .pit-wall-panel-bottom .pit-wall-placeholder-label,
+    .pit-wall-console .pit-wall-panel-bottom .pit-wall-placeholder-info {
+      margin: 0;
+      font: 10px/1.3 var(--sans);
+    }
+
+    .pit-wall-command-mode {
+      margin-left: auto;
+      margin-right: 10px;
+      color: var(--paper);
+      font: 600 11px/1.1 var(--sans);
+    }
+
+    .pit-wall-command-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 16px;
+      color: var(--paper);
+      font: 11px/1.2 var(--sans);
+    }
+
+    .pit-wall-command-group:not([hidden]) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pit-wall-command-group button[aria-pressed="true"] {
+      background: var(--gold);
+      color: #031a34;
+    }
+
+    .pit-wall-command-group button:disabled {
+      opacity: .5;
+      cursor: default;
     }
 
     .pit-wall-command-toggle {
@@ -1600,6 +2038,97 @@
     .room-dialog:has(#games-pit-wall:not([hidden])) {
       width: min(1400px, calc(100% - 32px));
       max-height: min(900px, calc(100dvh - 16px));
+    }
+
+    html:has(.room-dialog[open] #games-pit-wall:not([hidden])) {
+      overflow: hidden;
+    }
+
+    @media (min-width: 1201px) {
+      .room-dialog:has(#games-pit-wall:not([hidden])) {
+        height: min(900px, calc(100dvh - 16px));
+      }
+
+      .room-dialog:has(#games-pit-wall:not([hidden])) > .dialog-content {
+        overflow: hidden;
+      }
+
+      #room-gamesroom:has(#games-pit-wall:not([hidden])),
+      #room-gamesroom:has(#games-pit-wall:not([hidden])) > .room-copy {
+        height: 100%;
+        min-height: 0;
+      }
+
+      #games-pit-wall:not([hidden]) {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      #games-pit-wall .games-back-wrapper {
+        display: none;
+      }
+
+      .pit-wall-console .pit-wall-driver-profile-label {
+        font: 600 10px/1.2 var(--sans);
+      }
+
+      .pit-wall-console .pit-wall-driver-name {
+        font: 600 16px/1.2 var(--serif);
+      }
+
+      .pit-wall-driver-profile-weekend .pit-wall-driver-portrait {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 5px;
+      }
+
+      .pit-wall-driver-profile-weekend .pit-wall-driver-traits {
+        margin-bottom: 5px;
+        line-height: 1.2;
+      }
+    }
+
+    @media (min-width: 1201px) and (max-height: 800px) {
+      .pit-wall-driver-profile-weekend {
+        max-width: none;
+        font: 10px/1.1 var(--sans);
+      }
+
+      .pit-wall-driver-profile-weekend .pit-wall-driver-portrait {
+        float: right;
+        width: 26px;
+        height: 26px;
+        margin: 0;
+        font-size: 11px;
+      }
+
+      .pit-wall-console .pit-wall-driver-profile-weekend .pit-wall-driver-profile-label,
+      .pit-wall-console .pit-wall-driver-profile-weekend .pit-wall-driver-name,
+      .pit-wall-driver-profile-weekend .pit-wall-driver-traits-label,
+      .pit-wall-driver-profile-weekend .pit-wall-driver-traits {
+        display: inline;
+        margin: 0;
+        font-size: 10px;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      .pit-wall-driver-profile-weekend .pit-wall-driver-name::after,
+      .pit-wall-driver-profile-weekend .pit-wall-driver-traits::after {
+        display: block;
+        content: "";
+      }
+
+      .pit-wall-driver-profile-weekend .pit-wall-active-upgrades,
+      .pit-wall-driver-profile-weekend .pit-wall-season-progress {
+        margin-top: 3px;
+      }
+
+      .pit-wall-driver-profile-weekend .pit-wall-active-upgrades > .pit-wall-driver-profile-label {
+        display: block;
+      }
     }
 
     /* Pit Wall Full Screen Mode (Desktop) */
@@ -1985,8 +2514,88 @@
         padding-top: 3px;
       }
 
-      .pit-wall-session-panel.is-discovery {
+      .pit-wall-session-panel.is-discovery,
+      .pit-wall-session-panel.is-review {
         padding: clamp(3px, 1vh, 7px);
+      }
+
+      .pit-wall-timing-live {
+        gap: 3px;
+      }
+
+      .pit-wall-telemetry,
+      .pit-wall-lap-history {
+        padding: 2px 3px;
+      }
+
+      .pit-wall-console .pit-wall-timing-live .pit-wall-placeholder-label {
+        margin-bottom: 2px;
+        font-size: clamp(8px, 2.2vh, 10px);
+      }
+
+      .pit-wall-console .pit-wall-telemetry .pit-wall-placeholder-label {
+        letter-spacing: -.05em;
+      }
+
+      .pit-wall-telemetry dl {
+        gap: 0;
+        font: clamp(9px, 2.5vh, 11px)/1.1 var(--sans);
+      }
+
+      .pit-wall-lap-list {
+        font-size: clamp(8px, 2.5vh, 10px);
+      }
+
+      .pit-wall-garage-setup {
+        gap: 2px 5px;
+        margin-top: 3px;
+      }
+
+      .pit-wall-setup-tyres,
+      .pit-wall-setup-fuel {
+        gap: 2px;
+      }
+
+      .pit-wall-setup-tyres button {
+        padding: 2px;
+        font-size: clamp(7px, 2vh, 9px);
+      }
+
+      .pit-wall-setup-fuel input {
+        width: clamp(45px, 9vw, 75px);
+      }
+
+      .pit-wall-speed-controls {
+        gap: 2px;
+        font-size: clamp(8px, 2.2vh, 10px);
+      }
+
+      .pit-wall-speed-controls button[data-speed],
+      .pit-wall-session-review button {
+        padding: 2px 4px;
+        font-size: clamp(8px, 2.2vh, 10px);
+      }
+
+      .pit-wall-session-review {
+        gap: 3px 6px;
+      }
+
+      .pit-wall-session-review h4 {
+        font-size: clamp(11px, 3.2vh, 15px);
+      }
+
+      .pit-wall-review-stats {
+        padding: 4px;
+      }
+
+      .pit-wall-review-stats dl {
+        gap: 2px 4px;
+        font: clamp(8px, 2.2vh, 10px)/1.1 var(--sans);
+      }
+
+      .pit-wall-console .pit-wall-review-feedback p,
+      .pit-wall-console .pit-wall-review-eligibility {
+        font: clamp(8px, 2.2vh, 10px)/1.15 var(--sans);
       }
 
       .pit-wall-discovery-card {
@@ -2110,6 +2719,25 @@
       .pit-wall-panel-bottom .pit-wall-placeholder-block {
         min-height: 0;
       }
+
+      .pit-wall-command-mode,
+      .pit-wall-command-controls {
+        font-size: clamp(8px, 2.4vh, 10px);
+      }
+
+      .pit-wall-console .pit-wall-panel-bottom .pit-wall-placeholder-label,
+      .pit-wall-console .pit-wall-panel-bottom .pit-wall-placeholder-info {
+        font: clamp(8px, 2.2vh, 10px)/1 var(--sans);
+      }
+
+      .pit-wall-command-controls {
+        gap: 3px 8px;
+      }
+
+      .pit-wall-command-group button {
+        padding: 2px 4px;
+        font-size: clamp(8px, 2.4vh, 10px);
+      }
     }
 
     /* Pit Wall Mobile Portrait Mode */
@@ -2117,6 +2745,21 @@
       .room-dialog:has(#games-pit-wall:not([hidden])) {
         width: min(100%, calc(100% - 32px));
         max-height: auto;
+      }
+    }
+
+    @media (max-width: 600px) and (orientation: portrait) {
+      .pit-wall-session-review {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto;
+      }
+
+      .pit-wall-review-stats,
+      .pit-wall-review-feedback,
+      .pit-wall-review-eligibility,
+      .pit-wall-session-review button {
+        grid-column: 1;
+        grid-row: auto;
       }
     }
 
