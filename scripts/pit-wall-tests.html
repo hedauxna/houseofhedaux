@@ -9,8 +9,10 @@
     import { PitWallConsole, drawDiscovery } from "../games/pit-wall.js";
     import { mountRouteMarker } from "../games/route-marker.js";
     import { createBalance } from "../games/pit-wall-balance.js";
-    import { PRACTICE_DURATION, createPracticeSession, advancePracticeSession, formatLapTime,
-      setDriverMode, callToPit, selectPitTyre } from "../games/practice-session.js";
+    import { createPracticeClassification, advancePracticeClassification, practiceClassification, practiceTyres } from "../games/practice-classification.js";
+    import { createSprintRace, advanceSprintRace, sprintClassification, SPRINT_POINTS, GRAND_PRIX_POINTS } from "../games/sprint-race.js";
+    import { PRACTICE_DURATION, SPRINT_QUALIFYING_DURATION, createPracticeSession, advancePracticeSession, formatLapTime,
+      fuelPerLap, setDriverMode, callToPit, parkPracticeSession, sendPracticeOut } from "../games/practice-session.js";
 
     const results = document.querySelector("#results");
     const root = document.querySelector("#fixture");
@@ -27,6 +29,293 @@
     try {
       const neutralDriver = { strengths: [], weakness: "None" };
       const neutralTeam = { bonus: "None", weakness: "None" };
+      const aiBalance = createBalance();
+      Object.assign(aiBalance.practiceAI, {
+        initialDelayMinMs: 1000, initialDelayMaxMs: 1000, garageMinMs: 1000, garageMaxMs: 1000,
+        stintMinLaps: 2, stintMaxLaps: 2,
+      });
+      const aiDriver = { name: "Test Driver", strengths: [], weakness: "None" };
+      const playerDriver = { name: "Player Driver", ...neutralDriver };
+      const raceGrid = [
+        { driver: aiDriver, team: neutralTeam, player: false },
+        { driver: playerDriver, team: neutralTeam, player: true },
+      ];
+      const raceBalance = createBalance();
+      raceBalance.sprintRace.aiPitChance = 0;
+      const makeRace = (fuel = 100, upgrades = []) => createSprintRace(raceGrid, 5.412, "Sunny", "Green",
+        { tyre: "Soft", fuel }, upgrades, raceBalance, () => .5);
+      const passingRace = makeRace();
+      const leader = passingRace.entries[0].session;
+      const challenger = passingRace.entries[1].session;
+      assert(passingRace.laps === 19 && challenger.lapProgress < leader.lapProgress
+        && sprintClassification(passingRace)[0].driver === aiDriver,
+      "The sprint must start over 100 km in qualifying grid order");
+      leader.tyre = "Hard";
+      setDriverMode(leader, "Manage");
+      setDriverMode(challenger, "Push");
+      advanceSprintRace(passingRace, 400000, "Soft");
+      assert(sprintClassification(passingRace)[0].player,
+        "A faster car must pass a slower car as their track distances cross");
+      const pitRace = makeRace();
+      const pitPlayer = pitRace.entries[1].session;
+      callToPit(pitPlayer);
+      advanceSprintRace(pitRace, 140000, "Hard");
+      assert(pitPlayer.tyre === "Hard" && pitPlayer.pitState === "none"
+        && pitPlayer.fuel < 100 && pitPlayer.fuel > 90,
+      "A race pit stop must fit the selected tyres without refuelling");
+      raceBalance.lap.pitBaseMs = 0;
+      raceBalance.lap.pitMinimumMs = 0;
+      const instantPit = makeRace();
+      callToPit(instantPit.entries[1].session);
+      advanceSprintRace(instantPit, 120000, "Hard");
+      assert(instantPit.entries[1].session.tyre === "Hard",
+        "A zero-time pit stop must still complete and change tyres");
+      raceBalance.lap.pitBaseMs = 21500;
+      raceBalance.lap.pitMinimumMs = 5000;
+      const dryRace = makeRace(10);
+      advanceSprintRace(dryRace, 1500000, "Soft");
+      assert(dryRace.entries[1].retired && dryRace.entries[1].session.fuel === 0,
+        "Running out of race fuel must retire the car instead of allowing free laps");
+      const lappedRace = makeRace();
+      lappedRace.laps = 2;
+      lappedRace.entries[1].session.lapProgress = -1.5;
+      assert(advanceSprintRace(lappedRace, 1000000, "Soft")
+        && lappedRace.flagTime !== null && lappedRace.entries[1].session.completedLaps === 1
+        && sprintClassification(lappedRace)[0] === lappedRace.entries[0],
+      "Lapped cars must finish at their next line crossing after the leader takes the flag");
+      const deterministicRace = () => {
+        let seed = 42;
+        const random = () => {
+          seed = seed * 16807 % 2147483647;
+          return (seed - 1) / 2147483646;
+        };
+        return createSprintRace(raceGrid, 5.412, "Sunny", "Green", { tyre: "Medium", fuel: 100 },
+          [], raceBalance, random);
+      };
+      const wholeRace = deterministicRace();
+      const slicedRace = deterministicRace();
+      advanceSprintRace(wholeRace, 1800000, "Hard");
+      for (let tick = 0; tick < 60; tick += 1) advanceSprintRace(slicedRace, 30000, "Hard");
+      assert(JSON.stringify(sprintClassification(wholeRace).map((entry) => [entry.driver.name, entry.retired, entry.session.lapTimes]))
+        === JSON.stringify(sprintClassification(slicedRace).map((entry) => [entry.driver.name, entry.retired, entry.session.lapTimes]))
+        && wholeRace.entries.every((entry, index) =>
+          Math.abs(entry.session.fuel - slicedRace.entries[index].session.fuel) < 1e-7),
+      "Race results must not depend on clock update size or simulation speed");
+      const upgradedRace = makeRace(100, [{ stat: "Aero", amount: 4 }, { id: "fuel-mapping", level: 1 }]);
+      assert(upgradedRace.entries[1].session.lapTarget < makeRace().entries[1].session.lapTarget
+        && fuelPerLap(raceBalance, "Balanced", upgradedRace.entries[1].session.upgrades)
+          < fuelPerLap(raceBalance, "Balanced", []),
+      "Permanent and weekend upgrades must affect the immediately following sprint");
+      assert(SPRINT_POINTS.join(",") === "8,7,6,5,4,3,2,1", "Sprint points must follow the requested scoring");
+      let raceSeed = 17;
+      const raceRandom = () => {
+        raceSeed = (raceSeed * 16807) % 2147483647;
+        return (raceSeed - 1) / 2147483646;
+      };
+      const variedGrid = Array.from({ length: 10 }, (_, index) => ({
+        driver: { name: `Driver ${index}`, ...neutralDriver }, team: neutralTeam, player: index === 0,
+      }));
+      const variedBalance = createBalance();
+      const variedRace = createSprintRace(variedGrid, 5.412, "Sunny", "Green", { tyre: "Medium", fuel: 100 },
+        [], variedBalance, raceRandom);
+      const opponents = variedRace.entries.filter((entry) => !entry.player);
+      const scheduledStop = opponents.find((entry) => entry.pitLap !== null);
+      assert(scheduledStop && opponents.some((entry) => entry.pitLap === null)
+        && new Set(opponents.map((entry) => entry.session.tyre)).size > 1
+        && new Set(opponents.map((entry) => entry.session.mode)).size > 1
+        && new Set(opponents.map((entry) => entry.session.fuel)).size > 1,
+      "AI sprint strategies must vary their tyres, modes, fuel and pit plans");
+      advanceSprintRace(variedRace, 1200000, "Medium");
+      assert(scheduledStop.pitLap === null && scheduledStop.session.tyre === scheduledStop.pitTyre,
+        "An AI driver with a pit plan must actually change tyres during the race");
+      const makeGrandPrix = (balance = createBalance()) => {
+        let seed = 17;
+        const random = () => {
+          seed = seed * 16807 % 2147483647;
+          return (seed - 1) / 2147483646;
+        };
+        return createSprintRace(variedGrid, 5.412, "Sunny", "Green", { tyre: "Medium", fuel: 100 },
+          [], balance, random, { laps: 57, grandPrix: true });
+      };
+      const grandPrix = makeGrandPrix();
+      const slicedGrandPrix = makeGrandPrix();
+      setDriverMode(grandPrix.entries[0].session, "Manage");
+      setDriverMode(slicedGrandPrix.entries[0].session, "Manage");
+      advanceSprintRace(grandPrix, 20000000, "Hard");
+      for (let tick = 0; tick < 200; tick += 1) advanceSprintRace(slicedGrandPrix, 100000, "Hard");
+      assert(grandPrix.laps === 57 && grandPrix.flagTime !== null
+        && sprintClassification(grandPrix)[0].session.completedLaps === 57
+        && grandPrix.entries.some((entry) => !entry.player && entry.pitStops > 0 && entry.tyreHistory.length > 1)
+        && grandPrix.entries.some((entry) => !entry.player && !entry.retired),
+      "A Grand Prix must run 57 laps with AI tyre stops and fuel-managed finishers");
+      assert(JSON.stringify(grandPrix.entries.map((entry) => [entry.retired, entry.session.lapTimes, entry.tyreHistory]))
+        === JSON.stringify(slicedGrandPrix.entries.map((entry) => [entry.retired, entry.session.lapTimes, entry.tyreHistory])),
+      "Grand Prix strategy and results must not depend on clock update size");
+      const pitBalance = createBalance();
+      pitBalance.grandPrix.aiPitWearMin = 0;
+      pitBalance.grandPrix.aiPitWearMax = 0;
+      const pitTuning = makeGrandPrix(pitBalance);
+      advanceSprintRace(pitTuning, 400000, "Medium");
+      assert(pitTuning.entries.some((entry) => !entry.player && entry.pitStops > 0),
+        "Grand Prix AI tyre-wear settings must affect pit decisions");
+      assert(GRAND_PRIX_POINTS.join(",") === "25,18,15,12,10,8,6,4,2,1",
+        "Grand Prix points must follow the requested scoring");
+      const qualifyingBalance = createBalance();
+      const qualifyingSession = (tyre, fuel) => createPracticeSession(playerDriver, neutralTeam, [], 5.412,
+        () => .5, { tyre, fuel }, qualifyingBalance, 0, true);
+      const qualifying = qualifyingSession("Soft", 10);
+      parkPracticeSession(qualifying);
+      advancePracticeSession(qualifying, 5000);
+      assert(qualifying.elapsed === 5000 && qualifying.lapTimes.length === 0 && qualifying.fuel === 10,
+        "Qualifying must start in the garage without consuming fuel");
+      sendPracticeOut(qualifying, { tyre: "Soft", fuel: 10 });
+      setDriverMode(qualifying, "Push");
+      advancePracticeSession(qualifying, qualifying.lapTarget);
+      assert(!qualifying.outLap && qualifying.completedLaps === 1 && qualifying.lapTimes.length === 0,
+        "An out lap must not count as a qualifying time");
+      advancePracticeSession(qualifying, qualifying.lapTarget);
+      assert(qualifying.lapTimes.length === 1 && qualifying.lapTyres[0] === "Soft",
+        "A flying lap must set a timed result on its actual compound");
+      callToPit(qualifying);
+      advancePracticeSession(qualifying, qualifying.lapTarget + 21500);
+      assert(qualifying.pitState === "stopped" && sendPracticeOut(qualifying, { tyre: "Medium", fuel: 10 })
+        && qualifying.outLap, "Every new qualifying stint must begin with another out lap");
+      const timedBeforeOutLap = qualifying.lapTimes.length;
+      advancePracticeSession(qualifying, qualifying.lapTarget);
+      assert(qualifying.lapTimes.length === timedBeforeOutLap,
+        "Later out laps must not replace the qualifying best");
+      const fuelRate = fuelPerLap(qualifyingBalance, "Push", []);
+      const targets = [2, 3, 4].map((laps) => {
+        const fuel = Math.ceil(laps * fuelRate * 10) / 10;
+        const run = qualifyingSession("Soft", fuel);
+        setDriverMode(run, "Push");
+        advancePracticeSession(run, run.lapTarget);
+        const flyingTarget = run.lapTarget;
+        advancePracticeSession(run, run.lapTarget);
+        assert(run.lapTimes.length === 1, `${laps}-lap fuel must allow a flying lap after the out lap`);
+        return flyingTarget;
+      });
+      assert(targets[0] < targets[1] && targets[1] < targets[2],
+        "Two-, three- and four-lap fuel loads must have distinct pace effects");
+      const dryRun = qualifyingSession("Soft", .1);
+      advancePracticeSession(dryRun, dryRun.lapTarget);
+      advancePracticeSession(dryRun, dryRun.lapTarget);
+      assert(dryRun.lapTimes.length === 0 && dryRun.invalidLaps === 1,
+        "A flying lap without sufficient fuel must not set a qualifying time");
+      advancePracticeSession(dryRun, SPRINT_QUALIFYING_DURATION);
+      assert(dryRun.elapsed === SPRINT_QUALIFYING_DURATION,
+        "Sprint qualifying must stop at exactly 15 minutes");
+      Object.assign(qualifyingBalance.qualifyingAI, {
+        initialDelayMinMs: 1000, initialDelayMaxMs: 1000, garageMinMs: 1000, garageMaxMs: 1000,
+        flyingLapsMin: 1, flyingLapsMax: 1,
+      });
+      let qualifyingRoll = .1;
+      const qualifyingAI = createPracticeClassification(playerDriver, neutralTeam,
+        [{ driver: { name: "Qualifying AI", ...neutralDriver }, team: neutralTeam }], 5.412,
+        "Sunny", "Green", qualifyingBalance, () => qualifyingRoll, true);
+      const qualifier = qualifyingAI.opponents[0];
+      advancePracticeClassification(qualifyingAI, 1000);
+      assert(qualifier.session.tyre === "Soft" && qualifier.session.mode === "Push"
+        && qualifier.session.fuel >= 2 * fuelRate, "AI must use Push with enough fuel for its planned laps");
+      advancePracticeClassification(qualifyingAI, qualifier.session.lapTarget);
+      assert(qualifier.bestLap === null && qualifier.session && !qualifier.session.outLap,
+        "AI out laps must not appear in qualifying classification");
+      advancePracticeClassification(qualifyingAI, qualifier.session.lapTarget);
+      assert(qualifier.bestLap !== null && qualifier.bestLapTyre === "Soft" && qualifier.session === null,
+        "AI flying laps must be classified before returning to the garage");
+      qualifyingRoll = .9;
+      advancePracticeClassification(qualifyingAI, 1000);
+      assert(qualifier.session && qualifier.session.tyre === "Medium" && qualifier.session.outLap,
+        "AI must make another run and allow mixed dry compounds");
+      const aiClassification = createPracticeClassification(playerDriver, neutralTeam,
+        [{ driver: aiDriver, team: neutralTeam }], 5.412, "Sunny", "Green", aiBalance, () => .5);
+      const playerPractice = createPracticeSession(playerDriver, neutralTeam, [], 5.412, () => .5);
+      const ai = aiClassification.opponents[0];
+      assert(practiceClassification(aiClassification, playerPractice).every((entry) => entry.bestLap === null)
+        && ai.session === null, "Classification must start without timed laps and AI in the garage");
+      advancePracticeClassification(aiClassification, 999);
+      assert(ai.session === null, "AI must wait until its scheduled garage exit");
+      advancePracticeClassification(aiClassification, 0);
+      assert(ai.garageRemaining === 1, "Paused simulation must not advance AI run plans");
+      advancePracticeClassification(aiClassification, 1);
+      assert(ai.session && ai.session.tyre === "Medium", "AI must start a dry-tyre run after its scheduled exit");
+      advancePracticeClassification(aiClassification, ai.session.lapTarget);
+      assert(ai.bestLap !== null && practiceClassification(aiClassification, playerPractice)[0].driver === aiDriver,
+        "AI laps must populate and sort the classification");
+      advancePracticeClassification(aiClassification, ai.session.lapTarget);
+      assert(ai.session === null && practiceClassification(aiClassification, playerPractice)[0].inPit,
+        "AI must return to the garage after its stint");
+      advancePracticeClassification(aiClassification, 1000);
+      assert(ai.session && ai.session.lapTimes.length === 0, "AI must be able to leave for another stint");
+      playerPractice.lapTimes.push(ai.bestLap - 500);
+      playerPractice.lapTyres.push("Medium");
+      assert(practiceClassification(aiClassification, playerPractice)[0].player,
+        "The player's best lap must participate in classification ordering");
+      const tyrePractice = createPracticeSession(playerDriver, neutralTeam, [], 5.412, () => .5);
+      const playerLap = (tyre, time) => {
+        if (tyrePractice.pitState === "stopped") sendPracticeOut(tyrePractice, { tyre, fuel: 100 });
+        tyrePractice.lapTarget = time;
+        callToPit(tyrePractice);
+        advancePracticeSession(tyrePractice, time + 21500);
+      };
+      playerLap("Medium", 100000);
+      assert(practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).bestLapTyre === "Medium",
+        "The player's best lap must record its compound");
+      sendPracticeOut(tyrePractice, { tyre: "Hard", fuel: 100 });
+      assert(practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).bestLapTyre === "Medium",
+        "Changing tyres without improving the best lap must not change its compound");
+      playerLap("Hard", 101000);
+      playerLap("Soft", 100000);
+      assert(practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).bestLapTyre === "Medium",
+        "A slower or equal lap must retain the first best lap's compound");
+      playerLap("Wet", 99000);
+      assert(practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).bestLapTyre === "Wet",
+        "A faster lap must replace the player's best-lap compound");
+      let tyreRoll = .5;
+      const tyreAI = createPracticeClassification(playerDriver, neutralTeam,
+        [{ driver: aiDriver, team: neutralTeam }], 5.412, "Sunny", "Green", aiBalance, () => tyreRoll);
+      const aiEntry = tyreAI.opponents[0];
+      const aiLap = (roll, time) => {
+        tyreRoll = roll;
+        advancePracticeClassification(tyreAI, aiEntry.garageRemaining);
+        aiEntry.stintLaps = 1;
+        aiEntry.modeRemaining = 200000;
+        aiEntry.session.lapTarget = time;
+        advancePracticeClassification(tyreAI, time);
+      };
+      aiLap(.5, 100000);
+      aiLap(.99, 101000);
+      assert(aiEntry.bestLap === 100000 && aiEntry.bestLapTyre === "Medium" && !aiEntry.session,
+        "AI best-lap compounds must survive a slower stint and a return to the garage");
+      aiLap(0, 99000);
+      assert(aiEntry.bestLap === 99000 && aiEntry.bestLapTyre === "Soft"
+        && practiceClassification(tyreAI, playerPractice).find((entry) => !entry.player).bestLapTyre === "Soft",
+      "A faster AI stint must update the best-lap compound in classification");
+      const makeBatch = () => createPracticeClassification(playerDriver, neutralTeam,
+        [{ driver: aiDriver, team: neutralTeam }], 5.412, "Sunny", "Green", aiBalance, () => .5);
+      const batch = makeBatch();
+      const incremental = makeBatch();
+      advancePracticeClassification(batch, 600000);
+      for (let i = 0; i < 60; i += 1) advancePracticeClassification(incremental, 10000);
+      assert(batch.opponents[0].bestLap === incremental.opponents[0].bestLap
+        && Boolean(batch.opponents[0].session) === Boolean(incremental.opponents[0].session),
+      "Fast-forward and smaller clock advances must agree for a deterministic AI run");
+      let aiRoll = 0;
+      const varied = createPracticeClassification(playerDriver, neutralTeam,
+        [{ driver: aiDriver, team: neutralTeam }], 5.412, "Sunny", "Green", aiBalance, () => aiRoll);
+      advancePracticeClassification(varied, 1000);
+      const variedSession = varied.opponents[0].session;
+      assert(variedSession.tyre === "Soft" && variedSession.fuel === aiBalance.practiceAI.fuelMinPercent
+        && variedSession.mode === "Push" && variedSession.programPaceMs < 0,
+      "AI run plans must use their selected tyre, fuel, mode and hidden programme");
+      aiRoll = .999999;
+      advancePracticeClassification(varied, aiBalance.practiceAI.modeChangeMinMs + 1);
+      assert(variedSession.mode === "Manage", "AI must change driver mode during a stint");
+      assert(practiceTyres("Sunny", "Green").join() === "Soft,Medium,Hard"
+        && practiceTyres("Drizzle", "Wet track").join() === "Intermediate"
+        && practiceTyres("Heavy rain", "Standing water").join() === "Wet"
+        && practiceTyres("Heavy rain", "Green").join() === "Soft,Medium,Hard",
+      "AI wet tyres must require matching weather and track conditions");
       for (const [tyre, fuel] of [["Soft", 10], ["Hard", 100], ["Intermediate", 45], ["Wet", 75]]) {
         const configured = createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5, { tyre, fuel });
         assert(configured.tyre === tyre && configured.fuel === fuel && configured.tyreWear === 0,
@@ -77,11 +366,11 @@
       const attack = practiceBaseline();
       const balanced = practiceBaseline();
       const defend = practiceBaseline();
-      setDriverMode(attack, "Attack");
-      setDriverMode(defend, "Defend");
+      setDriverMode(attack, "Push");
+      setDriverMode(defend, "Manage");
       assert(balanced.lapTarget - attack.lapTarget >= 300 && balanced.lapTarget - attack.lapTarget <= 500
         && defend.lapTarget - balanced.lapTarget >= 200 && defend.lapTarget - balanced.lapTarget <= 400,
-      "A full Attack or Defend lap must meet the specified pace differences");
+      "A full Push or Manage lap must meet the specified pace differences");
       for (const practice of [attack, balanced, defend]) advancePracticeSession(practice, practice.lapTarget);
       assert(attack.tyreWear > balanced.tyreWear && balanced.tyreWear > defend.tyreWear
         && attack.fuel < balanced.fuel && balanced.fuel < defend.fuel
@@ -109,17 +398,17 @@
         advancePracticeSession(practice, practice.lapTarget);
         return practice.lapTimes[0];
       };
-      assert(modeAtRoll("Attack", 1) < modeAtRoll("Balanced", 0)
-        && modeAtRoll("Defend", 0) > modeAtRoll("Balanced", 1),
+      assert(modeAtRoll("Push", 1) < modeAtRoll("Balanced", 0)
+        && modeAtRoll("Manage", 0) > modeAtRoll("Balanced", 1),
       "Even opposite extremes of lap variation must not mask a full-lap mode change");
       const midpoint = practiceBaseline();
       const midpointTarget = midpoint.lapTarget;
       advancePracticeSession(midpoint, midpointTarget / 2);
-      setDriverMode(midpoint, "Attack");
+      setDriverMode(midpoint, "Push");
       assert(midpoint.lapTarget === midpointTarget - 400, "A mid-lap command must not reapply wear or fuel");
       advancePracticeSession(midpoint, (1 - midpoint.lapProgress) * midpoint.lapTarget);
       assert(midpoint.lapTimes[0] === midpointTarget - 200,
-        "A half-lap Attack command must affect only the remaining half of the lap");
+        "A half-lap Push command must affect only the remaining half of the lap");
       const stint = configuredPractice("Soft", 100);
       for (let lap = 0; lap < 18; lap += 1) advancePracticeSession(stint, stint.lapTarget);
       assert(stint.lapTimes[1] > stint.lapTimes[0] && stint.tyreWear === 100,
@@ -129,18 +418,18 @@
       assert(stint.lapTarget < wornLap && stint.fuel < 100,
         "With tyre condition unchanged, burning fuel must naturally improve lap pace");
       const changed = configuredPractice("Soft", 100);
-      setDriverMode(changed, "Attack");
+      setDriverMode(changed, "Push");
       advancePracticeSession(changed, changed.lapTarget);
-      setDriverMode(changed, "Defend");
+      setDriverMode(changed, "Manage");
       advancePracticeSession(changed, changed.lapTarget);
       assert(changed.lapTimes[1] > changed.lapTimes[0],
-        "Switching from Attack to Defend must produce a slower lap in history");
+        "Switching from Push to Manage must produce a slower lap in history");
       const fullyUpgraded = createPracticeSession(
         { strengths: ["Qualifying pace", "Braking"], weakness: "None" },
         { bonus: "Straight-line speed", weakness: "None" },
         [{ stat: "Handling", amount: 20 }], 5.412, () => 0);
       const maxedBalanced = fullyUpgraded.lapTarget;
-      setDriverMode(fullyUpgraded, "Attack");
+      setDriverMode(fullyUpgraded, "Push");
       assert(fullyUpgraded.lapTarget < maxedBalanced, "Driver mode must still affect pace at the upgrade limit");
       const economy = createPracticeSession(neutralDriver, neutralTeam,
         [{ id: "tyre-insight", level: 2 }, { id: "fuel-mapping", level: 2 }], 5.412, () => .5);
@@ -150,30 +439,37 @@
       const pit = practiceBaseline();
       advancePracticeSession(pit, pit.lapTarget / 2);
       const progressBeforeMode = pit.lapProgress;
-      setDriverMode(pit, "Attack");
+      setDriverMode(pit, "Push");
       assert(pit.lapProgress === progressBeforeMode && callToPit(pit) && !callToPit(pit),
         "Changing mode must not move the car and a pit call must not duplicate");
       advancePracticeSession(pit, (1 - pit.lapProgress) * pit.lapTarget);
-      assert(pit.pitState === "stopped" && pit.lapProgress === 0 && pit.lapTimes.length === 1
-        && pit.pitRemaining === 21500, "A called car must stop at the lap boundary");
+      assert(pit.pitState === "entering" && pit.lapProgress === 0 && pit.lapTimes.length === 1
+        && pit.pitRemaining === 21500, "A called car must enter the pit at the lap boundary");
       const pitFuel = pit.fuel;
       advancePracticeSession(pit, 10000);
-      assert(pit.pitState === "stopped" && pit.pitRemaining === 11500 && pit.fuel === pitFuel,
+      assert(pit.pitState === "entering" && pit.pitRemaining === 11500 && pit.fuel === pitFuel,
         "The pit countdown must consume session time without movement or refuelling");
-      assert(selectPitTyre(pit, "Soft") && pit.tyre === "Medium", "The selected tyre must wait for the pit timer");
+      assert(!sendPracticeOut(pit, { tyre: "Soft", fuel: 35 }) && pit.tyre === "Medium",
+        "The car cannot leave before reaching the garage");
       advancePracticeSession(pit, 11500);
-      assert(pit.pitState === "none" && pit.tyre === "Soft" && pit.tyreWear === 0 && pit.fuel === pitFuel,
-        "The car must leave on fresh selected tyres without refuelling");
-      advancePracticeSession(pit, pit.lapTarget);
-      assert(pit.lapTimes[1] > pit.lapTarget + 20000, "Pit time must count in the next completed lap");
+      assert(pit.pitState === "stopped" && pit.fuel === pitFuel, "The car must stay in the garage");
+      advancePracticeSession(pit, 30000);
+      assert(pit.lapTimes.length === 1 && pit.lapElapsed === 0 && pit.fuel === pitFuel,
+        "Waiting in the garage must not create laps or consume fuel");
+      assert(sendPracticeOut(pit, { tyre: "Soft", fuel: 35 }) && pit.pitState === "none"
+        && pit.tyre === "Soft" && pit.tyreWear === 0 && pit.fuel === 35,
+      "Send Out must fit the selected tyre and fuel");
+      const newLapTarget = pit.lapTarget;
+      advancePracticeSession(pit, newLapTarget);
+      assert(pit.lapTimes[1] === newLapTarget, "Pit and garage time must not count in a new stint lap");
       const waiting = practiceBaseline();
-      callToPit(waiting);
-      advancePracticeSession(waiting, waiting.lapTarget + 30000);
-      assert(waiting.pitState === "stopped" && waiting.pitRemaining === 0,
-        "The car must wait at the pit after the timer if no tyre is selected");
-      selectPitTyre(waiting, "Hard");
-      assert(waiting.pitState === "none" && waiting.tyre === "Hard",
-        "A tyre selected after the countdown must release the car");
+      parkPracticeSession(waiting);
+      advancePracticeSession(waiting, 30000);
+      assert(waiting.pitState === "stopped" && waiting.elapsed === 30000 && waiting.lapTimes.length === 0
+        && waiting.fuel === 100 && waiting.tyreWear === 0,
+      "Starting in the garage must advance the session without driving");
+      assert(sendPracticeOut(waiting, { tyre: "Hard", fuel: 10 }) && waiting.tyre === "Hard" && waiting.fuel === 10,
+        "Send Out must start the initial stint with the chosen setup");
       const endingInPit = practiceBaseline();
       callToPit(endingInPit);
       advancePracticeSession(endingInPit, endingInPit.lapTarget);
@@ -198,16 +494,16 @@
       assert(untuned.lapTarget - tuned.lapTarget === 300,
         "Edited vehicle stat gains must affect the very next generated lap");
       const targetBeforeEdit = tuned.lapTarget;
-      setDriverMode(tuned, "Attack");
-      editableBalance.modes.Attack.pace = -1000;
+      setDriverMode(tuned, "Push");
+      editableBalance.modes.Push.pace = -1000;
       setDriverMode(tuned, "Balanced");
       assert(tuned.lapTarget === targetBeforeEdit,
         "Changing a mode's balance mid-lap must not distort a subsequent mode switch");
       editableBalance.tyres.Soft.wear = 10;
-      editableBalance.modes.Attack.fuel = 2;
+      editableBalance.modes.Push.fuel = 2;
       const tunedConsumption = createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5,
         { tyre: "Soft", fuel: 100 }, editableBalance);
-      setDriverMode(tunedConsumption, "Attack");
+      setDriverMode(tunedConsumption, "Push");
       advancePracticeSession(tunedConsumption, tunedConsumption.lapTarget);
       assert(Math.abs(tunedConsumption.tyreWear - 14) < .001 && Math.abs(tunedConsumption.fuel - 96.4) < .001,
         "Edited tyre and mode multipliers must drive actual wear and fuel consumption");
@@ -280,10 +576,10 @@
       const extreme = createBalance();
       extreme.lap.baseTimeMs = 1000;
       extreme.lap.baseClampMs = 0;
-      extreme.modes.Attack.pace = -30000;
+      extreme.modes.Push.pace = -30000;
       const extremeSession = createPracticeSession(neutralDriver, neutralTeam, [], 5.412, () => .5,
         { tyre: "Medium", fuel: 100 }, extreme);
-      setDriverMode(extremeSession, "Attack");
+      setDriverMode(extremeSession, "Push");
       setDriverMode(extremeSession, "Balanced");
       assert(extremeSession.lapTarget === extreme.lap.minimumLapMs,
         "Switching from a clamped mode must not add its entire pace penalty to the lap");
@@ -320,14 +616,11 @@
         "The developer balance panel must not be present without developer mode");
       const toggle = root.querySelector('[data-action="toggle-command"]');
       const commandBody = root.querySelector("#pit-wall-command-content");
-      assert(toggle.getAttribute("aria-expanded") === "false" && commandBody.inert,
-        "Command Centre must start collapsed");
-      toggle.click();
       assert(toggle.getAttribute("aria-expanded") === "true" && !commandBody.inert,
-        "Command Centre must expand");
+        "Command Centre must start expanded");
       toggle.click();
       assert(toggle.getAttribute("aria-expanded") === "false" && commandBody.inert,
-        "Command Centre must collapse again");
+        "Command Centre must collapse");
       root.querySelector('[data-action="new-game"]').click();
 
       const cards = [...root.querySelectorAll("[data-driver-index]")];
@@ -415,6 +708,215 @@
       await root.querySelector(".pit-wall-circuit img").decode();
 
       const bahrainWeekend = game.weekendState.weekend;
+      root.querySelector('[data-action="skip-session"]').click();
+      assert(game.isSprintQualifying() && root.querySelector('[data-timing="remaining"]').textContent === "15:00"
+        && Number(root.querySelector("[data-setup-fuel]").min) === .1,
+      "Sprint Qualifying must offer a 15-minute session with short-stint fuel choices");
+      root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
+      assert(game.weekendState.practice.pitState === "stopped"
+        && root.querySelector(".pit-wall-classification h4").textContent === "Sprint Qualifying Classification"
+        && !root.querySelector('[data-action="send-out"]').disabled,
+      "Sprint Qualifying must start in the garage with its live classification");
+      root.querySelector('[data-driver-mode="Push"]').click();
+      root.querySelector('[data-setup-tyre="Soft"]').click();
+      const qualifyingFuel = root.querySelector("[data-setup-fuel]");
+      assert(!root.querySelector("[data-fuel-laps]"), "Qualifying must use the slider without fuel shortcuts");
+      qualifyingFuel.value = "4.7";
+      qualifyingFuel.dispatchEvent(new Event("input", { bubbles: true }));
+      assert(root.querySelector("[data-setup-fuel-value]").textContent.includes("~2.0 laps")
+        && root.querySelector('[data-timing="fuel-percent"]').textContent === "100%",
+      "Pending qualifying fuel must not replace the current fuel reading before Send Out");
+      root.querySelector('[data-action="send-out"]').click();
+      assert(root.querySelector("[data-qualifying-status]").textContent.includes("Out Lap")
+        && root.querySelector("[data-qualifying-status]").textContent.includes("Tyres Warming")
+        && root.querySelector(".pit-wall-lap-entry.is-current").textContent.includes("Out Lap")
+        && root.querySelector('[data-timing="fuel-percent"]').textContent === "4.7%"
+        && root.querySelector('[data-timing="fuel-range"]').textContent
+          === `~${(4.7 / fuelPerLap(game.balance, "Push", game.activeDiscoveries())).toFixed(1)} laps remaining`,
+      "The first qualifying lap must be visibly identified as the out lap");
+      root.querySelector('[data-driver-mode="Manage"]').click();
+      assert(root.querySelector('[data-timing="fuel-range"]').textContent
+        === `~${(4.7 / fuelPerLap(game.balance, "Manage", game.activeDiscoveries())).toFixed(1)} laps remaining`,
+      "The current fuel range must respond to driver mode changes");
+      root.querySelector('[data-driver-mode="Push"]').click();
+      game.clearSessionTimer();
+      const sprintPractice = game.weekendState.practice;
+      sprintPractice.random = () => .5;
+      game.weekendState.timerStartedAt -= sprintPractice.lapTarget;
+      game.syncPracticeClock();
+      assert(sprintPractice.lapTimes.length === 0
+        && root.querySelector("[data-qualifying-status]").textContent === "Flying Lap"
+        && !root.querySelector(".pit-wall-classification-row.is-player .pit-wall-tyre-label"),
+      "The out lap must not enter the qualifying classification");
+      game.weekendState.timerStartedAt -= sprintPractice.lapTarget;
+      game.syncPracticeClock();
+      assert(sprintPractice.lapTimes.length === 1
+        && root.querySelector(".pit-wall-classification-row.is-player .pit-wall-tyre-label").dataset.tyre === "Soft",
+      "A completed flying lap must update the player's qualifying classification");
+      game.weekendState.timerStartedAt -= SPRINT_QUALIFYING_DURATION;
+      assert(game.syncPracticeClock() && sprintPractice.elapsed === SPRINT_QUALIFYING_DURATION,
+        "The qualifying clock must expire at 15 minutes");
+      game.completeSession();
+      const sprintGrid = game.weekendState.sprintGrid;
+      assert(game.weekendState.phase === "review"
+        && root.querySelector("#pit-wall-review-title").textContent === "Sprint Qualifying Complete"
+        && root.querySelector(".pit-wall-session-review").textContent.includes(`P${sprintGrid.position}`)
+        && sprintGrid.position === sprintGrid.entries.findIndex((entry) => entry.player) + 1
+        && sprintGrid.playerBest === Math.min(...sprintPractice.lapTimes)
+        && sprintGrid.poleTime === sprintGrid.entries[0].bestLap
+        && root.querySelector(".pit-wall-classification h4").textContent === "Final Sprint Qualifying Classification",
+      "The qualifying review must show the correct grid, pole time and player best");
+      root.querySelector('[data-action="continue-review"]').click();
+      root.querySelector('[data-discovery-index="0"]').click();
+      assert(game.weekendState.sprintGrid === sprintGrid && game.weekendState.sessionIndex === 2
+        && root.querySelector(".pit-wall-session-details").textContent.includes(`Sprint Grid: P${sprintGrid.position}`),
+      "The qualifying grid must remain available for the upcoming Sprint Race");
+      let raceNow = 0;
+      try {
+        Object.defineProperty(performance, "now", { configurable: true, value: () => raceNow });
+        root.querySelector('[data-driver-mode="Push"]').click();
+        root.querySelector('[data-setup-tyre="Soft"]').click();
+        const raceFuel = root.querySelector("[data-setup-fuel]");
+        raceFuel.value = "60";
+        raceFuel.dispatchEvent(new Event("input", { bubbles: true }));
+        root.querySelector('[data-action="start-session"]').click();
+        await waitForMarker(root);
+        const liveRace = game.weekendState.race;
+        const playerCar = liveRace.entries.find((entry) => entry.player);
+        assert(liveRace.entries.map((entry) => entry.driver.name).join("|")
+          === sprintGrid.entries.map((entry) => entry.driver.name).join("|")
+          && playerCar.session.tyre === "Soft" && playerCar.session.fuel === 60
+          && playerCar.session.mode === "Push" && root.querySelector("[data-setup-fuel]").disabled
+          && !root.querySelector('[data-action="send-out"]:not([hidden])')
+          && root.querySelectorAll(".pit-wall-start-grid span").length === 10
+          && [...root.querySelectorAll(".pit-wall-start-grid span")].every((marker, index) =>
+            marker.dataset.tyre === liveRace.entries[index].session.tyre)
+          && liveRace.startDuration >= 4000 && liveRace.startDuration <= 5000,
+        "The race must use qualifying order, the chosen setup and a full starting grid without refuelling");
+        const initialProgress = liveRace.entries.map((entry) => entry.session.lapProgress);
+        for (let light = 1; light <= 5; light += 1) {
+          raceNow += 600;
+          game.syncPracticeClock();
+          assert(root.querySelectorAll(".pit-wall-start-lights .is-lit").length === light
+            && !liveRace.started && liveRace.entries.every((entry, index) => entry.session.lapProgress === initialProgress[index]),
+          `Light ${light} must illuminate without launching the cars`);
+        }
+        raceNow = liveRace.startDuration - 1;
+        game.syncPracticeClock();
+        assert(!liveRace.started, "Cars must wait for the full random lights-out delay");
+        raceNow += 2;
+        game.syncPracticeClock();
+        assert(liveRace.started && !root.querySelector(".pit-wall-start-grid, .pit-wall-start-lights")
+          && [...root.querySelectorAll(".pit-wall-moving-driver")].every((marker) => marker.style.display !== "none"),
+        "Lights out must launch all cars together");
+        const raceMarkers = [...root.querySelectorAll(".pit-wall-moving-driver")];
+        assert(raceMarkers.every((marker, index) => marker.dataset.tyre === liveRace.entries[index].session.tyre
+          && marker.closest('[role="img"]').getAttribute("aria-label").includes(marker.dataset.tyre)),
+        "Each visible race marker must show and announce its fitted tyre");
+        root.querySelector('[data-setup-tyre="Hard"]').click();
+        root.querySelector('[data-action="call-pit"]').click();
+        raceNow += 2 * playerCar.session.lapTarget + game.balance.lap.pitBaseMs + 1000;
+        game.syncPracticeClock();
+        assert(playerCar.session.tyre === "Hard" && playerCar.session.fuel < 60
+          && playerCar.session.fuel > 50 && !root.querySelector("[data-setup-fuel]:not(:disabled)")
+          && raceMarkers[liveRace.entries.indexOf(playerCar)].dataset.tyre === "Hard",
+        "The player's pit stop must change tyres while retaining the remaining race fuel");
+        raceNow += 10000000;
+        assert(game.syncPracticeClock(), "The sprint must finish after all cars finish or retire");
+        game.completeSession();
+        const finalRace = sprintClassification(liveRace);
+        const earned = game.weekendState.raceResult.points;
+        assert(game.weekendState.phase === "review"
+          && root.querySelector("#pit-wall-review-title").textContent === "Sprint Results"
+          && root.querySelector(".pit-wall-session-review").textContent.includes("Points Earned")
+          && root.querySelector(".pit-wall-classification h4").textContent === "Final Classification"
+          && root.querySelector(".pit-wall-session-review .pit-wall-standings tr.is-player")
+          && game.championship.find((entry) => entry.player).points === earned
+          && earned === (playerCar.retired ? 0 : SPRINT_POINTS[finalRace.indexOf(playerCar)] || 0),
+        "The finish must award sprint points and immediately display updated standings");
+        game.completeSession();
+        assert(game.championship.find((entry) => entry.player).points === earned,
+          "Sprint points must not be awarded twice");
+        root.querySelector('[data-action="continue-review"]').click();
+        root.querySelector('[data-discovery-index="0"]').click();
+        assert(game.weekendState.sessionIndex === 3
+          && !root.querySelector(".pit-wall-panel-left .pit-wall-standings")
+          && game.championship.find((entry) => entry.player).points === earned,
+        "Championship points must remain stored without occupying the Driver panel");
+      } finally {
+        delete performance.now;
+      }
+      let gpNow = 0;
+      try {
+        Object.defineProperty(performance, "now", { configurable: true, value: () => gpNow });
+        const retainedSprintGrid = game.weekendState.sprintGrid;
+        const previousPoints = new Map(game.championship.map((entry) => [entry.driver.name, entry.points]));
+        assert(game.isQualifying() && !game.isSprintQualifying(), "The next session must be ordinary qualifying");
+        root.querySelector('[data-action="start-session"]').click();
+        await waitForMarker(root);
+        assert(game.weekendState.practice.pitState === "stopped"
+          && game.weekendState.practice.duration === SPRINT_QUALIFYING_DURATION,
+        "Ordinary qualifying must use the same 15-minute garage workflow");
+        root.querySelector('[data-action="send-out"]').click();
+        gpNow += SPRINT_QUALIFYING_DURATION;
+        game.syncPracticeClock();
+        game.completeSession();
+        const qualifyingGrid = game.weekendState.grandPrixGrid;
+        assert(qualifyingGrid && game.weekendState.sprintGrid === retainedSprintGrid
+          && root.querySelector("#pit-wall-review-title").textContent === "Qualifying Complete",
+        "Ordinary qualifying must retain a separate Grand Prix grid");
+        root.querySelector('[data-action="continue-review"]').click();
+        root.querySelector('[data-discovery-index="0"]').click();
+        root.querySelector('[data-action="start-session"]').click();
+        await waitForMarker(root);
+        const race = game.weekendState.race;
+        assert(race.laps === 57 && race.grandPrix
+          && race.entries.map((entry) => entry.driver.name).join("|") === qualifyingGrid.entries.map((entry) => entry.driver.name).join("|")
+          && root.querySelectorAll(".pit-wall-start-grid span").length === 10
+          && root.querySelector("[data-setup-fuel]").disabled,
+        "The Bahrain Grand Prix must use the qualifying grid, 57 laps and locked starting fuel");
+        gpNow += 3000;
+        game.syncPracticeClock();
+        assert(root.querySelectorAll(".pit-wall-start-lights .is-lit").length === 5 && !race.started,
+          "All five Grand Prix lights must illuminate before the launch delay");
+        gpNow += 20000000;
+        assert(game.syncPracticeClock(), "The Grand Prix must finish");
+        game.completeSession();
+        const final = sprintClassification(race);
+        assert(game.weekendState.phase === "review"
+          && root.querySelector("#pit-wall-review-title").textContent === "Race Results"
+          && root.querySelector(".pit-wall-session-review").textContent.includes("Tyre Usage")
+          && root.querySelector(".pit-wall-session-review").textContent.includes("Pit Stops")
+          && root.querySelector(".pit-wall-classification h4").textContent === "Final Classification"
+          && final.every((entry, index) => entry.points === (entry.retired ? 0 : GRAND_PRIX_POINTS[index] || 0)
+            && game.championship.find((standing) => standing.driver.name === entry.driver.name).points
+              === previousPoints.get(entry.driver.name) + entry.points),
+        "Grand Prix results must show strategy and add points to the sprint standings");
+        const table = root.querySelector(".pit-wall-session-review .pit-wall-standings");
+        assert(table && table.querySelector("tr.is-player")
+          && [...table.querySelectorAll("th")].map((cell) => cell.textContent).join("|") === "Pos|Driver|Team|Pts|Wins"
+          && table.querySelectorAll("tbody tr").length === 10
+          && !root.querySelector(".pit-wall-panel-left .pit-wall-standings"),
+        "The Main panel must show the highlighted championship table alongside final race classification");
+        game.completeSession();
+        assert(final.every((entry) => game.championship.find((standing) => standing.driver.name === entry.driver.name).points
+          === previousPoints.get(entry.driver.name) + entry.points), "Grand Prix points must not be awarded twice");
+      } finally {
+        delete performance.now;
+      }
+      game.championship = [];
+      game.renderWeekend(bahrainWeekend);
+      root.querySelector('[data-action="skip-session"]').click();
+      root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
+      root.querySelector('[data-action="complete-session"]').click();
+      assert(game.weekendState.sprintGrid.position === null && game.weekendState.sprintGrid.playerBest === null
+        && root.querySelector(".pit-wall-session-review").textContent.includes("No qualifying time"),
+      "Finishing without a flying lap must not fabricate a grid position");
+      game.permanentUpgrades = [];
+      game.uniqueRewards.clear();
+      game.renderWeekend(bahrainWeekend);
       const setupTyres = [...root.querySelectorAll("[data-setup-tyre]")];
       const setupFuel = root.querySelector("[data-setup-fuel]");
       assert(setupTyres.length === 5 && root.querySelector('[data-setup-tyre="Medium"]').getAttribute("aria-pressed") === "true"
@@ -434,14 +936,53 @@
         && root.querySelector("[data-setup-fuel]").value === "35", "Setup must survive a session rerender");
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
+      assert(game.weekendState.practice.pitState === "stopped"
+        && !root.querySelector('[data-action="send-out"]').disabled
+        && root.querySelector(".pit-wall-moving-driver").style.display === "none"
+        && !root.querySelector(".pit-wall-lap-entry.is-current"),
+      "Starting practice must keep the player in the garage until Send Out");
+      const entries = practiceClassification(game.weekendState.classification, game.weekendState.practice);
+      assert(entries.length === 10 && new Set(entries.map((entry) => entry.driver.name)).size === 10
+        && [...new Set(entries.map((entry) => entry.team.name))]
+          .every((team) => entries.filter((entry) => entry.team.name === team).length === 2)
+        && root.querySelectorAll(".pit-wall-moving-driver").length === 10
+        && !root.querySelector(".pit-wall-classification .pit-wall-tyre-label"),
+      "Practice must show all ten drivers without a best-lap tyre before a lap is set");
+      root.querySelector('[data-action="send-out"]').click();
       assert(game.weekendState.practice.tyre === "Soft" && game.weekendState.practice.fuel <= 35
-        && game.weekendState.practice.fuel > 34.9, "Starting practice must use the chosen setup");
+        && game.weekendState.practice.fuel > 34.9
+        && root.querySelector(".pit-wall-moving-driver").style.display !== "none",
+      "Send Out must apply the chosen setup and show the player marker");
+      const opponent = game.weekendState.classification.opponents[0];
+      opponent.garageRemaining = 1;
+      game.weekendState.timerStartedAt -= 2000;
+      game.syncPracticeClock();
+      const opponentInitials = opponent.driver.name.split(" ").map((part) => part[0]).join("");
+      const opponentMarker = root.querySelector(`[aria-label^="${opponentInitials} driver marker"] .pit-wall-moving-driver`);
+      assert(opponent.session && opponentMarker.style.display !== "none"
+        && opponentMarker.querySelector(".pit-wall-marker-team").getAttribute("fill") === opponent.team.colour
+        && opponentMarker.dataset.tyre === opponent.session.tyre
+        && [...root.querySelectorAll(".pit-wall-classification-row")].some((row) =>
+          row.textContent.includes(opponent.driver.name) && row.textContent.includes(opponentInitials)),
+      "A running AI marker must match its classification identity and team");
+      opponent.stintLaps = opponent.session.lapTimes.length + 1;
+      opponent.garageRemaining = 600000;
+      game.weekendState.timerStartedAt -= opponent.session.lapTarget + 1;
+      game.syncPracticeClock();
+      assert(!opponent.session && opponentMarker.style.display === "none",
+        "An AI marker must disappear when its stint ends");
+      opponent.garageRemaining = 1;
+      game.weekendState.timerStartedAt -= 2;
+      game.syncPracticeClock();
+      assert(opponent.session && opponentMarker.style.display !== "none", "An AI marker must reappear on a later stint");
       root.querySelector('[data-action="toggle-command"]').click();
-      root.querySelector('[data-driver-mode="Attack"]').click();
+      root.querySelector('[data-driver-mode="Push"]').click();
       const chosenPractice = game.weekendState.practice;
+      chosenPractice.lapTimes.length = 0;
+      chosenPractice.lapTyres.length = 0;
       chosenPractice.random = () => .5;
       advancePracticeSession(chosenPractice, (1 - chosenPractice.lapProgress) * chosenPractice.lapTarget);
-      root.querySelector('[data-driver-mode="Defend"]').click();
+      root.querySelector('[data-driver-mode="Manage"]').click();
       advancePracticeSession(chosenPractice, chosenPractice.lapTarget);
       game.updateTiming();
       const recordedLaps = [...root.querySelectorAll(".pit-wall-lap-entry")];
@@ -449,7 +990,7 @@
         && recordedLaps[1].textContent.includes(formatLapTime(chosenPractice.lapTimes[1]))
         && recordedLaps[2].textContent.includes(formatLapTime(chosenPractice.lapTimes[0]))
         && root.querySelector("[data-mode-feedback]").textContent.includes("less tyre wear & fuel"),
-      "A Soft Attack lap followed by Defend must show the slower lap and the mode trade-off");
+      "A Soft Push lap followed by Manage must show the slower lap and the mode trade-off");
       root.querySelector('[data-action="toggle-command"]').click();
       game.renderWeekend(bahrainWeekend);
       const trackerLabels = () => [...root.querySelectorAll(".pit-wall-session-step")]
@@ -461,11 +1002,12 @@
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
       const marker = root.querySelector(".pit-wall-moving-driver");
+      root.querySelector('[data-action="send-out"]').click();
       const position = marker.getAttribute("transform");
       await new Promise((resolve) => setTimeout(resolve, 350));
       assert(root.querySelector(".pit-wall-session-running").textContent.includes("Practice 1 Running")
         && marker.querySelector("text").textContent === game.driver.name.split(" ").map((part) => part[0]).join("")
-        && marker.querySelector("circle").getAttribute("fill") === game.team.colour
+        && marker.querySelector(".pit-wall-marker-team").getAttribute("fill") === game.team.colour
         && marker.getAttribute("transform") !== position
         && !root.querySelector(".pit-wall-route-line, .pit-wall-session-panel progress")
         && !root.querySelector('[data-action="toggle-route"]'),
@@ -477,14 +1019,22 @@
       "Practice telemetry must start with medium tyres and full fuel rather than duplicate lap counts");
       assert(!root.querySelector('[data-action="skip-session"]')
         && root.querySelector('[data-action="complete-session"]')
-        && [...root.querySelectorAll("[data-speed]")].map((button) => button.textContent).join("|") === "Pause|1x|10x|50x",
+        && [...root.querySelectorAll("[data-speed]")].map((button) => button.textContent).join("|") === "⏸|1x|10x|50x",
       "Running practice must expose pause, speed and completion controls without Skip Session");
       root.querySelector('[data-action="toggle-command"]').click();
-      root.querySelector('[data-driver-mode="Attack"]').click();
-      assert(root.querySelector("[data-command-mode]").textContent.includes("Attack")
-        && game.weekendState.practice.mode === "Attack"
+      root.querySelector('[data-driver-mode="Push"]').click();
+      assert(root.querySelector("[data-command-mode]").textContent.includes("Push")
+        && game.weekendState.practice.mode === "Push"
         && root.querySelector("[data-mode-feedback]").textContent.includes("more tyre wear & fuel"),
       "The command centre must show the active mode and its trade-offs");
+      const currentFuel = game.weekendState.practice.fuel;
+      root.querySelector('[data-setup-tyre="Soft"]').click();
+      const plannedFuel = root.querySelector("[data-setup-fuel]");
+      plannedFuel.value = "35";
+      plannedFuel.dispatchEvent(new Event("input", { bubbles: true }));
+      assert(game.weekendState.practice.tyre === "Medium" && game.weekendState.practice.fuel <= currentFuel
+        && game.weekendState.practice.fuel > currentFuel - .1,
+      "Preparing a stint while circulating must not alter the current tyre or refuel");
       root.querySelector('[data-action="call-pit"]').click();
       assert(game.weekendState.practice.pitState === "called", "Call To Pit must queue the stop");
       game.weekendState.timerStartedAt -= (1 - game.weekendState.practice.lapProgress) * game.weekendState.practice.lapTarget + 1;
@@ -493,11 +1043,12 @@
       const pitPath = root.querySelector(".pit-wall-marker-overlay path");
       const pitStart = pitPath.getPointAtLength(0);
       const stoppedMarker = marker.transform.baseVal.consolidate().matrix;
-      assert(game.weekendState.practice.pitState === "stopped"
+      assert(game.weekendState.practice.pitState === "entering"
         && Math.hypot(stoppedMarker.e - pitStart.x, stoppedMarker.f - pitStart.y) < 1
-        && root.querySelector("[data-pit-status]").textContent.includes("Pit Stop In Progress")
-        && !root.querySelector("[data-pit-tyres]").hidden,
-      "The marker must stop at waypoint zero and offer tyre choices");
+        && marker.style.display === "none"
+        && root.querySelector("[data-pit-status]").textContent.includes("Pit entry")
+        && root.querySelector('[data-action="send-out"]').disabled,
+      "The player must enter the pit before Send Out becomes available");
       const fuelBeforeStop = game.weekendState.practice.fuel;
       root.querySelector('[data-speed="0"]').click();
       const pausedPitTime = game.weekendState.practice.pitRemaining;
@@ -510,23 +1061,28 @@
       game.syncPracticeClock();
       assert(game.weekendState.practice.pitRemaining <= pitRemainingBefore - 10000,
         "Session speed must accelerate the pit countdown");
-      root.querySelector('[data-pit-tyre="Soft"]').click();
+      assert(game.weekendState.practice.tyre === "Medium" && game.weekendState.practice.fuel === fuelBeforeStop,
+        "Pending setup must not change the fitted tyre or fuel");
       game.weekendState.timerStartedAt -= 1200;
       game.syncPracticeClock();
+      assert(game.weekendState.practice.pitState === "stopped" && !root.querySelector('[data-action="send-out"]').disabled,
+        "The driver must wait in the garage after pit entry");
+      root.querySelector('[data-action="send-out"]').click();
       assert(game.weekendState.practice.pitState === "none"
         && root.querySelector('[data-timing="tyre"]').textContent === "Soft"
-        && game.weekendState.practice.fuel <= fuelBeforeStop
-        && game.weekendState.practice.fuel > fuelBeforeStop - .1,
-      "The countdown and tyre selection must release the car without refuelling");
+        && game.weekendState.practice.fuel === 35,
+      "Send Out must release the car with the prepared tyre and fuel");
       root.querySelector('[data-action="toggle-command"]').click();
       game.renderWeekend(bahrainWeekend);
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
+      root.querySelector('[data-action="send-out"]').click();
       const lapHistory = () => [...root.querySelectorAll(".pit-wall-lap-entry")];
       assert(lapHistory().length === 1 && lapHistory()[0].textContent.includes("Lap 1")
         && lapHistory()[0].textContent.includes("In Progress"),
       "A running practice must start with the current lap in the history");
       game.weekendState.practice.lapTimes.push(95882, 94921, 94230);
+      game.weekendState.practice.lapTyres.push("Medium", "Medium", "Medium");
       game.updateTiming();
       assert(lapHistory().map((entry) => entry.textContent.trim().replace(/\s+/g, " ")).join("|")
         === "Lap 4 In Progress|Lap 3 1:34.230|Lap 2 1:34.921|Lap 1 1:35.882"
@@ -534,17 +1090,20 @@
         && lapHistory()[1].getAttribute("aria-label").includes("fastest lap"),
       "Lap history must be newest first and identify the fastest lap");
       game.weekendState.practice.lapTimes.push(93000);
+      game.weekendState.practice.lapTyres.push("Medium");
       game.updateTiming();
       assert(lapHistory()[1].textContent.includes("1:33.000")
         && lapHistory()[1].classList.contains("is-fastest")
         && lapHistory().filter((entry) => entry.classList.contains("is-fastest")).length === 1,
       "A new best lap must take over the fastest highlight");
       game.weekendState.practice.lapTimes.push(93000);
+      game.weekendState.practice.lapTyres.push("Medium");
       game.updateTiming();
       assert(lapHistory()[1].classList.contains("is-fastest")
         && lapHistory().filter((entry) => entry.classList.contains("is-fastest")).length === 1,
       "A tied best must highlight the newest matching lap");
       game.weekendState.practice.lapTimes.length = 0;
+      game.weekendState.practice.lapTyres.length = 0;
       game.updateTiming();
       root.querySelector('[data-action="complete-session"]').click();
       assert(game.weekendState.phase === "review"
@@ -552,12 +1111,15 @@
         && root.querySelector(".pit-wall-session-review").textContent.includes("Minimum 3 laps")
         && !root.querySelector("[data-discovery-index]") && !root.querySelector(".pit-wall-lap-entry.is-current"),
       "Completing before three laps must show a review without discoveries");
+      const upgradesBeforeInsufficientReview = game.permanentUpgrades.length + game.weekendDiscoveries.length;
       root.querySelector('[data-action="continue-review"]').click();
-      assert(game.weekendState.sessionIndex === 1 && game.permanentUpgrades.length === 0
-        && game.weekendDiscoveries.length === 0, "Insufficient practice data must not award a reward");
+      assert(game.weekendState.sessionIndex === 1
+        && game.permanentUpgrades.length + game.weekendDiscoveries.length === upgradesBeforeInsufficientReview,
+      "Insufficient practice data must not award a reward");
       game.renderWeekend(bahrainWeekend);
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
+      root.querySelector('[data-action="send-out"]').click();
       for (let lap = 0; lap < 2; lap += 1) {
         game.weekendState.timerStartedAt -= game.weekendState.practice.lapTarget + 1;
         game.syncPracticeClock();
@@ -570,30 +1132,36 @@
       game.renderWeekend(bahrainWeekend);
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
+      root.querySelector('[data-action="send-out"]').click();
       root.querySelector('[data-speed="0"]').click();
       await new Promise((resolve) => setTimeout(resolve, 50));
       const pausedPosition = root.querySelector(".pit-wall-moving-driver").getAttribute("transform");
       const pausedPractice = game.weekendState.practice;
       const pausedValues = [pausedPractice.elapsed, pausedPractice.lapProgress, pausedPractice.tyreWear, pausedPractice.fuel];
+      const pausedOpponents = JSON.stringify(game.weekendState.classification.opponents);
       await new Promise((resolve) => setTimeout(resolve, 250));
       assert(root.querySelector('[data-speed="0"]').getAttribute("aria-pressed") === "true"
         && root.querySelector('[data-timing="speed"]').textContent === "Paused"
         && root.querySelector(".pit-wall-session-running").textContent.includes("Paused")
         && root.querySelector(".pit-wall-moving-driver").getAttribute("transform") === pausedPosition
         && [pausedPractice.elapsed, pausedPractice.lapProgress, pausedPractice.tyreWear, pausedPractice.fuel]
-          .every((value, index) => value === pausedValues[index]),
+          .every((value, index) => value === pausedValues[index])
+        && JSON.stringify(game.weekendState.classification.opponents) === pausedOpponents,
       "Pause must freeze the timer, marker and consumption");
       for (const speed of [1, 10, 50]) {
         root.querySelector(`[data-speed="${speed}"]`).click();
         const before = game.weekendState.practice.elapsed;
+        const opponentsBefore = JSON.stringify(game.weekendState.classification.opponents);
         game.weekendState.timerStartedAt -= 1000;
         game.syncPracticeClock();
         const change = game.weekendState.practice.elapsed - before;
         assert(change >= 1000 * speed && change < 1100 * speed
-          && root.querySelector('[data-timing="speed"]').textContent === `${speed}x`,
+          && root.querySelector('[data-timing="speed"]').textContent === `${speed}x`
+          && JSON.stringify(game.weekendState.classification.opponents) !== opponentsBefore,
         `${speed}x must scale simulated time`);
         await new Promise((resolve) => setTimeout(resolve, 35));
         const path = root.querySelector(".pit-wall-marker-overlay path");
+        game.routeMarker.update();
         const point = path.getPointAtLength(game.practiceProgress() * path.getTotalLength());
         const actual = root.querySelector(".pit-wall-moving-driver").transform.baseVal.consolidate().matrix;
         assert(Math.hypot(actual.e - point.x, actual.f - point.y) < 30,
@@ -615,6 +1183,7 @@
       game.renderWeekend(bahrainWeekend);
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
+      root.querySelector('[data-action="send-out"]').click();
       game.weekendState.timerStartedAt -= 300000;
       game.syncPracticeClock();
       const completedTimes = game.weekendState.practice.lapTimes;
@@ -661,8 +1230,16 @@
         for (let i = 1; i < 5; i += 1) {
           Math.random = () => i === 4 || (firstCategory === "permanent" && i === 1) ? .1 : .5;
           root.querySelector('[data-action="start-session"]').click();
-          fakeNow += 5100;
-          await new Promise((resolve) => setTimeout(resolve, 150));
+          if (game.isQualifying() || game.isRace()) {
+            await waitForMarker(root);
+            fakeNow += game.isRace() ? 20000000 : SPRINT_QUALIFYING_DURATION;
+            game.syncPracticeClock();
+            game.completeSession();
+            root.querySelector('[data-action="continue-review"]').click();
+          } else {
+            fakeNow += 5100;
+            await new Promise((resolve) => setTimeout(resolve, 150));
+          }
           assert(game.weekendState.phase === "discovery" && game.weekendState.options.length === 3
             && new Set(game.weekendState.options.map((item) => item.id)).size === 3
             && (i !== 4 || game.weekendState.options.every((item) => item.rarity !== "green")),
@@ -744,8 +1321,11 @@
         Object.defineProperty(performance, "now", { configurable: true, value: () => legendaryTime });
         Math.random = () => .1;
         root.querySelector('[data-action="start-session"]').click();
-        legendaryTime = 5100;
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await waitForMarker(root);
+        legendaryTime = SPRINT_QUALIFYING_DURATION;
+        game.syncPracticeClock();
+        game.completeSession();
+        root.querySelector('[data-action="continue-review"]').click();
         assert(game.weekendState.rerollsRemaining === 1 && game.weekendState.replacementsRemaining === 1
           && game.weekendState.options.every((item) => ![research, review, legacy].some((owned) => owned.id === item.id)),
           "Unique gold upgrades must grant rerolls and never reappear in an offer");
@@ -774,8 +1354,11 @@
         "Legacy Lab must double the effect stored for a future blue selection");
         game.weekendState.sessionResults[4] = "pending";
         root.querySelector('[data-action="start-session"]').click();
-        legendaryTime += 5100;
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await waitForMarker(root);
+        legendaryTime += 20000000;
+        game.syncPracticeClock();
+        game.completeSession();
+        root.querySelector('[data-action="continue-review"]').click();
         assert(game.weekendState.rerollsRemaining === 1 && game.weekendState.replacementsRemaining === 1,
           "Research Charter and Design Review must replenish their rerolls each session");
       } finally {
@@ -994,8 +1577,9 @@
             for (const roll of round === 1 ? [.1, .5] : [.95, .99]) {
               Math.random = () => roll;
               root.querySelector('[data-action="start-session"]').click();
-              if (game.isPractice()) {
-                if (game.isBahrainPractice()) await waitForMarker(root);
+              if (game.isTimedSession()) {
+                if (game.hasBahrainRoute()) await waitForMarker(root);
+                root.querySelector('[data-action="send-out"]').click();
                 seasonTime += 600000;
                 game.syncPracticeClock();
                 root.querySelector('[data-action="complete-session"]').click();
@@ -1011,8 +1595,11 @@
             for (let i = 0; i < 4; i += 1) root.querySelector('[data-action="skip-session"]').click();
             Math.random = () => .95;
             root.querySelector('[data-action="start-session"]').click();
-            seasonTime += 5100;
-            await new Promise((resolve) => setTimeout(resolve, 150));
+            await waitForMarker(root);
+            seasonTime += 20000000;
+            game.syncPracticeClock();
+            game.completeSession();
+            root.querySelector('[data-action="continue-review"]').click();
             assert(game.weekendState.options.every((item) => item.rarity !== "green")
               && game.roundsCompleted === 23,
             "The final Grand Prix must offer post-race rewards before completing the season");
@@ -1047,7 +1634,7 @@
               && summary.textContent.includes("Weekend Wins")
               && summary.textContent.includes("Championship Position")
               && [...summary.querySelectorAll("dd")].map((item) => item.textContent).join("|")
-                === "4|2|1|Not available yet|Not available yet"
+                === `4|2|1|Not available yet|P${[...game.championship].sort((a, b) => b.points - a.points || a.order - b.order).findIndex((entry) => entry.player) + 1}`
               && game.permanentUpgrades.length === 4
               && game.permanentUpgrades.filter((item) => item.rarity === "purple").length === 2
               && game.permanentUpgrades.filter((item) => item.rarity === "gold").length === 1
@@ -1465,6 +2052,20 @@
         layoutGame.weekendState.phase = "ready";
         layoutGame.renderSession();
         frameRoot.querySelector('[data-action="start-session"]').click();
+        if (layoutGame.isBahrainPractice()) await waitForMarker(frameRoot);
+        frameRoot.querySelector('[data-action="send-out"]').click();
+        const classification = frameRoot.querySelector(".pit-wall-classification");
+        const classificationRows = [...classification.querySelectorAll(".pit-wall-classification-row")];
+        assert(classificationRows.length === 10
+          && classificationRows.every((row) => within(row, classification)
+            && row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1)
+          && within(frameRoot.querySelector(".pit-wall-driver-details"), frameRoot.querySelector(".pit-wall-panel-left")),
+        `All classification entries and Driver Details must fit at ${width}x${height}`);
+        const driverDetailsPanel = frameRoot.querySelector(".pit-wall-driver-details");
+        assert(classificationRows.every((row) => within(row, classification))
+          && within(driverDetailsPanel, frameRoot.querySelector(".pit-wall-panel-left"))
+          && !driverDetailsPanel.querySelector("summary, [data-detail-next]"),
+        `Expanded Driver Details must keep classification visible at ${width}x${height}`);
         assert(within(frameRoot.querySelector(".pit-wall-session-panel"), main)
           && within(circuit, main)
           && circuit.getBoundingClientRect().height > 30
@@ -1483,7 +2084,7 @@
         const initialHistoryFont = parseFloat(frame.contentWindow.getComputedStyle(history.querySelector(".pit-wall-lap-list")).fontSize);
         assert(within(summary, liveTiming) && within(history, liveTiming)
           && Math.abs(summary.getBoundingClientRect().width - liveTiming.getBoundingClientRect().width) < 1
-          && summary.getBoundingClientRect().height < (width === 568 ? 135 : 155)
+          && summary.getBoundingClientRect().height < (width === 568 ? 155 : 175)
           && summaryFont > (width === 568 ? 8 : 8.58) && bestFont > summaryFont
           && initialHistoryFont > (width === 568 ? 7.6 : 9)
           && [...summary.querySelectorAll("dl > div")].every((row) =>
@@ -1495,6 +2096,7 @@
           && !frameRoot.querySelector('[data-action="expand-lap-history"]'),
         `Short lap history must fit without scrolling at ${width}x${height}`);
         layoutGame.weekendState.practice.lapTimes = Array.from({ length: 70 }, (_, index) => 95000 - index);
+        layoutGame.weekendState.practice.lapTyres = Array(70).fill("Medium");
         layoutGame.updateTiming();
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         assert(lapList.children.length === 71 && lapList.scrollHeight > lapList.clientHeight
@@ -1513,6 +2115,7 @@
         assert(within(lapList.lastElementChild, lapList), `Oldest lap must be reachable at ${width}x${height}`);
         lapList.scrollTop = 0;
         layoutGame.weekendState.practice.lapTimes = [];
+        layoutGame.weekendState.practice.lapTyres = [];
         layoutGame.updateTiming();
         if (frameRoot.querySelector('[data-action="toggle-command"]').getAttribute("aria-expanded") !== "true") {
           frameRoot.querySelector('[data-action="toggle-command"]').click();
@@ -1524,8 +2127,14 @@
         await new Promise((resolve) => setTimeout(resolve, 250));
         const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
         const consolePanel = frameRoot.querySelector(".pit-wall-console");
+        assert([...classification.querySelectorAll(".pit-wall-classification-row")].every((row) =>
+          within(row, classification) && row.scrollWidth <= row.clientWidth + 1
+            && row.scrollHeight <= row.clientHeight + 1)
+          && within(classification, frameRoot.querySelector(".pit-wall-panel-left"))
+          && within(driverDetailsPanel, frameRoot.querySelector(".pit-wall-panel-left")),
+        `Classification must remain visible with expanded pit controls at ${width}x${height}`);
         assert(Object.entries(tyreColours).every(([tyre, colour]) =>
-          frame.contentWindow.getComputedStyle(frameRoot.querySelector(`[data-pit-tyre="${tyre}"]`), "::before").backgroundColor === colour),
+          frame.contentWindow.getComputedStyle(frameRoot.querySelector(`[data-setup-tyre="${tyre}"]`), "::before").backgroundColor === colour),
         `Pit tyre choices must use the same compound colours at ${width}x${height}`);
         assert(within(command, consolePanel)
           && within(liveTiming, timingContent) && within(circuit, main)
@@ -1540,19 +2149,73 @@
           && consolePanel.scrollHeight <= consolePanel.clientHeight + 1
           && consolePanel.scrollWidth <= consolePanel.clientWidth + 1,
         `Pit controls and telemetry must fit without scrolling at ${width}x${height}`);
-        frameRoot.querySelector('[data-pit-tyre="Intermediate"]').click();
+        frameRoot.querySelector('[data-setup-tyre="Intermediate"]').click();
         layoutGame.weekendState.timerStartedAt -= 22000;
         layoutGame.syncPracticeClock();
+        frameRoot.querySelector('[data-action="send-out"]').click();
         assert(frameRoot.querySelector('[data-timing="tyre"]').textContent === "Intermediate"
           && [...summary.querySelectorAll("dl > div")].every((row) =>
             row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1),
         `Long tyre names must fit telemetry at ${width}x${height}`);
         layoutGame.weekendState.practice.lapTimes = [];
+        layoutGame.weekendState.practice.lapTyres = [];
         layoutGame.updateTiming();
         layoutGame.weekendState.timerStartedAt -= 600000;
         layoutGame.syncPracticeClock();
+        const completedLapTimes = layoutGame.weekendState.practice.lapTimes;
+        const completedLapTyres = layoutGame.weekendState.practice.lapTyres;
+        const compounds = Object.keys(tyreColours);
+        layoutGame.weekendState.classification.opponents.forEach((entry, index) => {
+          entry.bestLap = 90000 + index * 100;
+          entry.bestLapTyre = compounds[index % compounds.length];
+        });
+        layoutGame.weekendState.practice.lapTimes = [89500];
+        layoutGame.weekendState.practice.lapTyres = ["Intermediate"];
+        layoutGame.updateTiming();
+        const upgradeList = driverDetailsPanel.querySelector(".pit-wall-upgrade-list");
+        upgradeList?.remove();
+        let classifiedRows = [...classification.querySelectorAll(".pit-wall-classification-row")];
+        assert(classifiedRows.some((row) => row.querySelector(".pit-wall-classification-time").textContent.includes(":"))
+          && classifiedRows.every((row) => within(row, classification)
+            && row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1
+            && [...row.children].every((item) => within(item, row) && item.scrollWidth <= item.clientWidth + 1)
+            && within(row.querySelector(".pit-wall-tyre-label"), row.querySelector(".pit-wall-classification-time")))
+          && Object.entries(tyreColours).every(([tyre, colour]) => {
+            const label = classification.querySelector(`.pit-wall-tyre-label[data-tyre="${tyre}"]`);
+            return label && label.textContent === tyre
+              && frame.contentWindow.getComputedStyle(label, "::before").backgroundColor === colour;
+          }),
+        `Populated classification must fit without clipping at ${width}x${height}`);
+        layoutGame.weekendState.classification.opponents.forEach((entry) => { entry.bestLapTyre = "Intermediate"; });
+        layoutGame.updateTiming();
+        classifiedRows = [...classification.querySelectorAll(".pit-wall-classification-row")];
+        assert(classifiedRows.every((row) =>
+          within(row, classification) && row.scrollWidth <= row.clientWidth + 1
+          && [...row.children].every((item) => within(item, row) && item.scrollWidth <= item.clientWidth + 1)),
+        `Long compound names must not clip any driver or lap time at ${width}x${height}`);
+        assert(classifiedRows.every((row) => within(row, classification))
+          && within(classification, frameRoot.querySelector(".pit-wall-panel-left"))
+          && within(driverDetailsPanel, frameRoot.querySelector(".pit-wall-panel-left")),
+        `Populated classification must remain visible with expanded Driver Details at ${width}x${height}`);
+        const driverContent = frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
+        assert(Math.abs(driverDetailsPanel.getBoundingClientRect().bottom
+          - (driverContent.getBoundingClientRect().bottom - 4)) < 1,
+        `Driver Details must be anchored to the bottom at ${width}x${height}`);
+        assert(driverDetailsPanel.textContent.includes("Driver")
+          && driverDetailsPanel.textContent.includes("Team")
+          && driverDetailsPanel.textContent.includes("Strengths")
+          && driverDetailsPanel.textContent.includes("Upgrades"),
+        "Driver Details must include driver, team, traits and upgrades");
+        if (upgradeList) driverDetailsPanel.append(upgradeList);
+        layoutGame.weekendState.practice.lapTimes = completedLapTimes;
+        layoutGame.weekendState.practice.lapTyres = completedLapTyres;
         frameRoot.querySelector('[data-action="complete-session"]').click();
         const reviewPanel = frameRoot.querySelector(".pit-wall-session-review");
+        assert(frameRoot.querySelector(".pit-wall-classification h4").textContent === "Final Practice Classification"
+          && frameRoot.querySelectorAll(".pit-wall-classification-row").length === 10
+          && frameRoot.querySelector(".pit-wall-classification-row.is-player .pit-wall-tyre-label").dataset.tyre
+            === completedLapTyres[completedLapTimes.indexOf(Math.min(...completedLapTimes))],
+        "Final classification must preserve the player's best-lap compound alongside the session review");
         assert(within(reviewPanel, main) && [...reviewPanel.querySelectorAll("dt, dd, p, button, h4")]
           .every((item) => within(item, reviewPanel) && item.scrollHeight <= item.clientHeight + 1
             && item.scrollWidth <= item.clientWidth + 1),
@@ -1703,6 +2366,24 @@
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       frameRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(frameRoot);
+      const tyreMarker = frameRoot.querySelector(".pit-wall-moving-driver");
+      const originalTyre = tyreMarker.dataset.tyre;
+      for (const [tyre, colour] of Object.entries(tyreColours)) {
+        tyreMarker.dataset.tyre = tyre;
+        assert(frame.contentWindow.getComputedStyle(tyreMarker.querySelector(".pit-wall-marker-tyre")).stroke === colour,
+          `${tyre} markers must use the matching compound colour`);
+      }
+      tyreMarker.dataset.tyre = originalTyre;
+      const desktopDetails = frameRoot.querySelector(".pit-wall-driver-details");
+      const desktopUpgrades = desktopDetails.querySelector(".pit-wall-upgrade-list");
+      desktopUpgrades.remove();
+      const desktopDriverContent = frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
+      assert(Math.abs(desktopDetails.getBoundingClientRect().bottom
+        - (desktopDriverContent.getBoundingClientRect().bottom - 4)) < 1
+        && desktopDetails.getBoundingClientRect().top
+          > frameRoot.querySelector(".pit-wall-classification").getBoundingClientRect().bottom + 20,
+      "Driver Details must stay at the bottom when desktop space remains beneath classification");
+      desktopDetails.append(desktopUpgrades);
       for (const level of [100, 75, 50, 25, 0]) {
         layoutGame.weekendState.practice.tyreWear = 100 - level;
         layoutGame.weekendState.practice.fuel = level;
@@ -1726,6 +2407,7 @@
         }
       }
       layoutGame.weekendState.practice.lapTimes = Array.from({ length: 70 }, (_, index) => 95000 - index);
+      layoutGame.weekendState.practice.lapTyres = Array(70).fill("Medium");
       layoutGame.updateTiming();
       for (const [width, height] of [[1210, 600], [1366, 768], [1440, 900]]) {
         frame.style.width = `${width}px`;
@@ -1755,6 +2437,202 @@
           && card.scrollHeight <= card.clientHeight + 1 && card.scrollWidth <= card.clientWidth + 1
           && Math.abs(card.getBoundingClientRect().top - desktopCards[0].getBoundingClientRect().top) < 1),
       "Desktop discoveries must replace the circuit with three side-by-side cards");
+      layoutGame.startDraft();
+      frameRoot.querySelector("[data-driver-index]").click();
+      frameRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+      frameRoot.querySelector("[data-team-index]").click();
+      frameRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+      frameRoot.querySelector('[data-action="confirm-season"]').click();
+      frameRoot.querySelector('[data-action="skip-session"]').click();
+      frameRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(frameRoot);
+      frameRoot.querySelector('[data-driver-mode="Push"]').click();
+      const layoutQualifyingFuel = frameRoot.querySelector("[data-setup-fuel]");
+      layoutQualifyingFuel.value = "10";
+      layoutQualifyingFuel.dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
+      frameRoot.querySelector('[data-action="send-out"]').click();
+      layoutGame.clearSessionTimer();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      for (const lap of ["out", "flying"]) {
+        if (lap === "flying") {
+          layoutGame.weekendState.timerStartedAt -= layoutGame.weekendState.practice.lapTarget;
+          layoutGame.syncPracticeClock();
+        }
+        for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+          frame.style.width = `${width}px`;
+          frame.style.height = `${height}px`;
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          const consolePanel = frameRoot.querySelector(".pit-wall-console");
+          const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
+          const panel = frameRoot.querySelector(".pit-wall-session-panel");
+          const currentLap = frameRoot.querySelector(".pit-wall-lap-entry.is-current");
+          const classification = frameRoot.querySelector(".pit-wall-classification");
+          assert(within(command, consolePanel) && command.scrollWidth <= command.clientWidth + 1
+            && command.scrollHeight <= command.clientHeight + 1
+            && [...command.querySelectorAll("button, label, [data-setup-fuel-value]")].every((item) => within(item, command))
+            && within(frameRoot.querySelector("[data-qualifying-status]"), panel)
+            && currentLap.scrollWidth <= currentLap.clientWidth + 1
+            && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification))
+            && [...frameRoot.querySelectorAll("[data-speed]")].every((button, index, buttons) =>
+              Math.abs(button.getBoundingClientRect().top - buttons[0].getBoundingClientRect().top) < 1)
+            && frameRoot.querySelector(".pit-wall-circuit").getBoundingClientRect().height > 30
+            && consolePanel.scrollHeight <= consolePanel.clientHeight + 1,
+          `Qualifying ${lap} lap controls and track must fit at ${width}x${height}: ${JSON.stringify({
+            command: within(command, consolePanel), commandWidth: command.scrollWidth - command.clientWidth,
+            commandHeight: command.scrollHeight - command.clientHeight,
+            controls: [...command.querySelectorAll("button, label, [data-setup-fuel-value]")].every((item) => within(item, command)),
+            status: within(frameRoot.querySelector("[data-qualifying-status]"), panel),
+            lapWidth: currentLap.scrollWidth - currentLap.clientWidth,
+            rows: [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification)),
+            circuit: frameRoot.querySelector(".pit-wall-circuit").getBoundingClientRect().height,
+            overflow: consolePanel.scrollHeight - consolePanel.clientHeight,
+          })}`);
+        }
+      }
+      layoutGame.weekendState.timerStartedAt -= layoutGame.weekendState.practice.lapTarget;
+      layoutGame.syncPracticeClock();
+      layoutGame.completeSession();
+      for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const review = frameRoot.querySelector(".pit-wall-session-review");
+        const main = frameRoot.querySelector(".pit-wall-track-display");
+        const classification = frameRoot.querySelector(".pit-wall-classification");
+        assert(within(review, main)
+          && [...review.querySelectorAll("h4, dt, dd, p, button")].every((item) => within(item, review)
+            && item.scrollWidth <= item.clientWidth + 1 && item.scrollHeight <= item.clientHeight + 1)
+          && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification)),
+        `Qualifying results and final classification must fit at ${width}x${height}`);
+      }
+      frameRoot.querySelector('[data-action="continue-review"]').click();
+      frameRoot.querySelector('[data-discovery-index="0"]').click();
+      frameRoot.querySelector('[data-driver-mode="Push"]').click();
+      const layoutRaceFuel = frameRoot.querySelector("[data-setup-fuel]");
+      layoutRaceFuel.value = "10";
+      layoutRaceFuel.dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
+      frameRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(frameRoot);
+      layoutGame.clearSessionTimer();
+      for (const stage of ["grid", "racing"]) {
+        if (stage === "racing") {
+          layoutGame.weekendState.timerStartedAt -= layoutGame.weekendState.race.startDuration + 1;
+          layoutGame.syncPracticeClock();
+          assert(frameRoot.querySelector("[data-pit-status]").textContent.includes("Fuel short"),
+            "The race must warn when the current mode cannot reach the finish");
+        }
+        for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+          frame.style.width = `${width}px`;
+          frame.style.height = `${height}px`;
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const consolePanel = frameRoot.querySelector(".pit-wall-console");
+          const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
+          const circuit = frameRoot.querySelector(".pit-wall-circuit");
+          const classification = frameRoot.querySelector(".pit-wall-classification");
+          assert(within(command, consolePanel) && command.scrollWidth <= command.clientWidth + 1
+            && command.scrollHeight <= command.clientHeight + 1
+            && [...command.querySelectorAll("button:not([hidden]), label, [data-setup-fuel-value]")].every((item) => within(item, command))
+            && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification))
+            && [...frameRoot.querySelectorAll("[data-speed]")].every((button, index, buttons) =>
+              Math.abs(button.getBoundingClientRect().top - buttons[0].getBoundingClientRect().top) < 1)
+            && circuit.getBoundingClientRect().height > 30
+            && (stage !== "grid" || within(frameRoot.querySelector(".pit-wall-start-grid"), circuit)
+              && within(frameRoot.querySelector(".pit-wall-start-lights"), circuit))
+            && consolePanel.scrollHeight <= consolePanel.clientHeight + 1,
+          `Sprint ${stage} controls and circuit must fit at ${width}x${height}`);
+        }
+      }
+      layoutGame.weekendState.timerStartedAt -= 10000000;
+      layoutGame.syncPracticeClock();
+      layoutGame.completeSession();
+      for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const review = frameRoot.querySelector(".pit-wall-session-review");
+        const classification = frameRoot.querySelector(".pit-wall-classification");
+        assert(within(review, frameRoot.querySelector(".pit-wall-track-display"))
+          && [...review.querySelectorAll("h4, dt, dd, p, button")].every((item) => within(item, review)
+            && item.scrollWidth <= item.clientWidth + 1 && item.scrollHeight <= item.clientHeight + 1)
+          && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification)),
+        `Sprint results and standings must fit at ${width}x${height}`);
+      }
+      const pointsAfterFirstSprint = new Map(layoutGame.championship.map((entry) => [entry.driver.name, entry.points]));
+      frameRoot.querySelector('[data-action="continue-review"]').click();
+      frameRoot.querySelector('[data-discovery-index="0"]').click();
+      frameRoot.querySelector('[data-action="skip-session"]').click();
+      frameRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(frameRoot);
+      layoutGame.clearSessionTimer();
+      layoutGame.weekendState.timerStartedAt -= 20000000;
+      layoutGame.syncPracticeClock();
+      layoutGame.completeSession();
+      for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const review = frameRoot.querySelector(".pit-wall-session-review");
+        const classification = frameRoot.querySelector(".pit-wall-classification");
+        assert(within(review, frameRoot.querySelector(".pit-wall-track-display"))
+          && [...review.querySelectorAll("h4, dt, dd, p, button")].every((item) => within(item, review)
+            && item.scrollWidth <= item.clientWidth + 1 && item.scrollHeight <= item.clientHeight + 1)
+          && [...classification.querySelectorAll(".pit-wall-classification-row")].every((item) => within(item, classification))
+          && [...review.querySelectorAll(".pit-wall-standings th, .pit-wall-standings td")].every((item) => within(item, review)
+            && item.scrollWidth <= item.clientWidth + 1),
+        `Grand Prix results and table controls must fit at ${width}x${height}`);
+      }
+      frameRoot.querySelector('[data-action="continue-review"]').click();
+      frameRoot.querySelector('[data-discovery-index="0"]').click();
+      for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const complete = frameRoot.querySelector(".pit-wall-session-complete");
+        const table = complete.querySelector(".pit-wall-standings");
+        assert(table.querySelectorAll("tbody tr").length === 10
+          && table.querySelector("tr.is-player")
+          && within(table, frameRoot.querySelector(".pit-wall-track-display"))
+          && [...table.querySelectorAll("th, td")].every((cell) => within(cell, complete)
+            && cell.scrollWidth <= cell.clientWidth + 1),
+        `Weekend Complete must show the full championship table at ${width}x${height}`);
+      }
+      layoutGame.renderSeasonComplete("");
+      for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const summary = frameRoot.querySelector(".pit-wall-season-finish");
+        const table = summary.querySelector(".pit-wall-standings");
+        assert(table.querySelectorAll("tbody tr").length === 10 && table.querySelector("tr.is-player")
+          && within(table, frameRoot.querySelector(".pit-wall-track-display"))
+          && [...table.querySelectorAll("th, td")].every((cell) => within(cell, summary)
+            && cell.scrollWidth <= cell.clientWidth + 1),
+        `Season review must show the full championship table at ${width}x${height}`);
+      }
+      layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "australia"));
+      frameRoot.querySelector('[data-action="skip-session"]').click();
+      frameRoot.querySelector('[data-action="skip-session"]').click();
+      frameRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(frameRoot);
+      assert(frameRoot.querySelector(".pit-wall-schematic[aria-label*='not the actual layout']")
+        && frameRoot.querySelector(".pit-wall-schematic-label").textContent === "Schematic track"
+        && frameRoot.querySelectorAll(".pit-wall-start-grid span").length === 10,
+      "Other sprint weekends must show the full grid on an explicitly labelled schematic");
+      layoutGame.clearSessionTimer();
+      layoutGame.weekendState.timerStartedAt -= 10000000;
+      layoutGame.syncPracticeClock();
+      layoutGame.completeSession();
+      assert(layoutGame.championship.every((entry) => entry.points >= pointsAfterFirstSprint.get(entry.driver.name))
+        && layoutGame.championship.some((entry) => entry.points > pointsAfterFirstSprint.get(entry.driver.name)),
+      "Championship points must accumulate across sprint weekends");
+      frameRoot.querySelector('[data-action="continue-review"]').click();
+      frameRoot.querySelector('[data-discovery-index="0"]').click();
+      frameRoot.querySelector('[data-action="skip-session"]').click();
+      frameRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(frameRoot);
+      assert(layoutGame.weekendState.race.laps === Math.ceil(305 / 5.278)
+        && frameRoot.querySelector(".pit-wall-schematic"),
+      "A Grand Prix without an explicit distance must use the 305 km fallback and schematic route");
       assert(frame.contentWindow.location.href === originalUrl && !doc.querySelector("#games-pit-wall").hidden,
         "Confirmations must stay on the engineering screen without navigation");
       frameRoot.querySelector(".pit-wall-exit").click();
@@ -1875,16 +2753,31 @@
       assert(balancePanel.querySelector('[role="status"]').textContent.includes("Correct invalid"),
         "Export must not silently ignore an invalid field");
       changeBalance("Reference circuit length", 5.412);
-      changeBalance("Attack pace", -1000);
+      changeBalance("Push pace", -1000);
       changeBalance("Handling pace gain", 350);
       changeBalance("Reliability consistency", 1);
       changeBalance("Braking Reference Data", 200);
       changeBalance("Overtaking Analysis", 80);
-      assert(debugGame.balance.modes.Attack.pace === -1000
+      const qualifyingFuelInput = byPath("qualifyingAI.fuelReservePercent");
+      qualifyingFuelInput.value = "6";
+      qualifyingFuelInput.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
+      const tunedQualifying = createPracticeClassification(playerDriver, neutralTeam,
+        [{ driver: aiDriver, team: neutralTeam }], 5.412, "Sunny", "Green", debugGame.balance, () => .5, true);
+      const tunedQualifier = tunedQualifying.opponents[0];
+      advancePracticeClassification(tunedQualifying, tunedQualifier.garageRemaining);
+      const qualifyingPlannedFuel = tunedQualifier.stintLaps * fuelPerLap(debugGame.balance, "Push", []) + 6;
+      const gridSpacingInput = byPath("sprintRace.gridGapMs");
+      gridSpacingInput.value = "1000";
+      gridSpacingInput.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
+      const tunedRace = createSprintRace(raceGrid, 5.412, "Sunny", "Green", { tyre: "Medium", fuel: 100 },
+        [], debugGame.balance, () => .5);
+      assert(debugGame.balance.modes.Push.pace === -1000
         && debugGame.balance.vehicleStats.Handling.lapGainMs === 350
         && debugGame.balance.vehicleStats.Reliability.variationReductionPerPoint === 1
         && debugGame.balance.discoveries.brakingReferenceMsPerLevel === 200
-        && debugGame.balance.discoveries.overtakingAnalysisMsPerLevel === 80,
+        && debugGame.balance.discoveries.overtakingAnalysisMsPerLevel === 80
+        && tunedQualifier.session.fuel >= qualifyingPlannedFuel && tunedQualifier.session.fuel < qualifyingPlannedFuel + .11
+        && Math.abs(tunedRace.entries[1].session.lapProgress * tunedRace.entries[1].session.lapTarget + 1000) < .001,
       "Editing the panel must update the active balance values");
       const balanceURL = debugFrame.contentWindow.URL;
       const balanceAnchor = debugFrame.contentWindow.HTMLAnchorElement.prototype;
@@ -1906,11 +2799,15 @@
         balanceURL.createObjectURL = originalCreateURL;
         balanceAnchor.click = originalAnchorClick;
       }
-      changeBalance("Attack pace", -400);
+      changeBalance("Push pace", -400);
       changeBalance("Handling pace gain", 180);
       changeBalance("Reliability consistency", .5);
       changeBalance("Braking Reference Data", 125);
       changeBalance("Overtaking Analysis", 100);
+      qualifyingFuelInput.value = "1";
+      qualifyingFuelInput.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
+      gridSpacingInput.value = "500";
+      gridSpacingInput.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
       balancePanel.querySelector('[data-action="close-balance"]').click();
       assert(balancePanel.hidden && balanceToggle.getAttribute("aria-expanded") === "false",
         "The developer panel must close without changing the console layout");
@@ -1935,16 +2832,17 @@
       debugRoot.querySelector('[data-action="confirm-season"]').click();
       debugRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(debugRoot);
+      debugRoot.querySelector('[data-action="send-out"]').click();
       debugRoot.querySelector('[data-speed="0"]').click();
       debugRoot.querySelector('[data-action="toggle-command"]').click();
-      debugRoot.querySelector('[data-driver-mode="Attack"]').click();
+      debugRoot.querySelector('[data-driver-mode="Push"]').click();
       const runningTarget = debugGame.weekendState.practice.lapTarget;
       balanceToggle.click();
       assert(balancePanel.querySelector("[data-balance-context]").textContent.includes(debugGame.driver.name)
         && balancePanel.querySelector("[data-balance-context]").textContent.includes(debugGame.team.name)
-        && balancePanel.querySelector("[data-balance-context]").textContent.includes("Driver mode: Attack"),
+        && balancePanel.querySelector("[data-balance-context]").textContent.includes("Driver mode: Push"),
       "The panel must identify the active driver, team and mode");
-      changeBalance("Attack pace", -1000);
+      changeBalance("Push pace", -1000);
       assert(debugGame.weekendState.practice.lapTarget === runningTarget,
         "Editing a running session must leave its current lap unchanged");
       const livePractice = debugGame.weekendState.practice;
@@ -1952,16 +2850,17 @@
       assert(livePractice.lapTarget === Math.max(debugGame.balance.lap.minimumLapMs,
         Math.round(livePractice.lapTargetBeforeMode - 1000)),
       "Editing the panel during practice must affect the next generated lap");
-      changeBalance("Attack pace", -400);
+      changeBalance("Push pace", -400);
       balancePanel.querySelector('[data-action="close-balance"]').click();
       debugRoot.querySelector('[data-action="toggle-command"]').click();
       debugGame.renderWeekend(bahrainWeekend);
       debugRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(debugRoot);
+      debugRoot.querySelector('[data-action="send-out"]').click();
       await new Promise((resolve) => setTimeout(resolve, 300));
       assert(!debugGame.weekendState.debugPaused && debugGame.sessionTimer != null
         && !debugRoot.querySelector(".pit-wall-route-line")
-        && Math.abs(debugRoot.querySelector(".pit-wall-moving-driver circle").getBoundingClientRect().width - 26) < 1,
+        && Math.abs(debugRoot.querySelector(".pit-wall-moving-driver .pit-wall-marker-team").getBoundingClientRect().width - 26) < 1,
       "Bahrain Practice 1 must start moving with the debug route hidden");
       debugRoot.querySelector('[data-speed="0"]').click();
       debugRoot.querySelector('[data-action="toggle-route"]').click();
@@ -2045,10 +2944,16 @@
       assert(!debugRoot.querySelector(".pit-wall-route-overlay") && debugGame.weekendState.phase === "review",
         "Completing must remove the route overlay and show the review");
       debugRoot.querySelector('[data-action="continue-review"]').click();
+      debugRoot.querySelector('[data-action="skip-session"]').click();
       debugRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(debugRoot);
       debugRoot.querySelector('[data-action="pause-route-session"]').click();
-      debugGame.weekendState.timerStartedAt -= 5100;
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      assert(debugGame.weekendState.debugPaused, "Route debug must pause a sprint race");
+      debugRoot.querySelector('[data-action="pause-route-session"]').click();
+      debugGame.weekendState.timerStartedAt -= 10000000;
+      debugGame.syncPracticeClock();
+      debugGame.completeSession();
+      debugRoot.querySelector('[data-action="continue-review"]').click();
       assert(debugGame.weekendState.phase === "discovery"
         && debugRoot.querySelectorAll("[data-discovery-index]").length === 3,
       "A resumed debug session must finish and offer rewards normally");
@@ -2065,6 +2970,7 @@
           && !debugRoot.querySelector(".pit-wall-moving-driver")
           && debugRoot.querySelector('[data-timing="remaining"]').textContent === "60:00",
         `Saudi Practice ${session + 1} must start its own timed session without a fabricated route`);
+        debugRoot.querySelector('[data-action="send-out"]').click();
         debugGame.weekendState.timerStartedAt -= 600000;
         debugGame.syncPracticeClock();
         debugRoot.querySelector('[data-action="complete-session"]').click();
@@ -2114,6 +3020,26 @@
         assert(wraps >= 3, "The marker must complete multiple continuous laps");
         moving.remove();
         assert(nextFrame === null, "Removing the marker must cancel animation");
+        const geometry = debugWindow.SVGGeometryElement.prototype;
+        const originalPoint = geometry.getPointAtLength;
+        let geometryQueries = 0;
+        geometry.getPointAtLength = function (distance) {
+          geometryQueries += 1;
+          return originalPoint.call(this, distance);
+        };
+        try {
+          const cached = mountRouteMarker(markerContainer, testRoute, "AV", "#285ca7", () => .5);
+          cached.resume();
+          nextFrame(0);
+          assert(geometryQueries === 0, "A cached route must not query SVG geometry during rendering");
+          cached.remove();
+          testRoute.points[0][0] += 1;
+          const changed = mountRouteMarker(markerContainer, testRoute, "AV", "#285ca7", () => .5);
+          assert(geometryQueries > 0, "Editing a route must invalidate its cached geometry");
+          changed.remove();
+        } finally {
+          geometry.getPointAtLength = originalPoint;
+        }
       } finally {
         debugWindow.requestAnimationFrame = originalRaf;
         debugWindow.cancelAnimationFrame = originalCancel;

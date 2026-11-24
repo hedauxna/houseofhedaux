@@ -5,6 +5,10 @@ const SECTION_DETAILS = {
   teamTraits: ["Team bonuses and weaknesses", "A bonus saves this time; the same weakness adds it."],
   tyres: ["Tyre compounds", "Pace is a signed lap-time adjustment; wear is condition lost per lap."],
   modes: ["Driver modes", "Wear and fuel are multipliers: 1.4 means 140% of normal."],
+  practiceAI: ["AI practice programmes", "Timing and hidden programme variation for practice stints."],
+  qualifyingAI: ["AI sprint qualifying programmes", "Run timing, flying-lap counts, dry tyre weights and fuel reserve."],
+  sprintRace: ["Sprint race", "Grid spacing and AI strategy."],
+  grandPrix: ["Grand Prix strategy", "AI tyre wear thresholds and fuel reserves."],
   statPoints: ["Permanent upgrades and rare breakthroughs", "Points apply per selection."],
   discoveries: ["Weekend and legendary discoveries", "Weekend pace gains apply per level and expire after the weekend."],
   rewardWeights: ["Discovery rarity weights", "Weights are relative and are redistributed when a rarity has no eligible rewards."],
@@ -36,6 +40,50 @@ const DISCOVERY_FIELDS = {
   blueBonusMultiplier: ["Legacy Lab", "extra blue multiplier", 0, 20],
 };
 
+const AI_FIELDS = {
+  initialDelayMinMs: ["Earliest garage exit", "ms", 1000, 3600000],
+  initialDelayMaxMs: ["Latest garage exit", "ms", 1000, 3600000],
+  garageMinMs: ["Minimum garage stay", "ms", 1000, 3600000],
+  garageMaxMs: ["Maximum garage stay", "ms", 1000, 3600000],
+  stintMinLaps: ["Minimum stint length", "laps", 1, 100, 1],
+  stintMaxLaps: ["Maximum stint length", "laps", 1, 100, 1],
+  fuelMinPercent: ["Minimum AI fuel load", "%", 10, 100],
+  fuelMaxPercent: ["Maximum AI fuel load", "%", 10, 100],
+  modeChangeMinMs: ["Minimum mode interval", "ms", 1000, 3600000],
+  modeChangeMaxMs: ["Maximum mode interval", "ms", 1000, 3600000],
+  engineVariationMs: ["Engine programme variation", "ms", 0, 30000],
+  testingVariationMs: ["Testing programme variation", "ms", 0, 30000],
+};
+
+const QUALIFYING_AI_FIELDS = {
+  initialDelayMinMs: ["Earliest qualifying garage exit", "ms", 1000, 900000],
+  initialDelayMaxMs: ["Latest qualifying garage exit", "ms", 1000, 900000],
+  garageMinMs: ["Minimum qualifying garage stay", "ms", 1000, 900000],
+  garageMaxMs: ["Maximum qualifying garage stay", "ms", 1000, 900000],
+  flyingLapsMin: ["Minimum qualifying flying laps", "laps", 1, 100, 1],
+  flyingLapsMax: ["Maximum qualifying flying laps", "laps", 1, 100, 1],
+  softWeight: ["Qualifying Soft preference", "weight", 1, 1000],
+  mediumWeight: ["Qualifying Medium preference", "weight", 0, 1000],
+  hardWeight: ["Qualifying Hard preference", "weight", 0, 1000],
+  fuelReservePercent: ["Qualifying fuel reserve", "%", 0, 100],
+};
+
+const SPRINT_RACE_FIELDS = {
+  gridGapMs: ["Sprint grid spacing", "ms", 0, 10000],
+  aiPitChance: ["AI pit probability", "probability", 0, 1],
+  aiFuelMinFactor: ["AI minimum fuel factor", "multiplier", 0, 5],
+  aiFuelMaxFactor: ["AI maximum fuel factor", "multiplier", 0, 5],
+  aiPitEarliestFraction: ["AI earliest pit", "race fraction", 0, 1],
+  aiPitLatestFraction: ["AI latest pit", "race fraction", 0, 1],
+};
+
+const GRAND_PRIX_FIELDS = {
+  aiPitWearMin: ["Minimum AI tyre wear before pit", "% wear", 0, 100],
+  aiPitWearMax: ["Maximum AI tyre wear before pit", "% wear", 0, 100],
+  aiFuelReserveMin: ["Minimum AI fuel reserve", "%", 0, 100],
+  aiFuelReserveMax: ["Maximum AI fuel reserve", "%", 0, 100],
+};
+
 function humanize(value) {
   return String(value).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[-_]/g, " ");
 }
@@ -43,6 +91,10 @@ function humanize(value) {
 function fieldDetails(path, discoveries) {
   const [group, name, property] = path;
   if (group === "lap" && path.length === 2 && Object.hasOwn(LAP_FIELDS, name)) return LAP_FIELDS[name];
+  if (group === "practiceAI" && path.length === 2 && Object.hasOwn(AI_FIELDS, name)) return AI_FIELDS[name];
+  if (group === "qualifyingAI" && path.length === 2 && Object.hasOwn(QUALIFYING_AI_FIELDS, name)) return QUALIFYING_AI_FIELDS[name];
+  if (group === "sprintRace" && path.length === 2 && Object.hasOwn(SPRINT_RACE_FIELDS, name)) return SPRINT_RACE_FIELDS[name];
+  if (group === "grandPrix" && path.length === 2 && Object.hasOwn(GRAND_PRIX_FIELDS, name)) return GRAND_PRIX_FIELDS[name];
   if (group === "discoveries" && path.length === 2 && Object.hasOwn(DISCOVERY_FIELDS, name)) return DISCOVERY_FIELDS[name];
   if (group === "vehicleStats" && path.length === 3) {
     if (property === "base") return [`${name} base`, "points", 0, 1000];
@@ -92,6 +144,14 @@ function isSimulated(path, balance, discoveries) {
   if (group === "driverTraits" || group === "teamTraits") return path.length === 2;
   if (group === "tyres") return path.length === 3 && ["pace", "wear"].includes(property);
   if (group === "modes") return path.length === 3 && ["pace", "wear", "fuel"].includes(property);
+  if (group === "practiceAI") return path.length === 2 && [
+    "initialDelayMinMs", "initialDelayMaxMs", "garageMinMs", "garageMaxMs",
+    "stintMinLaps", "stintMaxLaps", "fuelMinPercent", "fuelMaxPercent",
+    "modeChangeMinMs", "modeChangeMaxMs", "engineVariationMs", "testingVariationMs",
+  ].includes(name);
+  if (group === "qualifyingAI") return path.length === 2 && Object.hasOwn(QUALIFYING_AI_FIELDS, name);
+  if (group === "sprintRace") return path.length === 2 && Object.hasOwn(SPRINT_RACE_FIELDS, name);
+  if (group === "grandPrix") return path.length === 2 && Object.hasOwn(GRAND_PRIX_FIELDS, name);
   if (group === "discoveries" && name === "statPoints" && path.length === 3) {
     const item = discoveries.find((discovery) => discovery.id === property);
     const stat = item && balance.vehicleStats[item.stat];

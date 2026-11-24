@@ -1,10 +1,12 @@
 import { loadBahrainRoute, mountRouteDebug } from "./route-debug.js";
-import { mountRouteMarker } from "./route-marker.js";
+import { mountRouteMarkers } from "./route-marker.js";
 import { DEFAULT_BALANCE, DISCOVERY_PACE_FIELDS, createBalance } from "./pit-wall-balance.js";
 import { mountBalancePanel } from "./pit-wall-balance-panel.js";
+import { createPracticeClassification, advancePracticeClassification, practiceClassification } from "./practice-classification.js";
+import { createSprintRace, advanceSprintRace, sprintClassification, SPRINT_POINTS, GRAND_PRIX_POINTS } from "./sprint-race.js";
 import {
-  PRACTICE_DURATION, MINIMUM_LAPS, createPracticeSession, advancePracticeSession,
-  formatSessionTime, formatLapTime, setDriverMode, callToPit, selectPitTyre,
+  PRACTICE_DURATION, SPRINT_QUALIFYING_DURATION, MINIMUM_LAPS, createPracticeSession, advancePracticeSession, fuelPerLap,
+  formatSessionTime, formatLapTime, setDriverMode, callToPit, parkPracticeSession, sendPracticeOut,
 } from "./practice-session.js";
 
 /**
@@ -192,6 +194,49 @@ function driverInitials(driver) {
   return driver.name.split(" ").map((part) => part[0]).join("");
 }
 
+function classificationRows(entries) {
+  return entries.map((entry, index) => `
+    <li class="pit-wall-classification-row${entry.player ? " is-player" : ""}">
+      <span class="pit-wall-classification-position">${entry.bestLap === null ? "–" : `P${index + 1}`}</span>
+      <span class="pit-wall-classification-marker" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span>
+      <span class="pit-wall-classification-person"><strong>${entry.driver.name}</strong><span>${entry.team.name}</span></span>
+      <span class="pit-wall-classification-time">${entry.bestLapTyre ? `<span class="pit-wall-tyre-label" data-tyre="${entry.bestLapTyre}">${entry.bestLapTyre}</span> ` : ""}${formatLapTime(entry.bestLap)}${entry.inPit ? '<small>In pit</small>' : ""}</span>
+    </li>`).join("");
+}
+
+function raceGap(entry, leader) {
+  if (entry.retired) return "DNF";
+  if (entry === leader) return "Leader";
+  const distance = leader.session.completedLaps + leader.session.lapProgress
+    - entry.session.completedLaps - entry.session.lapProgress;
+  const lapped = Math.floor(Math.max(0, distance));
+  if (lapped) return `+${lapped}L`;
+  const gap = leader.finishedAt !== null && entry.finishedAt !== null
+    ? (entry.finishedAt - leader.finishedAt) / 1000 : distance * entry.session.lapTarget / 1000;
+  return `+${Math.max(0, gap).toFixed(1)}s`;
+}
+
+function raceRows(entries) {
+  return entries.map((entry, index) => `
+    <li class="pit-wall-classification-row${entry.player ? " is-player" : ""}" data-race-driver="${entry.driver.name}">
+      <span class="pit-wall-classification-position">P${index + 1}</span>
+      <span class="pit-wall-classification-marker" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span>
+      <span class="pit-wall-classification-person"><strong>${entry.driver.name}</strong><span>${entry.team.name}</span></span>
+      <span class="pit-wall-classification-time"><small data-race-gap>Gap ${raceGap(entry, entries[0])}</small><small data-race-best>Best ${formatLapTime(entry.bestLap)}</small></span>
+    </li>`).join("");
+}
+
+function championshipTable(championship) {
+  const entries = [...championship].sort((a, b) => b.points - a.points || a.order - b.order);
+  return `<section class="pit-wall-standings" aria-label="Championship Standings">
+    <h4>Championship Standings</h4>
+    ${entries.length ? `<table><thead><tr><th scope="col">Pos</th><th scope="col">Driver</th><th scope="col">Team</th><th scope="col">Pts</th><th scope="col" title="Race wins (future)">Wins</th></tr></thead>
+      <tbody>${entries.map((entry, index) => `<tr${entry.player ? ' class="is-player"' : ""}>
+        <td>P${index + 1}</td><td>${entry.driver.name}</td><td>${entry.team.name}</td><td>${entry.points}</td><td aria-label="Race wins not tracked">—</td>
+      </tr>`).join("")}</tbody></table>` : '<p>No championship results yet.</p>'}
+  </section>`;
+}
+
 function driverDetails(driver) {
   return `
     <span class="pit-wall-driver-traits-label">Strengths</span>
@@ -290,13 +335,13 @@ class PitWallConsole {
           <div class="pit-wall-panel-header">
             <h3>Command Centre</h3>
             <span class="pit-wall-command-mode" data-command-mode></span>
-            <button type="button" class="pit-wall-command-toggle" aria-label="Expand Command Centre" aria-expanded="false" aria-controls="pit-wall-command-content" data-action="toggle-command">
+            <button type="button" class="pit-wall-command-toggle" aria-label="Collapse Command Centre" aria-expanded="true" aria-controls="pit-wall-command-content" data-action="toggle-command">
               <svg class="pit-wall-command-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="m6 15 6-6 6 6"/>
               </svg>
             </button>
           </div>
-          <div class="pit-wall-command-body" id="pit-wall-command-content" inert>
+          <div class="pit-wall-command-body" id="pit-wall-command-content">
             <div class="pit-wall-panel-content">
               <div class="pit-wall-placeholder-block">
                 <p class="pit-wall-placeholder-label">Radio & Strategy Controls</p>
@@ -344,6 +389,7 @@ class PitWallConsole {
     this.weekendDiscoveries = [];
     this.uniqueRewards = new Set();
     this.weekendState = null;
+    this.championship = [];
     this.renderCommand();
     this.seasonWeekends = [];
     this.currentRoundIndex = 0;
@@ -365,11 +411,13 @@ class PitWallConsole {
 
   renderProfile(status) {
     const driverPanel = this.rootElement.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
+    const showClassification = Boolean(this.weekendState
+      && (this.weekendState.classification || this.weekendState.race) && this.weekendState.practice);
     const active = [...this.weekendDiscoveries, ...this.permanentUpgrades];
     const rarityOrder = { green: 0, blue: 1, purple: 2, gold: 3 };
     const unique = active.sort((a, b) => rarityOrder[a.rarity] - rarityOrder[b.rarity]);
     const labels = { green: "Weekend discovery", blue: "Permanent upgrade", purple: "Rare breakthrough", gold: "Legendary discovery" };
-    driverPanel.innerHTML = `
+    const profile = `
       <div class="pit-wall-driver-profile${this.weekendState ? " pit-wall-driver-profile-weekend" : ""}">
         ${portrait(this.driver)}
         <p class="pit-wall-driver-profile-label">Selected Driver</p>
@@ -404,7 +452,81 @@ class PitWallConsole {
         ` : ""}
       </div>
     `;
+    if (showClassification) {
+      driverPanel.innerHTML = `
+        <section class="pit-wall-classification" aria-label="Practice Classification"><h4>Practice Classification</h4>
+          <ol></ol>
+        </section>
+        <section class="pit-wall-driver-details" aria-label="Driver Details" tabindex="0">
+          <h4>Driver Details</h4>
+          <p><strong>Driver</strong> ${this.driver.name}</p>
+          <p><strong>Team</strong> ${this.team.name}</p>
+          <p><strong>Strengths</strong> ${this.driver.strengths.join(" · ")}</p>
+          <p><strong>Weakness</strong> ${this.driver.weakness}</p>
+          <p><strong>Team traits</strong> +${this.team.bonus} · −${this.team.weakness}</p>
+          <p><strong>Active Upgrades</strong></p>
+          ${unique.length ? `<ul class="pit-wall-upgrade-list">${unique.map((upgrade) =>
+    `<li class="${upgrade.rarity}" aria-label="${labels[upgrade.rarity]}: ${upgrade.name} ${upgrade.stat ? upgrade.effect : this.effectiveDiscovery(upgrade).effect || ""}${upgrade.stackable ? `, level ${upgrade.level}` : ""}">${upgrade.name} ${upgrade.stat ? upgrade.effect : this.effectiveDiscovery(upgrade).effect || ""}${upgrade.stackable ? ` (Lv ${upgrade.level})` : ""}</li>`).join("")}</ul>`
+    : '<span class="pit-wall-upgrade-empty">None yet</span>'}
+        </section>`;
+    } else {
+      driverPanel.innerHTML = profile;
+    }
+    if (showClassification) this.updateClassification();
     if (status) this.rootElement.querySelector(".pit-wall-info-value").textContent = status;
+  }
+
+  updateClassification() {
+    const state = this.weekendState;
+    const list = this.rootElement.querySelector(".pit-wall-classification ol");
+    if (!list || !state) return;
+    if (this.isRace() && state.race) {
+      const title = state.phase === "review" || state.phase === "discovery" ? "Final Classification"
+        : this.isGrandPrix() ? "Grand Prix Classification" : "Sprint Race Classification";
+      const section = list.closest(".pit-wall-classification");
+      if (section.getAttribute("aria-label") !== title) {
+        section.querySelector("h4").textContent = title;
+        section.setAttribute("aria-label", title);
+      }
+      const entries = sprintClassification(state.race);
+      const signature = JSON.stringify([title, ...entries.map((entry) =>
+        [entry.driver.name, raceGap(entry, entries[0]), entry.bestLap])]);
+      if (list.dataset.signature === signature) return;
+      if (list.dataset.mode !== "race") {
+        list.innerHTML = raceRows(entries);
+      } else {
+        const rows = new Map([...list.children].map((row) => [row.dataset.raceDriver, row]));
+        entries.forEach((entry, index) => {
+          const row = rows.get(entry.driver.name);
+          if (list.children[index] !== row) list.insertBefore(row, list.children[index] || null);
+          const position = row.querySelector(".pit-wall-classification-position");
+          const gap = row.querySelector("[data-race-gap]");
+          const best = row.querySelector("[data-race-best]");
+          const gapText = `Gap ${raceGap(entry, entries[0])}`;
+          const bestText = `Best ${formatLapTime(entry.bestLap)}`;
+          if (position.textContent !== `P${index + 1}`) position.textContent = `P${index + 1}`;
+          if (gap.textContent !== gapText) gap.textContent = gapText;
+          if (best.textContent !== bestText) best.textContent = bestText;
+        });
+      }
+      list.dataset.mode = "race";
+      list.dataset.signature = signature;
+      return;
+    }
+    if (!state.classification || !state.practice) return;
+    const type = this.isSprintQualifying() ? "Sprint Qualifying" : this.isQualifying() ? "Qualifying" : "Practice";
+    const title = `${state.phase === "review" ? "Final " : ""}${type} Classification`;
+    const section = list.closest(".pit-wall-classification");
+    if (section.getAttribute("aria-label") !== title) {
+      section.querySelector("h4").textContent = title;
+      section.setAttribute("aria-label", title);
+    }
+    const entries = practiceClassification(state.classification, state.practice);
+    const signature = JSON.stringify([title, ...entries.map((entry) =>
+      [entry.driver.name, entry.bestLap, entry.bestLapTyre, entry.inPit])]);
+    if (list.dataset.signature === signature) return;
+    list.innerHTML = classificationRows(entries);
+    list.dataset.signature = signature;
   }
 
   renderDraft(kind) {
@@ -549,6 +671,10 @@ class PitWallConsole {
       markerLoading: false,
       markerError: "",
       practice: null,
+      classification: null,
+      sprintGrid: null,
+      grandPrixGrid: null,
+      race: null,
       setup: { tyre: "Medium", fuel: 100 },
     };
     const mainPanel = this.rootElement.querySelector(".pit-wall-track-display");
@@ -604,7 +730,7 @@ class PitWallConsole {
   renderTiming() {
     const state = this.weekendState;
     const timingPanel = this.rootElement.querySelector(".pit-wall-panel-right .pit-wall-panel-content");
-    if (this.isPractice()) {
+    if (this.isTimedSession()) {
       timingPanel.innerHTML = `
         <div class="pit-wall-timing-live">
           <section class="pit-wall-telemetry" aria-label="Telemetry Summary">
@@ -615,9 +741,10 @@ class PitWallConsole {
                 <dd class="pit-wall-gauge" role="meter" aria-label="Tyre condition" aria-valuemin="0" aria-valuemax="100"><span></span></dd></div>
               <div class="pit-wall-gauge-row"><dt>Fuel Load</dt>
                 <dd class="pit-wall-gauge" role="meter" aria-label="Fuel load" aria-valuemin="0" aria-valuemax="100"><span></span></dd></div>
+              <div class="pit-wall-fuel-readout"><dt data-timing="fuel-percent"></dt><dd data-timing="fuel-range"></dd></div>
               <div><dt>Last Lap</dt><dd data-timing="last-lap"></dd></div>
               <div><dt>Best Lap</dt><dd class="pit-wall-best-lap" data-timing="best-lap"></dd></div>
-              <div><dt>Session Time Remaining</dt><dd data-timing="remaining"></dd></div>
+              <div><dt>${this.isRace() ? "Race Lap" : "Session Time Remaining"}</dt><dd data-timing="remaining"></dd></div>
               <div><dt>Session Speed</dt><dd data-timing="speed"></dd></div>
             </dl>
           </section>
@@ -647,13 +774,20 @@ class PitWallConsole {
     const timing = this.rootElement.querySelector(".pit-wall-telemetry");
     if (!timing) return;
     const practice = this.weekendState.practice;
+    const fuel = practice ? practice.fuel : this.weekendState.setup.fuel;
+    const mode = practice ? practice.mode : this.weekendState.setup.mode || "Balanced";
+    const rate = fuelPerLap(this.balance, mode, practice ? practice.upgrades : this.activeDiscoveries());
     const laps = practice ? practice.lapTimes : [];
     const values = {
       tyre: practice ? practice.tyre : this.weekendState.setup.tyre,
       "last-lap": formatLapTime(laps.length ? laps[laps.length - 1] : null),
       "best-lap": formatLapTime(laps.length ? Math.min(...laps) : null),
-      remaining: formatSessionTime(PRACTICE_DURATION - (practice ? practice.elapsed : 0)),
+      remaining: this.isRace() ? `${practice ? Math.min(practice.completedLaps + 1, this.weekendState.race.laps) : 1} / ${this.weekendState.race?.laps || this.raceLaps()}`
+        : formatSessionTime((this.isQualifying() ? SPRINT_QUALIFYING_DURATION : PRACTICE_DURATION)
+          - (practice ? practice.elapsed : 0)),
       speed: practice && practice.speed === 0 ? "Paused" : `${practice ? practice.speed : 1}x`,
+      "fuel-percent": `${Math.round(fuel * 10) / 10}%`,
+      "fuel-range": rate > 0 ? `~${(fuel / rate).toFixed(1)} laps remaining` : "No fuel use",
     };
     Object.entries(values).forEach(([key, value]) => {
       const field = timing.querySelector(`[data-timing="${key}"]`);
@@ -673,8 +807,10 @@ class PitWallConsole {
       meter.firstElementChild.style.backgroundColor = colour;
     }
     const list = this.rootElement.querySelector(".pit-wall-lap-list");
-    const running = this.weekendState.phase === "running";
-    const version = `${laps.length}:${running}`;
+    const running = this.weekendState.phase === "running" && practice
+      && (practice.pitState === "none" || practice.pitState === "called");
+    const qualifying = this.isQualifying();
+    const version = `${laps.length}:${running}:${qualifying && practice?.outLap}:${qualifying && practice?.lapValid}`;
     if (list.dataset.version !== version) {
       let fastest = -1;
       laps.forEach((lap, index) => {
@@ -686,7 +822,8 @@ class PitWallConsole {
         </li>`).reverse();
       if (running) rows.unshift(`
         <li class="pit-wall-lap-entry is-current">
-          <span>Lap ${laps.length + 1}</span> <span>In Progress</span>
+          <span>${qualifying && practice.outLap ? "Out Lap" : `Lap ${laps.length + 1}`}</span>
+          <span>${qualifying ? practice.outLap ? "Warming" : !practice.lapValid ? "Low Fuel" : "Flying" : this.isRace() ? "Racing" : "In Progress"}</span>
         </li>`);
       if (!rows.length) rows.push('<li class="pit-wall-lap-empty">No laps yet</li>');
       list.innerHTML = rows.join("");
@@ -696,38 +833,58 @@ class PitWallConsole {
     const goalText = laps.length >= MINIMUM_LAPS
       ? "Discovery goal achieved" : `Discovery data: ${laps.length} / ${MINIMUM_LAPS} laps`;
     if (goal && goal.textContent !== goalText) goal.textContent = goalText;
+    const qualifyingStatus = this.rootElement.querySelector("[data-qualifying-status]");
+    if (qualifyingStatus && practice) {
+      qualifyingStatus.textContent = !running ? "In garage"
+        : practice.outLap ? "Out Lap · Tyres Warming"
+          : !practice.lapValid || practice.fuel <= 0 ? "Flying Lap · Insufficient Fuel"
+            : "Flying Lap";
+    }
+    const raceStatus = this.rootElement.querySelector("[data-race-status]");
+    if (raceStatus && this.weekendState.race) {
+      const race = this.weekendState.race;
+      raceStatus.textContent = race.started ? `Lap ${Math.min(practice.completedLaps + 1, race.laps)} / ${race.laps}` : "Starting lights";
+    }
     this.updateCommand();
+    this.updateClassification();
   }
 
   renderCommand() {
     const state = this.weekendState;
     const content = this.rootElement.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
-    const running = state && state.phase === "running" && this.isPractice();
-    if (!running) {
+    const practiceAvailable = state && this.isTimedSession() && (state.phase === "ready" || state.phase === "running");
+    const running = practiceAvailable && state.phase === "running";
+    if (!practiceAvailable) {
       content.innerHTML = `<div class="pit-wall-placeholder-block">
         <p class="pit-wall-placeholder-label">Radio & Strategy Controls</p>
-        <p class="pit-wall-placeholder-info">Controls are available during practice.</p>
+        <p class="pit-wall-placeholder-info">Controls are available during practice, qualifying and races.</p>
       </div>`;
       this.rootElement.querySelector("[data-command-mode]").textContent = "";
       return;
     }
+    const race = this.isRace();
     content.innerHTML = `
       <div class="pit-wall-command-controls">
         <div class="pit-wall-command-group" role="group" aria-label="Driver mode">
           <strong>Driver Mode</strong>
           ${Object.keys(this.balance.modes).map((mode) =>
-    `<button type="button" class="pit-wall-discovery-action" data-driver-mode="${mode}">${mode}</button>`).join("")}
+    `<button type="button" class="pit-wall-discovery-action" data-driver-mode="${mode}"${running || race ? "" : " disabled"}>${mode}</button>`).join("")}
           <span data-mode-feedback></span>
         </div>
         <div class="pit-wall-command-group">
-          <button type="button" class="pit-wall-discovery-action" data-action="call-pit">Call To Pit</button>
+          <button type="button" class="pit-wall-discovery-action" data-action="call-pit" disabled>Call To Pit</button>
+          <button type="button" class="pit-wall-discovery-action" data-action="send-out" disabled${race ? " hidden" : ""}>Send Out</button>
           <span data-pit-status role="status"></span>
         </div>
-        <div class="pit-wall-command-group" data-pit-tyres hidden role="group" aria-label="Replacement tyre">
-          <strong>Fit Tyre</strong>
+        <div class="pit-wall-command-group" role="group" aria-label="Next stint tyre">
+          <strong>Next Tyre</strong>
           ${Object.keys(this.balance.tyres).map((tyre) =>
-    `<button type="button" class="pit-wall-discovery-action pit-wall-tyre-button" data-tyre="${tyre}" data-pit-tyre="${tyre}">${tyre}</button>`).join("")}
+    `<button type="button" class="pit-wall-discovery-action pit-wall-tyre-button" data-tyre="${tyre}" data-setup-tyre="${tyre}">${tyre}</button>`).join("")}
         </div>
+        <label class="pit-wall-setup-fuel">${race ? "Start Fuel" : "Next Fuel"}
+          <input type="range" min="${this.isQualifying() ? ".1" : "10"}" max="100" step="${this.isQualifying() ? ".1" : "1"}" value="${state.setup.fuel}" data-setup-fuel${race && running ? " disabled" : ""}>
+          <output data-setup-fuel-value>${state.setup.fuel}%</output>
+        </label>
       </div>`;
     const sync = () => {
       if (this.sessionTimer != null && this.syncPracticeClock()) {
@@ -738,7 +895,14 @@ class PitWallConsole {
     };
     content.querySelectorAll("[data-driver-mode]").forEach((button) => {
       button.addEventListener("click", () => {
+        if (race && !running) {
+          state.setup.mode = button.dataset.driverMode;
+          this.updateTiming();
+          return;
+        }
         if (!sync()) return;
+        if (race && (state.race.entries.find((entry) => entry.player).retired
+          || state.race.entries.find((entry) => entry.player).finishedAt !== null)) return;
         setDriverMode(state.practice, button.dataset.driverMode);
         this.updateTiming();
       });
@@ -748,22 +912,53 @@ class PitWallConsole {
       callToPit(state.practice);
       this.updateTiming();
     });
-    content.querySelectorAll("[data-pit-tyre]").forEach((button) => {
+    content.querySelector('[data-action="send-out"]').addEventListener("click", () => {
+      if (!sync()) return;
+      if (sendPracticeOut(state.practice, state.setup)) {
+        this.routeMarker?.update();
+        this.updateTiming();
+      }
+    });
+    content.querySelectorAll("[data-setup-tyre]").forEach((button) => {
       button.addEventListener("click", () => {
-        if (!sync()) return;
-        selectPitTyre(state.practice, button.dataset.pitTyre);
+        if (running && !sync()) return;
+        state.setup.tyre = button.dataset.setupTyre;
         this.updateTiming();
       });
+    });
+    content.querySelector("[data-setup-fuel]").addEventListener("input", (event) => {
+      const fuel = Number(event.currentTarget.value);
+      if (running && !sync()) return;
+      state.setup.fuel = fuel;
+      this.updateTiming();
     });
     this.updateCommand();
   }
 
   updateCommand() {
     const state = this.weekendState;
-    if (!state || state.phase !== "running" || !state.practice) return;
+    if (!state || !this.isTimedSession() || !["ready", "running"].includes(state.phase)) return;
     const practice = state.practice;
     const content = this.rootElement.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
-    this.rootElement.querySelector("[data-command-mode]").textContent = `Driver Mode: ${practice.mode}${practice.pitState === "stopped" ? " · PIT STOP" : practice.pitState === "called" ? " · PIT CALLED" : ""}`;
+    if (!content.querySelector("[data-setup-fuel]")) return;
+    content.querySelectorAll("[data-setup-tyre]").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.setupTyre === state.setup.tyre));
+    });
+    content.querySelector("[data-setup-fuel]").value = String(state.setup.fuel);
+    const race = this.isRace();
+    const rate = fuelPerLap(this.balance, practice ? practice.mode : state.setup.mode || "Balanced", this.activeDiscoveries());
+    const estimate = this.isQualifying() ? rate > 0
+      ? ` · ~${(Math.floor(state.setup.fuel / rate * 10) / 10).toFixed(1)} laps incl. out` : " · no fuel use"
+      : race && rate > 0 ? ` · ~${((practice ? practice.fuel : state.setup.fuel) / rate).toFixed(1)} laps${practice ? " left" : ""}` : "";
+    content.querySelector("[data-setup-fuel-value]").textContent = `${state.setup.fuel}%${estimate}`;
+    if (!practice) {
+      this.rootElement.querySelector("[data-command-mode]").textContent = "";
+      if (race) content.querySelectorAll("[data-driver-mode]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.driverMode === (state.setup.mode || "Balanced")));
+      });
+      return;
+    }
+    this.rootElement.querySelector("[data-command-mode]").textContent = `Driver Mode: ${practice.mode}${practice.pitState === "stopped" ? " · GARAGE" : practice.pitState === "entering" ? " · PIT ENTRY" : practice.pitState === "called" ? " · PIT CALLED" : ""}`;
     content.querySelectorAll("[data-driver-mode]").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.driverMode === practice.mode));
     });
@@ -779,16 +974,20 @@ class PitWallConsole {
     const modeFeedback = content.querySelector("[data-mode-feedback]");
     const feedback = `${paceFeedback} · ${usageFeedback}`;
     if (modeFeedback.textContent !== feedback) modeFeedback.textContent = feedback;
-    call.disabled = practice.pitState !== "none";
+    const racer = race ? state.race.entries.find((entry) => entry.player) : null;
+    call.disabled = practice.pitState !== "none" || (race && (!state.race.started || racer.retired || racer.finishedAt !== null));
+    content.querySelector('[data-action="send-out"]').disabled = practice.pitState !== "stopped"
+      || (this.hasBahrainRoute() && !this.routeMarker);
     const status = content.querySelector("[data-pit-status]");
-    const statusText = practice.pitState === "called" ? "Pit requested · awaiting lap end"
-      : practice.pitState === "stopped" ? `Pit Stop In Progress · ${Math.ceil(practice.pitRemaining / 1000)}s${practice.nextTyre ? " · tyre selected" : " · select a tyre"}`
-        : "";
+    const fuelShort = race && rate > 0 && practice.fuel / rate + 1e-6
+      < state.race.laps - practice.completedLaps - practice.lapProgress;
+    const statusText = race && racer.retired ? "Out of fuel · retired"
+      : race && racer.finishedAt !== null ? "Finished"
+      : practice.pitState === "called" ? "Pit requested · awaiting lap end"
+      : practice.pitState === "entering" ? `Pit entry · ${Math.ceil(practice.pitRemaining / 1000)}s`
+        : practice.pitState === "stopped" ? "In garage · ready to send out"
+        : fuelShort ? "Fuel short at this mode" : "";
     if (status.textContent !== statusText) status.textContent = statusText;
-    content.querySelector("[data-pit-tyres]").hidden = practice.pitState !== "stopped";
-    content.querySelectorAll("[data-pit-tyre]").forEach((button) => {
-      button.setAttribute("aria-pressed", String(button.dataset.pitTyre === practice.nextTyre));
-    });
   }
 
   clearSessionTimer() {
@@ -799,8 +998,11 @@ class PitWallConsole {
   }
 
   clearRouteMarker() {
-    this.routeMarker?.remove();
+    this.routeMarkers?.forEach((marker) => marker.remove());
+    this.routeMarkers = [];
     this.routeMarker = null;
+    this.rootElement.querySelectorAll("[data-sprint-overlay]").forEach((element) => element.remove());
+    this.rootElement.querySelector(".pit-wall-circuit")?.classList.remove("has-schematic");
   }
 
   isBahrainPractice() {
@@ -808,9 +1010,49 @@ class PitWallConsole {
     return state.weekend.id === "bahrain" && this.isPractice();
   }
 
+  hasBahrainRoute() {
+    return this.weekendState.weekend.id === "bahrain" && this.isTimedSession();
+  }
+
+  hasSessionRoute() {
+    return this.hasBahrainRoute() || this.isRace();
+  }
+
   isPractice() {
     const state = this.weekendState;
     return (state.weekend.sessions[state.sessionIndex] || "").startsWith("Practice ");
+  }
+
+  isSprintQualifying() {
+    const state = this.weekendState;
+    return state.weekend.sessions[state.sessionIndex] === "Sprint Qualifying";
+  }
+
+  isQualifying() {
+    return this.isSprintQualifying() || this.weekendState.weekend.sessions[this.weekendState.sessionIndex] === "Qualifying";
+  }
+
+  isSprintRace() {
+    const state = this.weekendState;
+    return state.weekend.sessions[state.sessionIndex] === "Sprint Race";
+  }
+
+  isGrandPrix() {
+    return this.weekendState.weekend.sessions[this.weekendState.sessionIndex] === "Grand Prix";
+  }
+
+  isRace() {
+    return this.isSprintRace() || this.isGrandPrix();
+  }
+
+  raceLaps() {
+    const weekend = this.weekendState.weekend;
+    return this.isGrandPrix() ? weekend.laps || Math.ceil(305 / parseFloat(weekend.circuitLength))
+      : Math.ceil(100 / parseFloat(weekend.circuitLength));
+  }
+
+  isTimedSession() {
+    return this.isPractice() || this.isQualifying() || this.isRace();
   }
 
   renderSession() {
@@ -818,15 +1060,17 @@ class PitWallConsole {
     const tracker = this.rootElement.querySelector(".pit-wall-session-tracker");
     const panel = this.rootElement.querySelector(".pit-wall-session-panel");
     const circuit = this.rootElement.querySelector(".pit-wall-circuit");
-    circuit.hidden = state.phase === "discovery" || state.phase === "review";
+    circuit.hidden = state.phase === "discovery" || state.phase === "review" || state.phase === "complete";
     if (state.phase !== "running" || !state.showRoute) {
       this.routeOverlay?.remove();
       this.routeOverlay = null;
     }
     panel.classList.toggle("is-discovery", state.phase === "discovery");
     panel.classList.toggle("is-review", state.phase === "review");
+    panel.classList.toggle("is-complete", state.phase === "complete");
     this.renderTiming();
     this.renderCommand();
+    this.updateClassification();
     tracker.innerHTML = state.weekend.sessions.map((session, index) => {
       const completed = state.sessionResults[index] !== "pending";
       const current = index === state.sessionIndex && !completed && state.phase !== "complete";
@@ -838,8 +1082,10 @@ class PitWallConsole {
     if (state.phase === "complete") {
       panel.innerHTML = `
         <div class="pit-wall-session-complete" tabindex="-1">
+          <strong>Weekend Complete</strong>
           <button type="button" class="pit-wall-menu-button" data-action="next-round">Proceed To Next Round</button>
           ${state.message ? `<span class="pit-wall-session-notice">${state.message}</span>` : ""}
+          ${championshipTable(this.championship)}
         </div>
       `;
       panel.querySelector('[data-action="next-round"]').addEventListener("click", () => {
@@ -852,6 +1098,53 @@ class PitWallConsole {
 
     const session = state.weekend.sessions[state.sessionIndex];
     if (state.phase === "review") {
+      if (this.isRace()) {
+        const result = state.raceResult;
+        panel.innerHTML = `
+          <section class="pit-wall-session-review is-race-review" aria-labelledby="pit-wall-review-title">
+            <h4 id="pit-wall-review-title" tabindex="-1">${this.isGrandPrix() ? "Race Results" : "Sprint Results"}</h4>
+            <div class="pit-wall-review-stats">
+              <dl>
+                <dt>Finishing Position</dt><dd>${result.retired ? `P${result.position} · DNF` : `P${result.position}`}</dd>
+                <dt>Best Lap</dt><dd>${formatLapTime(result.bestLap)}</dd>
+                <dt>Average Lap</dt><dd>${formatLapTime(result.averageLap)}</dd>
+                <dt>Laps Completed</dt><dd>${result.laps}</dd>
+                <dt>Points Earned</dt><dd>${result.points}</dd>
+                ${this.isGrandPrix() ? `<dt>Pit Stops</dt><dd>${result.pitStops}</dd>
+                <dt>Tyre Usage</dt><dd>${result.tyres.join(" → ")}</dd>` : ""}
+              </dl>
+            </div>
+            ${championshipTable(this.championship)}
+            <button type="button" class="pit-wall-menu-button" data-action="continue-review">Continue</button>
+          </section>`;
+        panel.querySelector('[data-action="continue-review"]').addEventListener("click", () => {
+          if (state.phase === "review") this.offerDiscoveries();
+        });
+        return;
+      }
+      if (this.isQualifying()) {
+        const grid = this.isSprintQualifying() ? state.sprintGrid : state.grandPrixGrid;
+        panel.innerHTML = `
+          <section class="pit-wall-session-review" aria-labelledby="pit-wall-review-title">
+            <h4 id="pit-wall-review-title" tabindex="-1">${this.isSprintQualifying() ? "Sprint Qualifying Complete" : "Qualifying Complete"}</h4>
+            <div class="pit-wall-review-stats">
+              <dl>
+                <dt>Grid Position</dt><dd>${grid.position === null ? "No qualifying time" : `P${grid.position}`}</dd>
+                <dt>Pole Position Time</dt><dd>${formatLapTime(grid.poleTime)}</dd>
+                <dt>Player Best Time</dt><dd>${formatLapTime(grid.playerBest)}</dd>
+              </dl>
+            </div>
+            <div class="pit-wall-review-feedback">
+              <strong>Qualifying Classification</strong>
+              <p>Final classification is shown in the Driver panel.</p>
+            </div>
+            <button type="button" class="pit-wall-menu-button" data-action="continue-review">Continue</button>
+          </section>`;
+        panel.querySelector('[data-action="continue-review"]').addEventListener("click", () => {
+          if (state.phase === "review") this.offerDiscoveries();
+        });
+        return;
+      }
       const practice = state.practice;
       const laps = practice.lapTimes;
       const enoughData = laps.length >= MINIMUM_LAPS;
@@ -934,38 +1227,27 @@ class PitWallConsole {
           <span>Track Conditions: Green</span>
           <span>Weather: ${state.weekend.weather || "Not available"}</span>
           <span>Driver Confidence: Normal</span>
+          ${session === "Sprint Race" && state.sprintGrid ? `<span>Sprint Grid: ${state.sprintGrid.position === null ? "No qualifying time" : `P${state.sprintGrid.position}`}</span>` : ""}
+          ${session === "Grand Prix" && state.grandPrixGrid ? `<span>Race Grid: ${state.grandPrixGrid.position === null ? "No qualifying time" : `P${state.grandPrixGrid.position}`}</span>` : ""}
         </div>
         <div class="pit-wall-session-actions">
           ${state.phase === "running" ? `
             <span class="pit-wall-session-running">${session} ${state.debugPaused ? "Paused (Route Debug)" : state.practice && state.practice.speed === 0 ? "Paused" : "Running..."}</span>
-            ${this.isPractice() ? "" : `<progress aria-label="${session} progress" max="${SESSION_DURATION}" value="${state.elapsed}"></progress>`}
-            <button type="button" class="pit-wall-menu-button" data-action="complete-session"${this.isBahrainPractice() && !this.routeMarker ? " disabled" : ""}>Complete Session</button>
+            ${this.isTimedSession() ? "" : `<progress aria-label="${session} progress" max="${SESSION_DURATION}" value="${state.elapsed}"></progress>`}
+            ${this.isRace() ? "" : `<button type="button" class="pit-wall-menu-button" data-action="complete-session"${this.hasSessionRoute() && !this.routeMarker ? " disabled" : ""}>Complete Session</button>`}
           ` : `
             <button type="button" class="pit-wall-menu-button" data-action="start-session">Start Session</button>
             <button type="button" class="pit-wall-menu-button" data-action="skip-session">Skip Session</button>
           `}
         </div>
-        ${state.phase === "running" && this.isPractice() ? `
+        ${state.phase === "running" && this.isTimedSession() ? `
           <div class="pit-wall-speed-controls" role="group" aria-label="Session speed">
-            <span>Session Speed</span>
-            ${[0, 1, 10, 50].map((speed) => `<button type="button" class="pit-wall-discovery-action" data-speed="${speed}" aria-pressed="${state.practice.speed === speed}">${speed === 0 ? "Pause" : `${speed}x`}</button>`).join("")}
-            <span data-practice-goal>${state.practice.lapTimes.length >= MINIMUM_LAPS ? "Discovery goal achieved" : `Discovery data: ${state.practice.lapTimes.length} / ${MINIMUM_LAPS} laps`}</span>
+            <div class="pit-wall-speed-buttons"><span>Session Speed</span>
+            ${[0, 1, 10, 50].map((speed) => `<button type="button" class="pit-wall-discovery-action" data-speed="${speed}" aria-pressed="${state.practice.speed === speed}"${speed === 0 ? ' aria-label="Pause"' : ""}>${speed === 0 ? "⏸" : `${speed}x`}</button>`).join("")}</div>
+            ${this.isRace() ? '<span data-race-status>Starting lights</span>' : this.isQualifying() ? '<span data-qualifying-status>In garage</span>' : `<span data-practice-goal>${state.practice.lapTimes.length >= MINIMUM_LAPS ? "Discovery goal achieved" : `Discovery data: ${state.practice.lapTimes.length} / ${MINIMUM_LAPS} laps`}</span>`}
           </div>
         ` : ""}
       </div>
-      ${state.phase === "ready" && this.isPractice() ? `
-        <div class="pit-wall-garage-setup" aria-label="Garage setup">
-          <div class="pit-wall-setup-tyres" role="group" aria-label="Starting tyre">
-            <strong>Tyres</strong>
-            ${Object.keys(this.balance.tyres).map((tyre) =>
-    `<button type="button" class="pit-wall-discovery-action pit-wall-tyre-button" data-tyre="${tyre}" data-setup-tyre="${tyre}" aria-pressed="${state.setup.tyre === tyre}">${tyre}</button>`).join("")}
-          </div>
-          <label class="pit-wall-setup-fuel">Fuel
-            <input type="range" min="10" max="100" step="1" value="${state.setup.fuel}" data-setup-fuel>
-            <output data-setup-fuel-value>${state.setup.fuel}%</output>
-          </label>
-        </div>
-      ` : ""}
       ${state.phase === "running" && state.markerLoading ? '<p class="pit-wall-session-notice" role="status">Loading Bahrain route...</p>' : ""}
       ${state.phase === "running" && state.markerError ? `
         <div class="pit-wall-route-error" role="alert">${state.markerError}
@@ -989,20 +1271,6 @@ class PitWallConsole {
     `;
     if (state.phase === "ready") {
       panel.querySelector('[data-action="start-session"]').addEventListener("click", () => this.startSession());
-      panel.querySelectorAll("[data-setup-tyre]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.setup.tyre = button.dataset.setupTyre;
-          panel.querySelectorAll("[data-setup-tyre]").forEach((choice) => {
-            choice.setAttribute("aria-pressed", String(choice === button));
-          });
-          this.updateTiming();
-        });
-      });
-      panel.querySelector("[data-setup-fuel]")?.addEventListener("input", (event) => {
-        state.setup.fuel = Number(event.currentTarget.value);
-        panel.querySelector("[data-setup-fuel-value]").textContent = `${state.setup.fuel}%`;
-        this.updateTiming();
-      });
     }
     panel.querySelector('[data-action="skip-session"]')?.addEventListener("click", () => this.skipSession());
     panel.querySelector('[data-action="complete-session"]')?.addEventListener("click", () => this.completeSession());
@@ -1032,10 +1300,10 @@ class PitWallConsole {
         state.routeLoading = false;
         state.debugPaused = false;
         this.renderSession();
-        if (this.isBahrainPractice()) {
+        if (this.hasSessionRoute()) {
           if (this.routeMarker) {
             this.resumeSessionTimer();
-            this.routeMarker.resume();
+            this.routeMarkers.forEach((marker) => marker.resume());
           }
         } else this.resumeSessionTimer();
       } else {
@@ -1051,7 +1319,7 @@ class PitWallConsole {
     state.phase = "running";
     state.message = "";
     state.elapsed = 0;
-    state.debugPaused = this.routeDebugEnabled && state.weekend.id === "bahrain" && !this.isBahrainPractice();
+    state.debugPaused = this.routeDebugEnabled && state.weekend.id === "bahrain" && !this.hasBahrainRoute();
     state.showRoute = false;
     state.editRoute = false;
     state.routeLoading = false;
@@ -1060,26 +1328,62 @@ class PitWallConsole {
     state.markerLoading = false;
     state.markerError = "";
     state.markerRequest = null;
-    if (this.isPractice()) {
+    if (this.isRace()) {
+      const length = parseFloat(state.weekend.circuitLength);
+      if (!Number.isFinite(length) || length <= 0) throw new Error("Sprint circuit length is unavailable");
+      const teamSlots = TEAMS.flatMap((team) => [team, team]);
+      const playerTeam = teamSlots.findIndex((team) => team.name === this.team.name);
+      if (playerTeam < 0) throw new Error(`Unknown sprint team: ${this.team.name}`);
+      teamSlots.splice(playerTeam, 1);
+      const fallbackGrid = DRIVERS.filter((driver) => driver.name !== this.driver.name)
+        .map((driver, index) => ({ driver, team: teamSlots[index], player: false }));
+      fallbackGrid.push({ driver: this.driver, team: this.team, player: true });
+      const grid = this.isGrandPrix() ? state.grandPrixGrid : state.sprintGrid;
+      state.race = createSprintRace(grid?.entries || fallbackGrid, length,
+        state.weekend.weather, state.weekend.trackCondition, state.setup, this.activeDiscoveries(), this.balance,
+        Math.random, { laps: this.raceLaps(), grandPrix: this.isGrandPrix() });
+      state.race.started = false;
+      state.race.startElapsed = 0;
+      state.race.startDuration = 3000 + 1000 + Math.random() * 1000;
+      state.practice = state.race.entries.find((entry) => entry.player).session;
+      setDriverMode(state.practice, state.setup.mode || "Balanced");
+      for (const entry of state.race.entries) {
+        if (!this.championship.some((item) => item.driver.name === entry.driver.name)) {
+          this.championship.push({ driver: entry.driver, team: entry.team, player: entry.player, points: 0, order: this.championship.length });
+        }
+      }
+      this.renderProfile();
+    } else if (this.isTimedSession()) {
       const length = parseFloat(state.weekend.circuitLength);
       if (!Number.isFinite(length) || length <= 0) throw new Error("Practice circuit length is unavailable");
-      state.practice = createPracticeSession(this.driver, this.team, this.activeDiscoveries(), length, Math.random, state.setup, this.balance);
+      state.practice = createPracticeSession(this.driver, this.team, this.activeDiscoveries(), length, Math.random,
+        state.setup, this.balance, 0, this.isQualifying());
+      parkPracticeSession(state.practice);
+      const teamSlots = TEAMS.flatMap((team) => [team, team]);
+      const playerTeam = teamSlots.findIndex((team) => team.name === this.team.name);
+      if (playerTeam < 0) throw new Error(`Unknown practice team: ${this.team.name}`);
+      teamSlots.splice(playerTeam, 1);
+      const opponents = DRIVERS.filter((driver) => driver.name !== this.driver.name)
+        .map((driver, index) => ({ driver, team: teamSlots[index] }));
+      state.classification = createPracticeClassification(this.driver, this.team, opponents, length,
+        state.weekend.weather, state.weekend.trackCondition, this.balance, Math.random, this.isQualifying());
+      this.renderProfile();
     } else state.practice = null;
     this.renderSession();
-    if (this.isBahrainPractice()) this.startRouteMarker();
+    if (this.hasSessionRoute()) this.startRouteMarker();
     else if (!state.debugPaused) this.resumeSessionTimer();
   }
 
   pauseSessionTimer() {
     const state = this.weekendState;
     if (state.debugPaused) return;
-    if (this.isPractice()) {
+    if (this.isTimedSession()) {
       if (this.sessionTimer != null && this.syncPracticeClock()) {
         this.completeSession();
         return;
       }
       this.clearSessionTimer();
-      this.routeMarker?.pause();
+      this.routeMarkers?.forEach((marker) => marker.pause());
     } else {
       state.elapsed = Math.min(SESSION_DURATION, state.elapsed + performance.now() - state.timerStartedAt);
       this.clearSessionTimer();
@@ -1096,22 +1400,52 @@ class PitWallConsole {
     this.renderSession();
     let route;
     try {
-      route = this.bahrainRoute || await loadBahrainRoute();
+      route = state.weekend.id === "bahrain" ? this.bahrainRoute || await loadBahrainRoute()
+        : { imageWidth: 600, imageHeight: 300, points: [[300, 240], [150, 240], [60, 150], [150, 60], [450, 60], [540, 150], [450, 240]] };
       if (this.weekendState !== state || state.phase !== "running" || state.markerRequest !== request) return;
-      this.bahrainRoute = route;
-      this.routeMarker = mountRouteMarker(this.rootElement.querySelector(".pit-wall-circuit"),
-        route, driverInitials(this.driver), this.team.colour, () => this.practiceProgress());
+      if (state.weekend.id === "bahrain") this.bahrainRoute = route;
+      const circuit = this.rootElement.querySelector(".pit-wall-circuit");
+      this.routeMarkers = [];
+      if (this.isRace()) {
+        if (state.weekend.id !== "bahrain") {
+          circuit.classList.add("has-schematic");
+          circuit.insertAdjacentHTML("beforeend", '<svg data-sprint-overlay class="pit-wall-route-overlay pit-wall-schematic" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet" aria-label="Schematic circuit, not the actual layout"><path d="M 300 240 L 150 240 Q 60 240 60 150 Q 60 60 150 60 L 450 60 Q 540 60 540 150 Q 540 240 450 240 Z"></path></svg><span data-sprint-overlay class="pit-wall-schematic-label">Schematic track</span>');
+        }
+        circuit.insertAdjacentHTML("beforeend", `<div data-sprint-overlay class="pit-wall-start-lights" role="status" aria-label="Start lights">
+          ${[1, 2, 3, 4, 5].map((light) => `<span data-start-light="${light}"></span>`).join("")}</div>
+          <div data-sprint-overlay class="pit-wall-start-grid" aria-label="${this.isGrandPrix() ? "Grand Prix" : "Sprint"} starting grid">${state.race.entries.map((entry) =>
+    `<span title="P${entry.gridPosition} ${entry.driver.name}, ${entry.session.tyre} tyre" data-tyre="${entry.session.tyre}" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span>`).join("")}</div>`);
+        this.routeMarker = mountRouteMarkers(circuit, route, state.race.entries.map((entry) => ({
+          initials: driverInitials(entry.driver), teamColour: entry.team.colour,
+          getProgress: () => this.raceProgress(entry),
+          getTyre: () => entry.session.tyre,
+          isVisible: () => state.race.started && !entry.retired && entry.finishedAt === null && entry.session.pitState !== "entering",
+        })));
+      } else {
+        const drivers = [{ initials: driverInitials(this.driver), teamColour: this.team.colour,
+          getProgress: () => this.practiceProgress(), getTyre: () => state.practice.tyre,
+          isVisible: () => ["none", "called"].includes(state.practice.pitState) }];
+        for (const entry of state.classification.opponents) drivers.push({
+          initials: driverInitials(entry.driver), teamColour: entry.team.colour,
+          getProgress: () => entry.session ? this.practiceProgress(entry.session) : 0,
+          getTyre: () => entry.session?.tyre || null, isVisible: () => Boolean(entry.session),
+        });
+        this.routeMarker = mountRouteMarkers(circuit, route, drivers);
+      }
+      this.routeMarkers.push(this.routeMarker);
       if (!state.debugPaused) {
         this.resumeSessionTimer();
-        this.routeMarker.resume();
+        this.routeMarkers.forEach((marker) => marker.resume());
       }
-      else if (state.showRoute) this.routeMarker.pause(true);
+      else if (state.showRoute) this.routeMarkers.forEach((marker) => marker.pause(true));
     } catch (error) {
-      console.error("Could not display Bahrain driver marker.", error);
+      console.error("Could not display session driver markers.", error);
       if (this.weekendState !== state || state.phase !== "running" || state.markerRequest !== request) return;
       this.clearSessionTimer();
       this.clearRouteMarker();
-      state.markerError = "Could not load the Bahrain route. Check the browser console.";
+      state.markerError = state.weekend.id === "bahrain"
+        ? "Could not load the Bahrain route. Check the browser console."
+        : "Could not load the session route. Check the browser console.";
     }
     state.markerLoading = false;
     this.renderSession();
@@ -1147,7 +1481,7 @@ class PitWallConsole {
     this.bahrainRoute = route;
     state.routeLoading = false;
     state.showRoute = true;
-    this.routeMarker?.pause(true);
+    this.routeMarkers?.forEach((marker) => marker.pause(true));
     this.routeOverlay = mountRouteDebug(this.rootElement.querySelector(".pit-wall-circuit"),
       this.bahrainRoute, driverInitials(this.driver), (index) => {
         state.selectedWaypoint = index;
@@ -1160,7 +1494,7 @@ class PitWallConsole {
   resumeSessionTimer() {
     const state = this.weekendState;
     this.clearSessionTimer();
-    if (this.isPractice()) {
+    if (this.isTimedSession()) {
       state.timerStartedAt = performance.now();
       this.sessionTimer = setInterval(() => {
         if (this.syncPracticeClock()) this.completeSession();
@@ -1183,23 +1517,59 @@ class PitWallConsole {
     const now = performance.now();
     const delta = Math.max(0, now - state.timerStartedAt);
     state.timerStartedAt = now;
+    if (this.isRace()) {
+      const race = state.race;
+      let raceDelta = delta;
+      if (!race.started) {
+        const countdown = state.practice.speed === 0 ? 0 : Math.min(raceDelta, race.startDuration - race.startElapsed);
+        race.startElapsed += countdown;
+        raceDelta = state.practice.speed === 0 ? 0 : raceDelta - countdown;
+        this.rootElement.querySelectorAll("[data-start-light]").forEach((light) => {
+          light.classList.toggle("is-lit", race.startElapsed >= Number(light.dataset.startLight) * 600);
+        });
+        if (race.startElapsed >= race.startDuration) {
+          race.started = true;
+          this.rootElement.querySelector(".pit-wall-start-lights")?.remove();
+          this.rootElement.querySelector(".pit-wall-start-grid")?.remove();
+        }
+      }
+      if (race.started && raceDelta > 0) {
+        race.finished = advanceSprintRace(race, raceDelta * state.practice.speed, state.setup.tyre);
+      }
+      this.routeMarkers?.forEach((marker) => marker.update());
+      this.updateTiming();
+      return Boolean(race.finished);
+    }
+    const before = state.practice.elapsed;
     advancePracticeSession(state.practice, delta * state.practice.speed);
+    advancePracticeClassification(state.classification, state.practice.elapsed - before);
+    this.routeMarkers?.forEach((marker) => marker.update());
     this.updateTiming();
-    return state.practice.elapsed >= PRACTICE_DURATION;
+    return state.practice.elapsed >= state.practice.duration;
   }
 
-  practiceProgress() {
+  practiceProgress(practice = this.weekendState.practice) {
     const state = this.weekendState;
-    const practice = state.practice;
     const pending = this.sessionTimer != null
-      ? Math.max(0, performance.now() - state.timerStartedAt) * practice.speed : 0;
-    return practice.pitState === "stopped" ? 0
+      ? Math.max(0, performance.now() - state.timerStartedAt) * state.practice.speed : 0;
+    return ["stopped", "entering"].includes(practice.pitState) ? 0
       : Math.min(1, practice.lapProgress + pending / practice.lapTarget);
+  }
+
+  raceProgress(entry) {
+    const state = this.weekendState;
+    const session = entry.session;
+    const pending = state.race.started && this.sessionTimer != null && !state.debugPaused
+      ? Math.max(0, performance.now() - state.timerStartedAt) * state.practice.speed : 0;
+    const rate = fuelPerLap(this.balance, session.mode, session.upgrades);
+    const distance = Math.min(1 - session.lapProgress, pending / session.lapTarget,
+      rate > 0 ? session.fuel / rate : Infinity);
+    return ((session.lapProgress + distance) % 1 + 1) % 1;
   }
 
   setPracticeSpeed(speed) {
     const state = this.weekendState;
-    if (state.phase !== "running" || !this.isPractice() || ![0, 1, 10, 50].includes(speed)) return;
+    if (state.phase !== "running" || !this.isTimedSession() || ![0, 1, 10, 50].includes(speed)) return;
     if (this.sessionTimer != null && this.syncPracticeClock()) {
       this.completeSession();
       return;
@@ -1216,12 +1586,44 @@ class PitWallConsole {
 
   completeSession() {
     const state = this.weekendState;
-    if (state.phase !== "running" || (this.isBahrainPractice() && !this.routeMarker)) return;
-    if (this.isPractice() && this.sessionTimer != null) this.syncPracticeClock();
+    if (state.phase !== "running" || (this.hasSessionRoute() && !this.routeMarker)) return;
+    if (this.isTimedSession() && this.sessionTimer != null) this.syncPracticeClock();
+    if (this.isRace() && !state.race.finished) return;
     this.clearSessionTimer();
     this.clearRouteMarker();
     state.sessionResults[state.sessionIndex] = "completed";
-    if (this.isPractice()) {
+    if (this.isTimedSession()) {
+      if (this.isRace()) {
+        const results = sprintClassification(state.race);
+        const points = this.isGrandPrix() ? GRAND_PRIX_POINTS : SPRINT_POINTS;
+        results.forEach((entry, index) => {
+          entry.points = entry.retired ? 0 : (points[index] || 0);
+          const standing = this.championship.find((item) => item.driver.name === entry.driver.name);
+          standing.points += entry.points;
+        });
+        const player = results.find((entry) => entry.player);
+        const laps = player.session.lapTimes;
+        state.raceResult = {
+          position: results.indexOf(player) + 1, retired: player.retired,
+          bestLap: laps.length ? Math.min(...laps) : null,
+          averageLap: laps.length ? laps.reduce((sum, lap) => sum + lap, 0) / laps.length : null,
+          laps: player.session.completedLaps, points: player.points,
+          pitStops: player.pitStops, tyres: [...player.tyreHistory],
+        };
+      }
+      if (this.isQualifying()) {
+        const entries = practiceClassification(state.classification, state.practice);
+        const playerIndex = entries.findIndex((entry) => entry.player);
+        const player = entries[playerIndex];
+        const grid = {
+          entries: entries.map((entry) => ({ ...entry })),
+          position: player.bestLap === null ? null : playerIndex + 1,
+          poleTime: entries[0].bestLap,
+          playerBest: player.bestLap,
+        };
+        if (this.isSprintQualifying()) state.sprintGrid = grid;
+        else state.grandPrixGrid = grid;
+      }
       state.phase = "review";
       this.renderSession();
       this.rootElement.querySelector("#pit-wall-review-title").focus();
@@ -1393,9 +1795,12 @@ class PitWallConsole {
     state.message = message;
     state.options = [];
     state.practice = null;
+    state.classification = null;
+    state.race = null;
     state.setup = { tyre: "Medium", fuel: 100 };
     state.sessionIndex += 1;
     state.phase = state.sessionIndex === state.weekend.sessions.length ? "complete" : "ready";
+    this.renderProfile("Race Weekend Ready");
     if (state.phase === "complete") {
       this.roundsCompleted += 1;
       this.weekendDiscoveries = [];
@@ -1416,6 +1821,8 @@ class PitWallConsole {
     const mainPanel = this.rootElement.querySelector(".pit-wall-track-display");
     const rareCount = this.permanentUpgrades.filter((upgrade) => upgrade.rarity === "purple").length;
     const legendaryCount = this.permanentUpgrades.filter((upgrade) => upgrade.rarity === "gold").length;
+    const standings = [...this.championship].sort((a, b) => b.points - a.points || a.order - b.order);
+    const position = standings.findIndex((entry) => entry.player);
     mainPanel.innerHTML = `
       <section class="pit-wall-season-finish" aria-labelledby="pit-wall-season-finish-title">
         <h4 id="pit-wall-season-finish-title" tabindex="-1">Season Complete</h4>
@@ -1426,8 +1833,9 @@ class PitWallConsole {
           <dt>Total Rare Breakthroughs</dt><dd>${rareCount}</dd>
           <dt>Total Legendary Discoveries</dt><dd>${legendaryCount}</dd>
           <dt>Weekend Wins</dt><dd>Not available yet</dd>
-          <dt>Championship Position</dt><dd>Not available yet</dd>
+          <dt>Championship Position</dt><dd>${position < 0 ? "Not available yet" : `P${position + 1}`}</dd>
         </dl>
+        ${championshipTable(this.championship)}
       </section>
     `;
     mainPanel.querySelector("#pit-wall-season-finish-title").focus();

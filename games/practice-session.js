@@ -1,6 +1,7 @@
 import { DEFAULT_BALANCE, DISCOVERY_PACE_FIELDS } from "./pit-wall-balance.js";
 
 export const PRACTICE_DURATION = 60 * 60 * 1000;
+export const SPRINT_QUALIFYING_DURATION = 15 * 60 * 1000;
 export const MINIMUM_LAPS = 3;
 
 export const TYRES = DEFAULT_BALANCE.tyres;
@@ -48,7 +49,8 @@ function baseLapTarget(session) {
 function updateLapTarget(session) {
   const { lap, tyres, modes } = session.balance;
   session.lapTargetBeforeMode = session.baseLapTarget + tyres[session.tyre].pace
-    + session.tyreWear * lap.tyreWearMsPerPercent - (100 - session.fuel) * lap.fuelSavingMsPerPercent;
+    + session.tyreWear * lap.tyreWearMsPerPercent - (100 - session.fuel) * lap.fuelSavingMsPerPercent
+    + session.programPaceMs;
   session.lapTarget = Math.max(lap.minimumLapMs, Math.round(session.lapTargetBeforeMode + modes[session.mode].pace));
 }
 
@@ -57,27 +59,30 @@ function startLap(session) {
   updateLapTarget(session);
 }
 
-function finishPitStop(session) {
-  if (session.pitRemaining > 0 || !session.nextTyre) return;
-  session.tyre = session.nextTyre;
-  session.tyreWear = 0;
-  session.nextTyre = null;
-  session.pitState = "none";
-  updateLapTarget(session);
+export function fuelPerLap(balance, mode, upgrades) {
+  const efficiency = upgrades.filter((upgrade) => upgrade.id === "fuel-mapping")
+    .reduce((total, upgrade) => total + balance.discoveries.fuelEfficiencyPerLevel * (upgrade.level || 1), 0);
+  return balance.lap.fuelPerLap * balance.modes[mode].fuel / (1 + efficiency);
 }
 
 export function createPracticeSession(driver, team, upgrades, circuitLength, random = Math.random,
-  setup = { tyre: "Medium", fuel: 100 }, balance = DEFAULT_BALANCE) {
+  setup = { tyre: "Medium", fuel: 100 }, balance = DEFAULT_BALANCE, programPaceMs = 0, qualifying = false) {
   if (!Object.hasOwn(balance.tyres, setup.tyre)) throw new Error(`Unknown tyre compound: ${setup.tyre}`);
-  if (!Number.isFinite(setup.fuel) || setup.fuel < 10 || setup.fuel > 100) {
+  if (!Number.isFinite(setup.fuel) || setup.fuel < (qualifying ? .1 : 10) || setup.fuel > 100) {
     throw new Error(`Invalid starting fuel: ${setup.fuel}`);
   }
   const session = {
-    driver, team, upgrades, circuitLength, random, balance,
+    driver, team, upgrades, circuitLength, random, balance, programPaceMs, qualifying,
+    duration: qualifying ? SPRINT_QUALIFYING_DURATION : PRACTICE_DURATION,
     elapsed: 0,
     lapElapsed: 0,
     lapProgress: 0,
     lapTimes: [],
+    lapTyres: [],
+    completedLaps: 0,
+    outLap: qualifying,
+    lapValid: true,
+    invalidLaps: 0,
     speed: 1,
     tyre: setup.tyre,
     tyreWear: 0,
@@ -85,7 +90,6 @@ export function createPracticeSession(driver, team, upgrades, circuitLength, ran
     mode: "Balanced",
     pitState: "none",
     pitRemaining: 0,
-    nextTyre: null,
   };
   startLap(session);
   return session;
@@ -104,25 +108,48 @@ export function callToPit(session) {
   return true;
 }
 
-export function selectPitTyre(session, tyre) {
+export function parkPracticeSession(session) {
+  session.pitState = "stopped";
+}
+
+export function sendPracticeOut(session, setup) {
+  if (!Object.hasOwn(session.balance.tyres, setup.tyre)) throw new Error(`Unknown tyre compound: ${setup.tyre}`);
+  if (!Number.isFinite(setup.fuel) || setup.fuel < (session.qualifying ? .1 : 10) || setup.fuel > 100) {
+    throw new Error(`Invalid starting fuel: ${setup.fuel}`);
+  }
+  if (session.pitState !== "stopped") return false;
+  session.tyre = setup.tyre;
+  session.fuel = setup.fuel;
+  session.tyreWear = 0;
+  session.lapElapsed = 0;
+  session.lapProgress = 0;
+  session.outLap = session.qualifying;
+  session.lapValid = true;
+  session.pitState = "none";
+  startLap(session);
+  return true;
+}
+
+export function serviceRacePit(session, tyre) {
   if (!Object.hasOwn(session.balance.tyres, tyre)) throw new Error(`Unknown tyre compound: ${tyre}`);
   if (session.pitState !== "stopped") return false;
-  session.nextTyre = tyre;
-  finishPitStop(session);
+  session.tyre = tyre;
+  session.tyreWear = 0;
+  session.pitState = "none";
+  startLap(session);
   return true;
 }
 
 export function advancePracticeSession(session, simulatedMilliseconds) {
-  let remaining = Math.min(Math.max(0, simulatedMilliseconds), PRACTICE_DURATION - session.elapsed);
+  let remaining = Math.min(Math.max(0, simulatedMilliseconds), session.duration - session.elapsed);
   session.elapsed += remaining;
   while (remaining > 0) {
-    if (session.pitState === "stopped") {
-      const pitTime = session.nextTyre ? Math.min(remaining, session.pitRemaining) : remaining;
-      session.pitRemaining = Math.max(0, session.pitRemaining - pitTime);
-      session.lapElapsed += pitTime;
+    if (session.pitState === "stopped") break;
+    if (session.pitState === "entering") {
+      const pitTime = Math.min(remaining, session.pitRemaining);
+      session.pitRemaining -= pitTime;
       remaining -= pitTime;
-      finishPitStop(session);
-      if (session.pitState === "stopped") break;
+      if (session.pitRemaining <= 0) session.pitState = "stopped";
       continue;
     }
     const untilLap = (1 - session.lapProgress) * session.lapTarget;
@@ -133,13 +160,19 @@ export function advancePracticeSession(session, simulatedMilliseconds) {
     const { lap, tyres, modes, discoveries, vehicleStats } = session.balance;
     const tyreLife = session.upgrades.filter((upgrade) => upgrade.id === "tyre-insight")
       .reduce((total, upgrade) => total + discoveries.tyreLifePerLevel * (upgrade.level || 1), 0);
-    const fuelEfficiency = session.upgrades.filter((upgrade) => upgrade.id === "fuel-mapping")
-      .reduce((total, upgrade) => total + discoveries.fuelEfficiencyPerLevel * (upgrade.level || 1), 0);
     session.tyreWear = Math.min(100, session.tyreWear + distance * tyres[session.tyre].wear * modes[session.mode].wear / (1 + tyreLife));
-    session.fuel = Math.max(0, session.fuel - distance * lap.fuelPerLap * modes[session.mode].fuel / (1 + fuelEfficiency));
+    const fuelUsed = distance * fuelPerLap(session.balance, session.mode, session.upgrades);
+    if (session.qualifying && fuelUsed > session.fuel + 1e-9) session.lapValid = false;
+    session.fuel = Math.max(0, session.fuel - fuelUsed);
     remaining -= time;
     if (session.lapProgress < 1) break;
-    session.lapTimes.push(Math.round(session.lapElapsed));
+    session.completedLaps += 1;
+    if (session.outLap) session.outLap = false;
+    else if (session.lapValid) {
+      session.lapTimes.push(Math.round(session.lapElapsed));
+      session.lapTyres.push(session.tyre);
+    } else session.invalidLaps += 1;
+    session.lapValid = true;
     session.lapElapsed = 0;
     session.lapProgress = 0;
     startLap(session);
@@ -147,7 +180,7 @@ export function advancePracticeSession(session, simulatedMilliseconds) {
       const efficiency = session.upgrades.filter((upgrade) => upgrade.stat === "Pit Efficiency")
         .reduce((total, upgrade) => total + upgrade.amount, vehicleStats["Pit Efficiency"].base);
       session.pitRemaining = Math.max(lap.pitMinimumMs, lap.pitBaseMs - efficiency * vehicleStats["Pit Efficiency"].pitGainMs);
-      session.pitState = "stopped";
+      session.pitState = "entering";
     }
   }
 }

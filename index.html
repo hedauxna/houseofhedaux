@@ -775,6 +775,104 @@
       align-self: flex-start;
     }
 
+    .pit-wall-panel-left .pit-wall-panel-content:has(.pit-wall-classification) {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      gap: 4px;
+      overflow: hidden;
+      padding: 4px;
+    }
+
+    .pit-wall-classification {
+      flex: 0 0 auto;
+      min-height: 0;
+    }
+
+    .pit-wall-classification h4 {
+      margin: 0 0 4px;
+      color: var(--gold);
+      font: 600 clamp(8px, 1.4vw, 12px)/1.1 var(--sans);
+    }
+
+    .pit-wall-classification ol {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .pit-wall-classification-row {
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
+      padding: 2px;
+      color: var(--paper);
+      background: rgba(255, 255, 255, .035);
+      font: clamp(7px, 1vw, 10px)/1.05 var(--sans);
+    }
+
+    .pit-wall-classification-row.is-player { background: rgba(215, 189, 133, .2); }
+    .pit-wall-classification-position { min-width: 2em; }
+    .pit-wall-classification-marker {
+      display: grid;
+      place-items: center;
+      box-sizing: content-box;
+      width: 2em;
+      height: 2em;
+      border: 1px solid rgba(255, 255, 255, .8);
+      border-radius: 50%;
+      color: white;
+      font-weight: bold;
+    }
+    .pit-wall-classification-person { min-width: 0; }
+    .pit-wall-classification-person strong,
+    .pit-wall-classification-person span,
+    .pit-wall-classification-time small { display: block; }
+    .pit-wall-classification-person span,
+    .pit-wall-classification-time small { font-size: .85em; }
+    .pit-wall-classification-time { text-align: right; white-space: nowrap; }
+    .pit-wall-classification-time .pit-wall-tyre-label {
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+    }
+    .pit-wall-driver-details {
+      flex: 0 1 auto;
+      min-height: 0;
+      margin-top: auto;
+      overflow-y: auto;
+      color: var(--paper);
+      font: clamp(9px, 1vw, 11px)/1.25 var(--sans);
+    }
+    .pit-wall-driver-details h4 {
+      margin: 3px 0;
+      color: var(--gold);
+      font: 600 11px/1.2 var(--sans);
+    }
+    .pit-wall-console .pit-wall-driver-details p { margin: 2px 0; font: inherit; }
+    .pit-wall-driver-details strong { color: var(--gold); }
+    .pit-wall-driver-details .pit-wall-upgrade-list { margin: 0; }
+    .pit-wall-driver-details .green { color: #a4d5a5; }
+    .pit-wall-driver-details .blue { color: #9dc9ed; }
+    .pit-wall-driver-details .purple { color: #d3a9ed; }
+    .pit-wall-driver-details .gold { color: #efcf83; }
+
+    @media (max-height: 500px) {
+      .pit-wall-classification-row {
+        gap: 2px;
+        padding: 0 1px;
+        font-size: clamp(7px, 2.2vh, 10px);
+      }
+      .pit-wall-classification-marker { width: 1.6em; height: 1.6em; }
+      .pit-wall-classification h4 { margin-bottom: 2px; }
+    }
+
     .pit-wall-driver-profile .pit-wall-driver-profile-label:has(+ .pit-wall-driver-name) {
       margin-bottom: 1px;
     }
@@ -879,7 +977,7 @@
     .pit-wall-season-finish {
       align-self: center;
       width: 100%;
-      max-width: 440px;
+      max-width: 760px;
       color: var(--paper);
       font: 12px/1.4 var(--sans);
     }
@@ -1079,7 +1177,8 @@
     }
 
     .pit-wall-session-panel.is-discovery,
-    .pit-wall-session-panel.is-review {
+    .pit-wall-session-panel.is-review,
+    .pit-wall-session-panel.is-complete {
       display: flex;
       flex: 1;
       flex-direction: column;
@@ -1241,6 +1340,17 @@
       align-items: center;
     }
 
+    .pit-wall-telemetry .pit-wall-fuel-readout {
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 1px 5px;
+      color: var(--paper);
+      font-size: .85em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pit-wall-telemetry .pit-wall-fuel-readout dt { color: var(--paper); }
+
     .pit-wall-gauge {
       flex: 0 1 50%;
       min-width: 20px;
@@ -1329,6 +1439,14 @@
       font: 600 10px/1.2 var(--sans);
     }
 
+    .pit-wall-speed-buttons {
+      display: inline-flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+
     .pit-wall-speed-controls button[data-speed],
     .pit-wall-session-review button {
       padding: 4px 8px;
@@ -1415,6 +1533,61 @@
     .pit-wall-session-review button {
       justify-self: start;
     }
+
+    .pit-wall-session-review.is-race-review {
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .pit-wall-session-review.is-race-review .pit-wall-review-stats {
+      grid-row: 2;
+      align-self: start;
+    }
+
+    .pit-wall-session-review.is-race-review > button {
+      grid-column: 1;
+      grid-row: 3;
+    }
+
+    .pit-wall-standings {
+      min-width: 0;
+      color: var(--paper);
+      font: clamp(8px, .8vw, 11px)/1.15 var(--sans);
+    }
+
+    .pit-wall-session-review > .pit-wall-standings {
+      grid-column: 2;
+      grid-row: 2 / 4;
+    }
+
+    .pit-wall-standings h4 {
+      margin: 0 0 3px;
+      color: var(--gold);
+      font: 600 1.15em/1.1 var(--sans);
+    }
+
+    .pit-wall-standings table {
+      width: 100%;
+      border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pit-wall-standings th,
+    .pit-wall-standings td {
+      padding: 2px 3px;
+      text-align: left;
+      border-bottom: 1px solid rgba(215, 189, 133, .14);
+    }
+
+    .pit-wall-standings th {
+      color: var(--gold);
+      font-size: .9em;
+    }
+
+    .pit-wall-standings th:nth-last-child(-n+2),
+    .pit-wall-standings td:nth-last-child(-n+2) { text-align: right; }
+    .pit-wall-standings tr.is-player { background: rgba(215, 189, 133, .24); font-weight: 700; }
+    .pit-wall-session-complete > .pit-wall-standings { flex: 1 0 100%; }
+    .pit-wall-season-finish > .pit-wall-standings { margin-top: 8px; }
 
     .pit-wall-discovery-heading,
     .pit-wall-session-complete {
@@ -1591,6 +1764,75 @@
       display: none;
     }
 
+    .pit-wall-start-lights {
+      position: absolute;
+      z-index: 4;
+      top: 2px;
+      left: 50%;
+      display: flex;
+      gap: 4px;
+      padding: 3px 6px;
+      transform: translateX(-50%);
+      border-radius: 4px;
+      background: #151927;
+    }
+
+    .pit-wall-start-lights span {
+      width: clamp(7px, 2vh, 14px);
+      height: clamp(7px, 2vh, 14px);
+      border-radius: 50%;
+      background: #4a2222;
+      border: 1px solid #8a4444;
+    }
+
+    .pit-wall-start-lights .is-lit {
+      background: #f22;
+      box-shadow: 0 0 6px #f22;
+    }
+
+    .pit-wall-start-grid {
+      position: absolute;
+      z-index: 3;
+      left: 50%;
+      bottom: 3px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      grid-auto-flow: column;
+      gap: 2px 4px;
+      transform: translateX(-50%);
+    }
+
+    .pit-wall-start-grid span {
+      display: grid;
+      place-items: center;
+      width: clamp(14px, 4vh, 24px);
+      height: clamp(14px, 4vh, 24px);
+      box-sizing: border-box;
+      border: 2px solid var(--tyre-colour, white);
+      border-radius: 50%;
+      color: white;
+      font: 700 clamp(6px, 1.8vh, 9px)/1 var(--sans);
+    }
+
+    .pit-wall-schematic path {
+      fill: none;
+      stroke: rgba(215, 189, 133, .7);
+      stroke-width: 4;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .pit-wall-circuit.has-schematic .pit-wall-circuit-placeholder {
+      display: none;
+    }
+
+    .pit-wall-schematic-label {
+      position: absolute;
+      right: 4px;
+      bottom: 2px;
+      font-size: 9px;
+    }
+
     .pit-wall-route-controls {
       display: flex;
       flex-wrap: wrap;
@@ -1661,9 +1903,15 @@
       text-anchor: middle;
     }
 
-    .pit-wall-moving-driver circle {
+    .pit-wall-moving-driver .pit-wall-marker-team {
       stroke: white;
       stroke-width: 2;
+    }
+
+    .pit-wall-moving-driver .pit-wall-marker-tyre {
+      fill: none;
+      stroke: var(--tyre-colour, white);
+      stroke-width: 5;
     }
 
     .pit-wall-moving-driver text {
@@ -1764,7 +2012,7 @@
     }
 
     .pit-wall-panel-bottom:has(.pit-wall-command-toggle[aria-expanded="true"]) .pit-wall-command-body > .pit-wall-panel-content {
-      padding: 8px;
+      padding: 10px 8px;
       visibility: visible;
     }
 
@@ -1793,6 +2041,15 @@
       color: var(--paper);
       font: 11px/1.2 var(--sans);
     }
+
+    .pit-wall-command-controls .pit-wall-setup-fuel {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .pit-wall-command-controls .pit-wall-setup-fuel input { width: clamp(70px, 9vw, 120px); }
 
     .pit-wall-command-group:not([hidden]) {
       display: flex;
@@ -2225,6 +2482,10 @@
         align-items: stretch;
       }
 
+      .pit-wall-layout:has(.pit-wall-classification) {
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 2.7fr) minmax(0, .8fr);
+      }
+
       .pit-wall-layout:has(.pit-wall-upgrade-list li:nth-child(3)) {
         grid-template-columns: minmax(0, 1.8fr) minmax(0, 2.2fr) minmax(0, .8fr);
       }
@@ -2476,9 +2737,11 @@
 
       .pit-wall-session-current {
         gap: 4px;
+        flex-wrap: wrap;
       }
 
       .pit-wall-session-details {
+        flex: 1 1 100%;
         gap: 2px 5px;
       }
 
@@ -2515,10 +2778,13 @@
       }
 
       .pit-wall-session-panel.is-discovery,
-      .pit-wall-session-panel.is-review {
+      .pit-wall-session-panel.is-review,
+      .pit-wall-session-panel.is-complete {
         padding: clamp(3px, 1vh, 7px);
       }
 
+      .pit-wall-session-complete { gap: 2px 6px; align-items: center; }
+      .pit-wall-session-complete .pit-wall-menu-button { padding: 2px 5px; font-size: 9px; }
       .pit-wall-timing-live {
         gap: 3px;
       }
@@ -2570,6 +2836,9 @@
         font-size: clamp(8px, 2.2vh, 10px);
       }
 
+      .pit-wall-speed-buttons { gap: 2px; }
+      .pit-wall-speed-buttons > span { display: none; }
+
       .pit-wall-speed-controls button[data-speed],
       .pit-wall-session-review button {
         padding: 2px 4px;
@@ -2591,6 +2860,13 @@
       .pit-wall-review-stats dl {
         gap: 2px 4px;
         font: clamp(8px, 2.2vh, 10px)/1.1 var(--sans);
+      }
+
+      .pit-wall-standings { font-size: clamp(7px, 2vh, 10px); }
+      .pit-wall-standings th,
+      .pit-wall-standings td { padding: 0 2px; }
+      .pit-wall-session-review.is-race-review {
+        grid-template-columns: minmax(0, 0.65fr) minmax(0, 1.35fr);
       }
 
       .pit-wall-console .pit-wall-review-feedback p,
@@ -2713,7 +2989,7 @@
       }
 
       .pit-wall-panel-bottom:has(.pit-wall-command-toggle[aria-expanded="true"]) .pit-wall-command-body > .pit-wall-panel-content {
-        padding: 4px 8px;
+        padding: 5px 8px;
       }
 
       .pit-wall-panel-bottom .pit-wall-placeholder-block {
@@ -2738,6 +3014,7 @@
         padding: 2px 4px;
         font-size: clamp(8px, 2.4vh, 10px);
       }
+
     }
 
     /* Pit Wall Mobile Portrait Mode */
