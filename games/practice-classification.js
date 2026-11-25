@@ -48,7 +48,7 @@ function startStint(classification, entry) {
       const roll = random() * total;
       tyre = tyres[roll < weights[0] ? 0 : roll < weights[0] + weights[1] ? 1 : 2];
     }
-    const fuel = Math.max(.1, Math.min(100, Math.ceil((entry.stintLaps * fuelPerLap(balance, "Push", [])
+    const fuel = Math.max(.1, Math.min(100, Math.ceil((entry.stintLaps * fuelPerLap(balance, "Push", [], circuitLength)
       + settings.fuelReservePercent) * 10) / 10));
     entry.session = createPracticeSession(entry.driver, entry.team, [], circuitLength, random, { tyre, fuel }, balance, 0, true);
     setDriverMode(entry.session, "Push");

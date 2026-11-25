@@ -59,10 +59,12 @@ function startLap(session) {
   updateLapTarget(session);
 }
 
-export function fuelPerLap(balance, mode, upgrades) {
+export function fuelPerLap(balance, mode, upgrades, circuitLength) {
+  if (!Number.isFinite(circuitLength) || circuitLength <= 0) throw new Error("Circuit length must be positive");
   const efficiency = upgrades.filter((upgrade) => upgrade.id === "fuel-mapping")
     .reduce((total, upgrade) => total + balance.discoveries.fuelEfficiencyPerLevel * (upgrade.level || 1), 0);
-  return balance.lap.fuelPerLap * balance.modes[mode].fuel / (1 + efficiency);
+  return balance.lap.fuelPerLap * (circuitLength / balance.lap.referenceLengthKm)
+    * balance.modes[mode].fuel / (1 + efficiency);
 }
 
 export function createPracticeSession(driver, team, upgrades, circuitLength, random = Math.random,
@@ -161,7 +163,7 @@ export function advancePracticeSession(session, simulatedMilliseconds) {
     const tyreLife = session.upgrades.filter((upgrade) => upgrade.id === "tyre-insight")
       .reduce((total, upgrade) => total + discoveries.tyreLifePerLevel * (upgrade.level || 1), 0);
     session.tyreWear = Math.min(100, session.tyreWear + distance * tyres[session.tyre].wear * modes[session.mode].wear / (1 + tyreLife));
-    const fuelUsed = distance * fuelPerLap(session.balance, session.mode, session.upgrades);
+    const fuelUsed = distance * fuelPerLap(session.balance, session.mode, session.upgrades, session.circuitLength);
     if (session.qualifying && fuelUsed > session.fuel + 1e-9) session.lapValid = false;
     session.fuel = Math.max(0, session.fuel - fuelUsed);
     remaining -= time;

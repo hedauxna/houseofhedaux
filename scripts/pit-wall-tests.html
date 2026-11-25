@@ -103,9 +103,23 @@
       "Race results must not depend on clock update size or simulation speed");
       const upgradedRace = makeRace(100, [{ stat: "Aero", amount: 4 }, { id: "fuel-mapping", level: 1 }]);
       assert(upgradedRace.entries[1].session.lapTarget < makeRace().entries[1].session.lapTarget
-        && fuelPerLap(raceBalance, "Balanced", upgradedRace.entries[1].session.upgrades)
-          < fuelPerLap(raceBalance, "Balanced", []),
+        && fuelPerLap(raceBalance, "Balanced", upgradedRace.entries[1].session.upgrades, 5.412)
+          < fuelPerLap(raceBalance, "Balanced", [], 5.412),
       "Permanent and weekend upgrades must affect the immediately following sprint");
+      const monacoRate = fuelPerLap(raceBalance, "Balanced", [], 3.337);
+      assert(Math.abs(monacoRate - raceBalance.lap.fuelPerLap * 3.337 / raceBalance.lap.referenceLengthKm) < 1e-10
+        && 78 * monacoRate < 100,
+      "Fuel per lap must scale with circuit length so a full Monaco Grand Prix is possible");
+      const monacoPractice = createPracticeSession(playerDriver, neutralTeam, [], 3.337, () => .5,
+        { tyre: "Medium", fuel: 100 }, raceBalance);
+      advancePracticeSession(monacoPractice, monacoPractice.lapTarget);
+      assert(Math.abs(monacoPractice.fuel - (100 - monacoRate)) < 1e-8,
+        "A Monaco practice lap must consume the circuit-adjusted fuel rate");
+      const monacoRace = createSprintRace(raceGrid, 3.337, "Sunny", "Green", { tyre: "Medium", fuel: 100 },
+        [], raceBalance, () => .5, { laps: 78, grandPrix: true });
+      advanceSprintRace(monacoRace, 20000000, "Medium");
+      assert(monacoRace.entries.every((entry) => !entry.retired && entry.finishedAt !== null),
+        "A full-fuel Monaco Grand Prix must produce finishers for both player and AI");
       assert(SPRINT_POINTS.join(",") === "8,7,6,5,4,3,2,1", "Sprint points must follow the requested scoring");
       let raceSeed = 17;
       const raceRandom = () => {
@@ -184,7 +198,7 @@
       advancePracticeSession(qualifying, qualifying.lapTarget);
       assert(qualifying.lapTimes.length === timedBeforeOutLap,
         "Later out laps must not replace the qualifying best");
-      const fuelRate = fuelPerLap(qualifyingBalance, "Push", []);
+      const fuelRate = fuelPerLap(qualifyingBalance, "Push", [], 5.412);
       const targets = [2, 3, 4].map((laps) => {
         const fuel = Math.ceil(laps * fuelRate * 10) / 10;
         const run = qualifyingSession("Soft", fuel);
@@ -730,11 +744,11 @@
         && root.querySelector(".pit-wall-lap-entry.is-current").textContent.includes("Out Lap")
         && root.querySelector('[data-timing="fuel-percent"]').textContent === "4.7%"
         && root.querySelector('[data-timing="fuel-range"]').textContent
-          === `~${(4.7 / fuelPerLap(game.balance, "Push", game.activeDiscoveries())).toFixed(1)} laps remaining`,
+          === `~${(4.7 / fuelPerLap(game.balance, "Push", game.activeDiscoveries(), 5.412)).toFixed(1)} laps remaining`,
       "The first qualifying lap must be visibly identified as the out lap");
       root.querySelector('[data-driver-mode="Manage"]').click();
       assert(root.querySelector('[data-timing="fuel-range"]').textContent
-        === `~${(4.7 / fuelPerLap(game.balance, "Manage", game.activeDiscoveries())).toFixed(1)} laps remaining`,
+        === `~${(4.7 / fuelPerLap(game.balance, "Manage", game.activeDiscoveries(), 5.412)).toFixed(1)} laps remaining`,
       "The current fuel range must respond to driver mode changes");
       root.querySelector('[data-driver-mode="Push"]').click();
       game.clearSessionTimer();
@@ -1606,7 +1620,7 @@
             && trackerLabels().length === 5
             && trackerLabels()[1].startsWith(weekend.sprint ? "Sprint Qualifying" : "Practice 2"),
           `Round ${round} must show current championship progress and the correct session format`);
-          if (round > 3) {
+          if (round > 21) {
             const placeholder = root.querySelector(".pit-wall-circuit-placeholder");
             assert(placeholder && !root.querySelector(".pit-wall-circuit img")
               && placeholder.textContent.includes("Track Layout Coming Soon")
@@ -2289,6 +2303,168 @@
         layoutGame.weekendState.phase = "ready";
         layoutGame.renderSession();
         assert(!circuit.closest(".pit-wall-circuit").hidden, "The circuit must return for the next session");
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "japan"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1222 && circuit.naturalHeight === 696 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.807 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("53 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Japanese circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Japan at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "china"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1050 && circuit.naturalHeight === 682 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.451 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("56 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Chinese circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `China at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "miami"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 891 && circuit.naturalHeight === 354 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.412 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("57 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Miami circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Miami at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "canada"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1361 && circuit.naturalHeight === 545 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("4.361 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("70 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Canadian circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Canada at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "monaco"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1312 && circuit.naturalHeight === 574 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("3.337 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("78 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Monaco circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Monaco at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "portugal"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 997 && circuit.naturalHeight === 455 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("4.653 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("66 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Portuguese circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Portugal at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "great-britain"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1107 && circuit.naturalHeight === 695 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.891 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("52 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The British circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Great Britain at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "austria"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 781 && circuit.naturalHeight === 458 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("4.326 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("71 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Austrian circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Austria at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "belgium"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 817 && circuit.naturalHeight === 556 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("7.004 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("44 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Belgian circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Belgium at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "hungary"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 525 && circuit.naturalHeight === 532 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("4.381 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("70 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Hungarian circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Hungary at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "italy"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1181 && circuit.naturalHeight === 647 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.793 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("53 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Italian circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Italy at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "spain"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1104 && circuit.naturalHeight === 689 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.414 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("57 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Madrid circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Madrid at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "azerbaijan"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1308 && circuit.naturalHeight === 768 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("6.003 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("51 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Azerbaijan circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Azerbaijan at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "turkiye"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1113 && circuit.naturalHeight === 719 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.338 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("58 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Turkish circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Türkiye at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "singapore"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1021 && circuit.naturalHeight === 679 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("4.927 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("62 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Singapore circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Singapore at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "united-states"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1333 && circuit.naturalHeight === 695 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.513 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("56 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The United States circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `United States at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "mexico"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1200 && circuit.naturalHeight === 734 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("4.304 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("71 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Mexico circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Mexico at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "brazil"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1132 && circuit.naturalHeight === 742 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("4.309 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("71 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The São Paulo circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Brazil at ${width}x${height}`);
         layoutGame.currentRoundIndex = layoutGame.seasonWeekends.length - 1;
         for (let i = 0; i < 5; i += 1) layoutGame.skipSession();
         const finish = frameRoot.querySelector(".pit-wall-season-finish");
@@ -2667,7 +2843,7 @@
             && cell.scrollWidth <= cell.clientWidth + 1),
         `Season review must show the full championship table at ${width}x${height}`);
       }
-      layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "japan"));
+      layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "qatar"));
       layoutGame.skipSession();
       layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
@@ -2688,7 +2864,7 @@
       layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(frameRoot);
-      assert(layoutGame.weekendState.race.laps === Math.ceil(305 / 5.807)
+      assert(layoutGame.weekendState.race.laps === Math.ceil(305 / 5.419)
         && frameRoot.querySelector(".pit-wall-schematic"),
       "A Grand Prix without an explicit distance must use the 305 km fallback and schematic route");
       assert(frame.contentWindow.location.href === originalUrl && !doc.querySelector("#games-pit-wall").hidden,
@@ -2823,7 +2999,7 @@
         [{ driver: aiDriver, team: neutralTeam }], 5.412, "Sunny", "Green", debugGame.balance, () => .5, true);
       const tunedQualifier = tunedQualifying.opponents[0];
       advancePracticeClassification(tunedQualifying, tunedQualifier.garageRemaining);
-      const qualifyingPlannedFuel = tunedQualifier.stintLaps * fuelPerLap(debugGame.balance, "Push", []) + 6;
+      const qualifyingPlannedFuel = tunedQualifier.stintLaps * fuelPerLap(debugGame.balance, "Push", [], 5.412) + 6;
       const gridSpacingInput = byPath("sprintRace.gridGapMs");
       gridSpacingInput.value = "1000";
       gridSpacingInput.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
@@ -3485,6 +3661,748 @@
       assert(debugGame.weekendState.phase === "complete"
         && debugGame.weekendState.sessionResults.every((result) => result === "completed"),
       "All five Australian sessions must progress to weekend completion");
+
+      const japanWeekend = debugGame.seasonWeekends.find((weekend) => weekend.id === "japan");
+      debugGame.renderWeekend(japanWeekend);
+      const japanImage = debugRoot.querySelector(".pit-wall-circuit img");
+      await japanImage.decode();
+      assert(japanWeekend.country === "Japan" && japanWeekend.circuitLength === "5.807 km"
+        && japanWeekend.laps === 53 && japanWeekend.sprint && japanWeekend.weather === "Sunny"
+        && japanWeekend.trackCondition === "Green"
+        && japanWeekend.sessions.join("|") === "Practice 1|Sprint Qualifying|Sprint Race|Qualifying|Grand Prix"
+        && japanImage.naturalWidth === 1222 && japanImage.naturalHeight === 696,
+      "Japan must load its supplied image, weather, distance and sprint-weekend metadata");
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+      for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      let japanOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+      const japanRoute = debugGame.routes.get("japan");
+      assert(japanOverlay && japanRoute && japanRoute.points.length >= 3
+        && japanOverlay.querySelectorAll("[data-waypoint]").length === japanRoute.points.length
+        && [...japanOverlay.querySelectorAll("[data-waypoint]")].every((marker, index) => marker.textContent.trim() === String(index))
+        && japanOverlay.querySelector(".pit-wall-route-player text").textContent
+          === debugGame.driver.name.split(" ").map((part) => part[0]).join("")
+        && japanOverlay.querySelector(".pit-wall-route-player").getAttribute("transform")
+          === japanOverlay.querySelector('[data-waypoint="0"]').getAttribute("transform")
+        && japanOverlay.querySelector(".pit-wall-route-line").getAttribute("d").endsWith(" Z"),
+      "Japan route debug must show numbered waypoints, the closed spline and player preview");
+      const crossings = japanRoute.points.map((point, index) => ({ point, index }))
+        .filter(({ point }) => Math.hypot(point[0] - 501, point[1] - 319) < 5);
+      assert(crossings.length === 2 && crossings[0].index < crossings[1].index
+        && japanRoute.points[crossings[0].index - 1][1] > japanRoute.points[crossings[0].index + 1][1]
+        && japanRoute.points[crossings[1].index - 1][0] < japanRoute.points[crossings[1].index + 1][0],
+      "Japan's figure-eight must cross twice on the correct distinct legs");
+      const japanCanvas = debugFrame.contentDocument.createElement("canvas");
+      japanCanvas.width = japanImage.naturalWidth;
+      japanCanvas.height = japanImage.naturalHeight;
+      const japanContext = japanCanvas.getContext("2d", { willReadFrequently: true });
+      japanContext.drawImage(japanImage, 0, 0);
+      const japanPixels = japanContext.getImageData(0, 0, japanCanvas.width, japanCanvas.height).data;
+      const japanPath = japanOverlay.querySelector(".pit-wall-route-line");
+      const japanLength = japanPath.getTotalLength();
+      for (let i = 0; i < 3000; i += 1) {
+        const point = japanPath.getPointAtLength(japanLength * i / 3000);
+        const offset = (Math.round(point.y) * japanCanvas.width + Math.round(point.x)) * 4;
+        assert(japanPixels[offset + 3] >= 220, `Japan spline leaves the circuit at sample ${i}`);
+      }
+      debugRoot.querySelector('[data-action="edit-route"]').click();
+      let japanCaptured = false;
+      japanOverlay.setPointerCapture = () => { japanCaptured = true; };
+      japanOverlay.hasPointerCapture = () => japanCaptured;
+      japanOverlay.releasePointerCapture = () => { japanCaptured = false; };
+      const japanOriginal = JSON.stringify(japanRoute);
+      const japanPoint = [...japanRoute.points[1]];
+      const japanScreenPoint = new DOMPoint(japanPoint[0] + 2, japanPoint[1] + 2)
+        .matrixTransform(japanOverlay.getScreenCTM());
+      japanOverlay.querySelector('[data-waypoint="1"] circle').dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerdown",
+        { bubbles: true, pointerId: 4, button: 0 }));
+      japanOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointermove",
+        { bubbles: true, pointerId: 4, clientX: japanScreenPoint.x, clientY: japanScreenPoint.y }));
+      japanOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerup", { bubbles: true, pointerId: 4 }));
+      assert(japanRoute.points[1][0] === japanPoint[0] + 2 && japanRoute.points[1][1] === japanPoint[1] + 2
+        && debugRoot.querySelector("[data-route-selected]").textContent === `Waypoint 1 · ${japanPoint[0] + 2}, ${japanPoint[1] + 2}`,
+      "Japan route editing must update waypoint coordinates");
+      try {
+        URL.createObjectURL = (blob) => {
+          exportedRoute = blob.text();
+          return createObjectURL(blob);
+        };
+        HTMLAnchorElement.prototype.click = function () { exportedName = this.download; };
+        debugRoot.querySelector('[data-action="export-route"]').click();
+        assert(exportedName === "japan-route.json" && JSON.stringify(JSON.parse(await exportedRoute)) === JSON.stringify(japanRoute),
+          "Japan route export must include the edited waypoints");
+      } finally {
+        URL.createObjectURL = createObjectURL;
+        HTMLAnchorElement.prototype.click = anchorClick;
+      }
+      await importDebugRoute(japanOriginal, "japan-route.json");
+      japanOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+      assert(JSON.stringify(japanRoute) === japanOriginal && japanOverlay.classList.contains("is-editing"),
+        "Japan route import must restore the route without leaving edit mode");
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+
+      for (let session = 0; session < japanWeekend.sessions.length; session += 1) {
+        debugRoot.querySelector('[data-action="start-session"]').click();
+        await waitForMarker(debugRoot);
+        const state = debugGame.weekendState;
+        assert(state.sessionIndex === session && debugRoot.querySelectorAll(".pit-wall-moving-driver").length === 10
+          && debugRoot.querySelector(".pit-wall-marker-overlay").getAttribute("viewBox") === "0 0 1222 696"
+          && !debugRoot.querySelector(".pit-wall-schematic"),
+        `Japan ${japanWeekend.sessions[session]} must use the mapped circuit and full field`);
+        if (debugGame.isRace()) {
+          const grid = session === 2 ? state.sprintGrid : state.grandPrixGrid;
+          assert(state.race.laps === (session === 2 ? Math.ceil(100 / 5.807) : 53)
+            && grid && state.race.entries.every((entry, index) => entry.driver.name === grid.entries[index].driver.name),
+          "Japan races must use the correct distance and corresponding qualifying grid");
+          state.timerStartedAt -= state.race.startDuration + 100;
+          debugGame.syncPracticeClock();
+          const opponent = state.race.entries.find((entry) => !entry.player);
+          const ai = [...debugRoot.querySelectorAll(".pit-wall-moving-driver")].find((marker) =>
+            marker.querySelector("text").textContent === opponent.driver.name.split(" ").map((part) => part[0]).join(""));
+          assert(state.race.started && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+            "Japan race AI must appear with their current tyre after lights out");
+          if (session === 4) opponent.pitWear = Infinity;
+          opponent.pitLap = null;
+          opponent.pitTyre = opponent.session.tyre === "Soft" ? "Hard" : "Soft";
+          callToPit(opponent.session);
+          opponent.session.lapProgress = .999;
+          state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+          debugGame.syncPracticeClock();
+          assert(opponent.session.pitState === "entering" && ai.style.display === "none",
+            "Japan race AI markers must disappear during pit entry");
+          state.timerStartedAt -= opponent.session.pitRemaining + 10;
+          debugGame.syncPracticeClock();
+          assert(opponent.session.pitState === "none" && ai.style.display !== "none" && ai.dataset.tyre === opponent.pitTyre,
+            "Japan race AI markers must reappear with their new tyre after service");
+          const pointsBefore = debugGame.championship.reduce((sum, entry) => sum + entry.points, 0);
+          state.timerStartedAt -= 20000000;
+          debugGame.syncPracticeClock();
+          assert(state.race.finished && debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10,
+            "Japan race simulation must finish with a full classification");
+          debugGame.completeSession();
+          assert(state.phase === "review" && debugGame.championship.reduce((sum, entry) => sum + entry.points, 0) > pointsBefore,
+            "Japan race completion must update championship points");
+        } else {
+          const player = debugRoot.querySelector(".pit-wall-moving-driver");
+          assert(player.style.display === "none", "Japan timed sessions must start with the player in the garage");
+          debugRoot.querySelector('[data-action="send-out"]').click();
+          const initialPosition = player.getAttribute("transform");
+          const opponent = state.classification.opponents[0];
+          opponent.garageRemaining = 1;
+          state.timerStartedAt -= 10000;
+          debugGame.syncPracticeClock();
+          const ai = debugRoot.querySelectorAll(".pit-wall-moving-driver")[1];
+          assert(player.style.display !== "none" && player.getAttribute("transform") !== initialPosition
+            && opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre
+            && ai.querySelector(".pit-wall-marker-team").getAttribute("fill") === opponent.team.colour,
+          "Japan player and AI markers must follow the route with their team and tyre information");
+          const aiPosition = ai.getAttribute("transform");
+          state.timerStartedAt -= 1000;
+          debugGame.syncPracticeClock();
+          assert(ai.getAttribute("transform") !== aiPosition, "Japan AI markers must advance with their simulated laps");
+          if (session === 0) {
+            opponent.stintLaps = opponent.session.completedLaps + 1;
+            opponent.session.lapProgress = .999;
+            state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+            debugGame.syncPracticeClock();
+            assert(!opponent.session && ai.style.display === "none",
+              "Japan practice AI must disappear when returning to the garage");
+            opponent.garageRemaining = 1;
+            state.timerStartedAt -= 50;
+            debugGame.syncPracticeClock();
+            assert(opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+              "Japan practice AI must reappear with their current tyre on the next stint");
+            debugRoot.querySelector('[data-action="call-pit"]').click();
+            state.practice.lapProgress = .999;
+            state.timerStartedAt -= .001 * state.practice.lapTarget + 10;
+            debugGame.syncPracticeClock();
+            assert(state.practice.pitState === "entering" && player.style.display === "none",
+              "The Japan player marker must disappear during pit entry");
+            state.timerStartedAt -= state.practice.pitRemaining + 10;
+            debugGame.syncPracticeClock();
+            debugRoot.querySelector('[data-setup-tyre="Soft"]').click();
+            debugRoot.querySelector('[data-action="send-out"]').click();
+            debugGame.routeMarker.update();
+            assert(player.style.display !== "none" && player.dataset.tyre === "Soft",
+              "The Japan player marker must reappear with its new tyre after leaving the garage");
+          }
+          state.timerStartedAt -= 600000;
+          debugGame.syncPracticeClock();
+          assert(debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10
+            && state.classification.opponents.some((entry) => entry.bestLap !== null),
+          "Japan timed sessions must update the AI classification");
+          debugRoot.querySelector('[data-action="complete-session"]').click();
+          assert(state.phase === "review", "Japan timed sessions must reach their review");
+          if (debugGame.isQualifying()) {
+            const grid = session === 1 ? state.sprintGrid : state.grandPrixGrid;
+            assert(grid && grid.entries.length === 10 && grid.playerBest !== null,
+              "Japan qualifying must produce a timed grid for the following race");
+          }
+        }
+        debugRoot.querySelector('[data-action="continue-review"]').click();
+        if (state.phase === "discovery") debugRoot.querySelector('[data-discovery-index="0"]').click();
+      }
+      assert(debugGame.weekendState.phase === "complete"
+        && debugGame.weekendState.sessionResults.every((result) => result === "completed"),
+      "All five Japan sessions must progress to weekend completion");
+
+      const chinaWeekend = debugGame.seasonWeekends.find((weekend) => weekend.id === "china");
+      debugGame.renderWeekend(chinaWeekend);
+      const chinaImage = debugRoot.querySelector(".pit-wall-circuit img");
+      await chinaImage.decode();
+      assert(chinaWeekend.country === "China" && chinaWeekend.circuitLength === "5.451 km"
+        && chinaWeekend.laps === 56 && !chinaWeekend.sprint && chinaWeekend.weather === "Sunny"
+        && chinaWeekend.trackCondition === "Green"
+        && chinaWeekend.sessions.join("|") === "Practice 1|Practice 2|Practice 3|Qualifying|Grand Prix"
+        && chinaImage.naturalWidth === 1050 && chinaImage.naturalHeight === 682,
+      "China must load its supplied image and standard-weekend metadata");
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+      for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      let chinaOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+      const chinaRoute = debugGame.routes.get("china");
+      assert(chinaOverlay && chinaRoute
+        && chinaOverlay.querySelectorAll("[data-waypoint]").length === chinaRoute.points.length
+        && [...chinaOverlay.querySelectorAll("[data-waypoint]")].every((marker, index) => marker.textContent.trim() === String(index))
+        && chinaOverlay.querySelector(".pit-wall-route-player text").textContent
+          === debugGame.driver.name.split(" ").map((part) => part[0]).join("")
+        && chinaOverlay.querySelector(".pit-wall-route-player").getAttribute("transform")
+          === chinaOverlay.querySelector('[data-waypoint="0"]').getAttribute("transform")
+        && chinaOverlay.querySelector(".pit-wall-route-line").getAttribute("d").endsWith(" Z"),
+      "China route debug must show numbered waypoints, the closed spline and player preview");
+      const chinaCanvas = debugFrame.contentDocument.createElement("canvas");
+      chinaCanvas.width = chinaImage.naturalWidth;
+      chinaCanvas.height = chinaImage.naturalHeight;
+      const chinaContext = chinaCanvas.getContext("2d", { willReadFrequently: true });
+      chinaContext.drawImage(chinaImage, 0, 0);
+      const chinaPixels = chinaContext.getImageData(0, 0, chinaCanvas.width, chinaCanvas.height).data;
+      const chinaPath = chinaOverlay.querySelector(".pit-wall-route-line");
+      const chinaLength = chinaPath.getTotalLength();
+      for (let i = 0; i < 3000; i += 1) {
+        const point = chinaPath.getPointAtLength(chinaLength * i / 3000);
+        const offset = (Math.round(point.y) * chinaCanvas.width + Math.round(point.x)) * 4;
+        assert(chinaPixels[offset + 3] >= 220, `China spline leaves the circuit at sample ${i}`);
+      }
+      debugRoot.querySelector('[data-action="edit-route"]').click();
+      let chinaCaptured = false;
+      chinaOverlay.setPointerCapture = () => { chinaCaptured = true; };
+      chinaOverlay.hasPointerCapture = () => chinaCaptured;
+      chinaOverlay.releasePointerCapture = () => { chinaCaptured = false; };
+      const chinaOriginal = JSON.stringify(chinaRoute);
+      const chinaPoint = [...chinaRoute.points[1]];
+      const chinaScreenPoint = new DOMPoint(chinaPoint[0] + 2, chinaPoint[1] + 2)
+        .matrixTransform(chinaOverlay.getScreenCTM());
+      chinaOverlay.querySelector('[data-waypoint="1"] circle').dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerdown",
+        { bubbles: true, pointerId: 5, button: 0 }));
+      chinaOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointermove",
+        { bubbles: true, pointerId: 5, clientX: chinaScreenPoint.x, clientY: chinaScreenPoint.y }));
+      chinaOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerup", { bubbles: true, pointerId: 5 }));
+      assert(chinaRoute.points[1][0] === chinaPoint[0] + 2 && chinaRoute.points[1][1] === chinaPoint[1] + 2
+        && debugRoot.querySelector("[data-route-selected]").textContent === `Waypoint 1 · ${chinaPoint[0] + 2}, ${chinaPoint[1] + 2}`,
+      "China route editing must update waypoint coordinates");
+      try {
+        URL.createObjectURL = (blob) => {
+          exportedRoute = blob.text();
+          return createObjectURL(blob);
+        };
+        HTMLAnchorElement.prototype.click = function () { exportedName = this.download; };
+        debugRoot.querySelector('[data-action="export-route"]').click();
+        assert(exportedName === "china-route.json" && JSON.stringify(JSON.parse(await exportedRoute)) === JSON.stringify(chinaRoute),
+          "China route export must include the edited waypoints");
+      } finally {
+        URL.createObjectURL = createObjectURL;
+        HTMLAnchorElement.prototype.click = anchorClick;
+      }
+      await importDebugRoute(chinaOriginal, "china-route.json");
+      chinaOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+      assert(JSON.stringify(chinaRoute) === chinaOriginal && chinaOverlay.classList.contains("is-editing"),
+        "China route import must restore the route without leaving edit mode");
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+
+      for (let session = 0; session < chinaWeekend.sessions.length; session += 1) {
+        debugRoot.querySelector('[data-action="start-session"]').click();
+        await waitForMarker(debugRoot);
+        const state = debugGame.weekendState;
+        assert(state.sessionIndex === session && debugRoot.querySelectorAll(".pit-wall-moving-driver").length === 10
+          && debugRoot.querySelector(".pit-wall-marker-overlay").getAttribute("viewBox") === "0 0 1050 682"
+          && !debugRoot.querySelector(".pit-wall-schematic"),
+        `China ${chinaWeekend.sessions[session]} must use the mapped circuit and full field`);
+        if (debugGame.isRace()) {
+          assert(state.race.laps === 56 && state.grandPrixGrid
+            && state.race.entries.every((entry, index) => entry.driver.name === state.grandPrixGrid.entries[index].driver.name),
+          "China Grand Prix must use 56 laps and the qualifying grid");
+          state.timerStartedAt -= state.race.startDuration + 100;
+          debugGame.syncPracticeClock();
+          const opponent = state.race.entries.find((entry) => !entry.player);
+          const ai = [...debugRoot.querySelectorAll(".pit-wall-moving-driver")].find((marker) =>
+            marker.querySelector("text").textContent === opponent.driver.name.split(" ").map((part) => part[0]).join(""));
+          assert(state.race.started && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+            "China race AI must appear with their current tyre");
+          opponent.pitWear = Infinity;
+          opponent.pitLap = null;
+          opponent.pitTyre = opponent.session.tyre === "Soft" ? "Hard" : "Soft";
+          callToPit(opponent.session);
+          opponent.session.lapProgress = .999;
+          state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+          debugGame.syncPracticeClock();
+          assert(opponent.session.pitState === "entering" && ai.style.display === "none",
+            "China race AI markers must disappear during pit entry");
+          state.timerStartedAt -= opponent.session.pitRemaining + 10;
+          debugGame.syncPracticeClock();
+          assert(opponent.session.pitState === "none" && ai.style.display !== "none" && ai.dataset.tyre === opponent.pitTyre,
+            "China race AI markers must reappear with their new tyre");
+          const pointsBefore = debugGame.championship.reduce((sum, entry) => sum + entry.points, 0);
+          state.timerStartedAt -= 20000000;
+          debugGame.syncPracticeClock();
+          assert(state.race.finished && debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10,
+            "China race simulation must finish with a full classification");
+          debugGame.completeSession();
+          assert(state.phase === "review" && debugGame.championship.reduce((sum, entry) => sum + entry.points, 0) > pointsBefore,
+            "China race completion must update championship points");
+        } else {
+          const player = debugRoot.querySelector(".pit-wall-moving-driver");
+          assert(player.style.display === "none", "China timed sessions must start with the player in the garage");
+          debugRoot.querySelector('[data-action="send-out"]').click();
+          const initialPosition = player.getAttribute("transform");
+          const opponent = state.classification.opponents[0];
+          opponent.garageRemaining = 1;
+          state.timerStartedAt -= 10000;
+          debugGame.syncPracticeClock();
+          const ai = debugRoot.querySelectorAll(".pit-wall-moving-driver")[1];
+          assert(player.style.display !== "none" && player.getAttribute("transform") !== initialPosition
+            && opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre
+            && ai.querySelector(".pit-wall-marker-team").getAttribute("fill") === opponent.team.colour,
+          "China player and AI markers must move with their team and tyre information");
+          const aiPosition = ai.getAttribute("transform");
+          state.timerStartedAt -= 1000;
+          debugGame.syncPracticeClock();
+          assert(ai.getAttribute("transform") !== aiPosition, "China AI markers must advance with their simulated laps");
+          if (session === 0) {
+            opponent.stintLaps = opponent.session.completedLaps + 1;
+            opponent.session.lapProgress = .999;
+            state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+            debugGame.syncPracticeClock();
+            assert(!opponent.session && ai.style.display === "none", "China practice AI must disappear in the garage");
+            opponent.garageRemaining = 1;
+            state.timerStartedAt -= 50;
+            debugGame.syncPracticeClock();
+            assert(opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+              "China practice AI must reappear on their next stint");
+            debugRoot.querySelector('[data-action="call-pit"]').click();
+            state.practice.lapProgress = .999;
+            state.timerStartedAt -= .001 * state.practice.lapTarget + 10;
+            debugGame.syncPracticeClock();
+            assert(state.practice.pitState === "entering" && player.style.display === "none",
+              "China player marker must disappear during pit entry");
+            state.timerStartedAt -= state.practice.pitRemaining + 10;
+            debugGame.syncPracticeClock();
+            debugRoot.querySelector('[data-setup-tyre="Soft"]').click();
+            debugRoot.querySelector('[data-action="send-out"]').click();
+            debugGame.routeMarker.update();
+            assert(player.style.display !== "none" && player.dataset.tyre === "Soft",
+              "China player marker must reappear with its new tyre");
+          }
+          state.timerStartedAt -= 600000;
+          debugGame.syncPracticeClock();
+          assert(debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10
+            && state.classification.opponents.some((entry) => entry.bestLap !== null),
+          "China timed sessions must update the AI classification");
+          debugRoot.querySelector('[data-action="complete-session"]').click();
+          assert(state.phase === "review", "China timed sessions must reach their review");
+          if (debugGame.isQualifying()) {
+            assert(state.grandPrixGrid && state.grandPrixGrid.entries.length === 10 && state.grandPrixGrid.playerBest !== null,
+              "China qualifying must produce a timed Grand Prix grid");
+          }
+        }
+        debugRoot.querySelector('[data-action="continue-review"]').click();
+        if (state.phase === "discovery") debugRoot.querySelector('[data-discovery-index="0"]').click();
+      }
+      assert(debugGame.weekendState.phase === "complete"
+        && debugGame.weekendState.sessionResults.every((result) => result === "completed"),
+      "All five China sessions must progress to weekend completion");
+
+      for (const circuit of [
+        { id: "miami", title: "Miami Grand Prix", country: "United States", length: 5.412, laps: 57, width: 891, height: 354 },
+        { id: "portugal", title: "Portuguese Grand Prix", country: "Portugal", length: 4.653, laps: 66, width: 997, height: 455 },
+        { id: "austria", title: "Austrian Grand Prix", country: "Austria", length: 4.326, laps: 71, width: 781, height: 458 },
+        { id: "belgium", title: "Belgian Grand Prix", country: "Belgium", length: 7.004, laps: 44, width: 817, height: 556 },
+        { id: "hungary", title: "Hungarian Grand Prix", country: "Hungary", length: 4.381, laps: 70, width: 525, height: 532 },
+        { id: "spain", routeId: "madrid", title: "Madrid Grand Prix", country: "Spain", length: 5.414, laps: 57, width: 1104, height: 689 },
+        { id: "azerbaijan", title: "Azerbaijan Grand Prix", country: "Azerbaijan", length: 6.003, laps: 51, width: 1308, height: 768 },
+        { id: "turkiye", routeId: "turkey", title: "Turkish Grand Prix", country: "Türkiye", length: 5.338, laps: 58, width: 1113, height: 719 },
+        { id: "singapore", title: "Singapore Grand Prix", country: "Singapore", length: 4.927, laps: 62, width: 1021, height: 679 },
+        { id: "united-states", routeId: "usa", title: "United States Grand Prix", country: "United States", length: 5.513, laps: 56, width: 1333, height: 695 },
+        { id: "mexico", title: "Mexico Grand Prix", country: "Mexico", length: 4.304, laps: 71, width: 1200, height: 734 },
+      ]) {
+        const standardCircuitWeekend = debugGame.seasonWeekends.find((weekend) => weekend.id === circuit.id);
+        debugGame.renderWeekend(standardCircuitWeekend);
+        const standardCircuitImage = debugRoot.querySelector(".pit-wall-circuit img");
+        await standardCircuitImage.decode();
+        assert(standardCircuitWeekend.title === circuit.title && standardCircuitWeekend.country === circuit.country
+          && standardCircuitWeekend.circuitLength === `${circuit.length} km` && standardCircuitWeekend.laps === circuit.laps
+          && !standardCircuitWeekend.sprint && standardCircuitWeekend.weather === "Sunny" && standardCircuitWeekend.trackCondition === "Green"
+          && standardCircuitWeekend.sessions.join("|") === "Practice 1|Practice 2|Practice 3|Qualifying|Grand Prix"
+          && standardCircuitImage.naturalWidth === circuit.width && standardCircuitImage.naturalHeight === circuit.height,
+        `${circuit.title} must load its supplied image and standard-weekend metadata`);
+        debugRoot.querySelector('[data-action="toggle-route"]').click();
+        for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        let standardCircuitOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+        const standardCircuitRoute = debugGame.routes.get(circuit.id);
+        assert(standardCircuitOverlay && standardCircuitRoute
+          && standardCircuitOverlay.querySelectorAll("[data-waypoint]").length === standardCircuitRoute.points.length
+          && [...standardCircuitOverlay.querySelectorAll("[data-waypoint]")].every((marker, index) => marker.textContent.trim() === String(index))
+          && standardCircuitOverlay.querySelector(".pit-wall-route-player text").textContent
+            === debugGame.driver.name.split(" ").map((part) => part[0]).join("")
+          && standardCircuitOverlay.querySelector(".pit-wall-route-player").getAttribute("transform")
+            === standardCircuitOverlay.querySelector('[data-waypoint="0"]').getAttribute("transform")
+          && standardCircuitOverlay.querySelector(".pit-wall-route-line").getAttribute("d").endsWith(" Z"),
+        "Standard circuit route debug must show numbered waypoints, the closed spline and player preview");
+        const standardCircuitCanvas = debugFrame.contentDocument.createElement("canvas");
+        standardCircuitCanvas.width = standardCircuitImage.naturalWidth;
+        standardCircuitCanvas.height = standardCircuitImage.naturalHeight;
+        const standardCircuitContext = standardCircuitCanvas.getContext("2d", { willReadFrequently: true });
+        standardCircuitContext.drawImage(standardCircuitImage, 0, 0);
+        const standardCircuitPixels = standardCircuitContext.getImageData(0, 0, standardCircuitCanvas.width, standardCircuitCanvas.height).data;
+        const standardCircuitPath = standardCircuitOverlay.querySelector(".pit-wall-route-line");
+        const standardCircuitLength = standardCircuitPath.getTotalLength();
+        for (let i = 0; i < 3000; i += 1) {
+          const point = standardCircuitPath.getPointAtLength(standardCircuitLength * i / 3000);
+          const offset = (Math.round(point.y) * standardCircuitCanvas.width + Math.round(point.x)) * 4;
+          assert(standardCircuitPixels[offset + 3] >= 220, `${circuit.title} spline leaves the circuit at sample ${i}`);
+        }
+        debugRoot.querySelector('[data-action="edit-route"]').click();
+        let standardCircuitCaptured = false;
+        standardCircuitOverlay.setPointerCapture = () => { standardCircuitCaptured = true; };
+        standardCircuitOverlay.hasPointerCapture = () => standardCircuitCaptured;
+        standardCircuitOverlay.releasePointerCapture = () => { standardCircuitCaptured = false; };
+        const standardCircuitOriginal = JSON.stringify(standardCircuitRoute);
+        const standardCircuitPoint = [...standardCircuitRoute.points[1]];
+        const standardCircuitScreenPoint = new DOMPoint(standardCircuitPoint[0] + 2, standardCircuitPoint[1] + 2)
+          .matrixTransform(standardCircuitOverlay.getScreenCTM());
+        standardCircuitOverlay.querySelector('[data-waypoint="1"] circle').dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerdown",
+          { bubbles: true, pointerId: 6, button: 0 }));
+        standardCircuitOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointermove",
+          { bubbles: true, pointerId: 6, clientX: standardCircuitScreenPoint.x, clientY: standardCircuitScreenPoint.y }));
+        standardCircuitOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerup", { bubbles: true, pointerId: 6 }));
+        assert(standardCircuitRoute.points[1][0] === standardCircuitPoint[0] + 2 && standardCircuitRoute.points[1][1] === standardCircuitPoint[1] + 2
+          && debugRoot.querySelector("[data-route-selected]").textContent === `Waypoint 1 · ${standardCircuitPoint[0] + 2}, ${standardCircuitPoint[1] + 2}`,
+        "Standard circuit route editing must update waypoint coordinates");
+        try {
+          URL.createObjectURL = (blob) => {
+            exportedRoute = blob.text();
+            return createObjectURL(blob);
+          };
+          HTMLAnchorElement.prototype.click = function () { exportedName = this.download; };
+          debugRoot.querySelector('[data-action="export-route"]').click();
+          assert(exportedName === `${circuit.routeId || circuit.id}-route.json` && JSON.stringify(JSON.parse(await exportedRoute)) === JSON.stringify(standardCircuitRoute),
+            "Standard circuit route export must include the edited waypoints");
+        } finally {
+          URL.createObjectURL = createObjectURL;
+          HTMLAnchorElement.prototype.click = anchorClick;
+        }
+        await importDebugRoute(standardCircuitOriginal, `${circuit.routeId || circuit.id}-route.json`);
+        standardCircuitOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+        assert(JSON.stringify(standardCircuitRoute) === standardCircuitOriginal && standardCircuitOverlay.classList.contains("is-editing"),
+          "Standard circuit route import must restore the route without leaving edit mode");
+        debugRoot.querySelector('[data-action="toggle-route"]').click();
+
+        for (let session = 0; session < standardCircuitWeekend.sessions.length; session += 1) {
+          debugRoot.querySelector('[data-action="start-session"]').click();
+          await waitForMarker(debugRoot);
+          const state = debugGame.weekendState;
+          assert(state.sessionIndex === session && debugRoot.querySelectorAll(".pit-wall-moving-driver").length === 10
+            && debugRoot.querySelector(".pit-wall-marker-overlay").getAttribute("viewBox") === `0 0 ${circuit.width} ${circuit.height}`
+            && !debugRoot.querySelector(".pit-wall-schematic"),
+          `${circuit.title} ${standardCircuitWeekend.sessions[session]} must use the mapped circuit and full field`);
+          if (debugGame.isRace()) {
+            assert(state.race.laps === circuit.laps && state.grandPrixGrid
+              && state.race.entries.every((entry, index) => entry.driver.name === state.grandPrixGrid.entries[index].driver.name),
+            `${circuit.title} must use its configured laps and the qualifying grid`);
+            state.timerStartedAt -= state.race.startDuration + 100;
+            debugGame.syncPracticeClock();
+            const opponent = state.race.entries.find((entry) => !entry.player);
+            const ai = [...debugRoot.querySelectorAll(".pit-wall-moving-driver")].find((marker) =>
+              marker.querySelector("text").textContent === opponent.driver.name.split(" ").map((part) => part[0]).join(""));
+            assert(state.race.started && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+              "Standard circuit race AI must appear with their current tyre");
+            opponent.pitWear = Infinity;
+            opponent.pitLap = null;
+            opponent.pitTyre = opponent.session.tyre === "Soft" ? "Hard" : "Soft";
+            callToPit(opponent.session);
+            opponent.session.lapProgress = .999;
+            state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+            debugGame.syncPracticeClock();
+            assert(opponent.session.pitState === "entering" && ai.style.display === "none",
+              "Standard circuit race AI markers must disappear during pit entry");
+            state.timerStartedAt -= opponent.session.pitRemaining + 10;
+            debugGame.syncPracticeClock();
+            assert(opponent.session.pitState === "none" && ai.style.display !== "none" && ai.dataset.tyre === opponent.pitTyre,
+              "Standard circuit race AI markers must reappear with their new tyre");
+            const pointsBefore = debugGame.championship.reduce((sum, entry) => sum + entry.points, 0);
+            state.timerStartedAt -= 20000000;
+            debugGame.syncPracticeClock();
+            assert(state.race.finished && debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10,
+              "Standard circuit race simulation must finish with a full classification");
+            debugGame.completeSession();
+            assert(state.phase === "review" && debugGame.championship.reduce((sum, entry) => sum + entry.points, 0) > pointsBefore,
+              "Standard circuit race completion must update championship points");
+          } else {
+            const player = debugRoot.querySelector(".pit-wall-moving-driver");
+            assert(player.style.display === "none", "Standard circuit timed sessions must start with the player in the garage");
+            debugRoot.querySelector('[data-action="send-out"]').click();
+            const initialPosition = player.getAttribute("transform");
+            const opponent = state.classification.opponents[0];
+            opponent.garageRemaining = 1;
+            state.timerStartedAt -= 10000;
+            debugGame.syncPracticeClock();
+            const ai = debugRoot.querySelectorAll(".pit-wall-moving-driver")[1];
+            assert(player.style.display !== "none" && player.getAttribute("transform") !== initialPosition
+              && opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre
+              && ai.querySelector(".pit-wall-marker-team").getAttribute("fill") === opponent.team.colour,
+            "Standard circuit player and AI markers must move with their team and tyre information");
+            const aiPosition = ai.getAttribute("transform");
+            state.timerStartedAt -= 1000;
+            debugGame.syncPracticeClock();
+            assert(ai.getAttribute("transform") !== aiPosition, "Standard circuit AI markers must advance with their simulated laps");
+            if (session === 0) {
+              opponent.stintLaps = opponent.session.completedLaps + 1;
+              opponent.session.lapProgress = .999;
+              state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+              debugGame.syncPracticeClock();
+              assert(!opponent.session && ai.style.display === "none", "Standard circuit practice AI must disappear in the garage");
+              opponent.garageRemaining = 1;
+              state.timerStartedAt -= 50;
+              debugGame.syncPracticeClock();
+              assert(opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+                "Standard circuit practice AI must reappear on their next stint");
+              debugRoot.querySelector('[data-action="call-pit"]').click();
+              state.practice.lapProgress = .999;
+              state.timerStartedAt -= .001 * state.practice.lapTarget + 10;
+              debugGame.syncPracticeClock();
+              assert(state.practice.pitState === "entering" && player.style.display === "none",
+                "Standard circuit player marker must disappear during pit entry");
+              state.timerStartedAt -= state.practice.pitRemaining + 10;
+              debugGame.syncPracticeClock();
+              debugRoot.querySelector('[data-setup-tyre="Soft"]').click();
+              debugRoot.querySelector('[data-action="send-out"]').click();
+              debugGame.routeMarker.update();
+              assert(player.style.display !== "none" && player.dataset.tyre === "Soft",
+                "Standard circuit player marker must reappear with its new tyre");
+            }
+            state.timerStartedAt -= 600000;
+            debugGame.syncPracticeClock();
+            assert(debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10
+              && state.classification.opponents.some((entry) => entry.bestLap !== null),
+            "Standard circuit timed sessions must update the AI classification");
+            debugRoot.querySelector('[data-action="complete-session"]').click();
+            assert(state.phase === "review", "Standard circuit timed sessions must reach their review");
+            if (debugGame.isQualifying()) {
+              assert(state.grandPrixGrid && state.grandPrixGrid.entries.length === 10 && state.grandPrixGrid.playerBest !== null,
+                "Standard circuit qualifying must produce a timed Grand Prix grid");
+            }
+          }
+          debugRoot.querySelector('[data-action="continue-review"]').click();
+          if (state.phase === "discovery") debugRoot.querySelector('[data-discovery-index="0"]').click();
+        }
+        assert(debugGame.weekendState.phase === "complete"
+          && debugGame.weekendState.sessionResults.every((result) => result === "completed"),
+        `All five ${circuit.title} sessions must progress to weekend completion`);
+      }
+
+      for (const circuit of [
+        { id: "canada", title: "Canadian Grand Prix", country: "Canada", length: 4.361, laps: 70, width: 1361, height: 545 },
+        { id: "monaco", title: "Monaco Grand Prix", country: "Monaco", length: 3.337, laps: 78, width: 1312, height: 574 },
+        { id: "great-britain", routeId: "greatbritain", title: "British Grand Prix", country: "United Kingdom", length: 5.891, laps: 52, width: 1107, height: 695 },
+        { id: "italy", title: "Italian Grand Prix", country: "Italy", length: 5.793, laps: 53, width: 1181, height: 647 },
+        { id: "brazil", title: "São Paulo Grand Prix", country: "Brazil", length: 4.309, laps: 71, width: 1132, height: 742 },
+      ]) {
+        const circuitWeekend = debugGame.seasonWeekends.find((weekend) => weekend.id === circuit.id);
+        debugGame.renderWeekend(circuitWeekend);
+        const circuitImage = debugRoot.querySelector(".pit-wall-circuit img");
+        await circuitImage.decode();
+        assert(circuitWeekend.title === circuit.title && circuitWeekend.country === circuit.country
+          && circuitWeekend.circuitLength === `${circuit.length} km` && circuitWeekend.laps === circuit.laps
+          && circuitWeekend.sprint && circuitWeekend.weather === "Sunny" && circuitWeekend.trackCondition === "Green"
+          && circuitWeekend.sessions.join("|") === "Practice 1|Sprint Qualifying|Sprint Race|Qualifying|Grand Prix"
+          && circuitImage.naturalWidth === circuit.width && circuitImage.naturalHeight === circuit.height,
+        `${circuit.title} must load its supplied image and sprint-weekend metadata`);
+        debugRoot.querySelector('[data-action="toggle-route"]').click();
+        for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        let circuitOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+        const circuitRoute = debugGame.routes.get(circuit.id);
+        assert(circuitOverlay && circuitRoute
+          && circuitOverlay.querySelectorAll("[data-waypoint]").length === circuitRoute.points.length
+          && [...circuitOverlay.querySelectorAll("[data-waypoint]")].every((marker, index) => marker.textContent.trim() === String(index))
+          && circuitOverlay.querySelector(".pit-wall-route-player text").textContent
+            === debugGame.driver.name.split(" ").map((part) => part[0]).join("")
+          && circuitOverlay.querySelector(".pit-wall-route-player").getAttribute("transform")
+            === circuitOverlay.querySelector('[data-waypoint="0"]').getAttribute("transform")
+          && circuitOverlay.querySelector(".pit-wall-route-line").getAttribute("d").endsWith(" Z"),
+        "Circuit route debug must show numbered waypoints, the closed spline and player preview");
+        const circuitCanvas = debugFrame.contentDocument.createElement("canvas");
+        circuitCanvas.width = circuitImage.naturalWidth;
+        circuitCanvas.height = circuitImage.naturalHeight;
+        const circuitContext = circuitCanvas.getContext("2d", { willReadFrequently: true });
+        circuitContext.drawImage(circuitImage, 0, 0);
+        const circuitPixels = circuitContext.getImageData(0, 0, circuitCanvas.width, circuitCanvas.height).data;
+        const circuitPath = circuitOverlay.querySelector(".pit-wall-route-line");
+        const circuitLength = circuitPath.getTotalLength();
+        for (let i = 0; i < 3000; i += 1) {
+          const point = circuitPath.getPointAtLength(circuitLength * i / 3000);
+          const offset = (Math.round(point.y) * circuitCanvas.width + Math.round(point.x)) * 4;
+          assert(circuitPixels[offset + 3] >= 220, `${circuit.title} spline leaves the circuit at sample ${i}`);
+        }
+        debugRoot.querySelector('[data-action="edit-route"]').click();
+        let circuitCaptured = false;
+        circuitOverlay.setPointerCapture = () => { circuitCaptured = true; };
+        circuitOverlay.hasPointerCapture = () => circuitCaptured;
+        circuitOverlay.releasePointerCapture = () => { circuitCaptured = false; };
+        const circuitOriginal = JSON.stringify(circuitRoute);
+        const circuitPoint = [...circuitRoute.points[1]];
+        const circuitScreenPoint = new DOMPoint(circuitPoint[0] + 2, circuitPoint[1] + 2)
+          .matrixTransform(circuitOverlay.getScreenCTM());
+        circuitOverlay.querySelector('[data-waypoint="1"] circle').dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerdown",
+          { bubbles: true, pointerId: 7, button: 0 }));
+        circuitOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointermove",
+          { bubbles: true, pointerId: 7, clientX: circuitScreenPoint.x, clientY: circuitScreenPoint.y }));
+        circuitOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerup", { bubbles: true, pointerId: 7 }));
+        assert(circuitRoute.points[1][0] === circuitPoint[0] + 2 && circuitRoute.points[1][1] === circuitPoint[1] + 2
+          && debugRoot.querySelector("[data-route-selected]").textContent === `Waypoint 1 · ${circuitPoint[0] + 2}, ${circuitPoint[1] + 2}`,
+        "Circuit route editing must update waypoint coordinates");
+        try {
+          URL.createObjectURL = (blob) => {
+            exportedRoute = blob.text();
+            return createObjectURL(blob);
+          };
+          HTMLAnchorElement.prototype.click = function () { exportedName = this.download; };
+          debugRoot.querySelector('[data-action="export-route"]').click();
+          assert(exportedName === `${circuit.routeId || circuit.id}-route.json` && JSON.stringify(JSON.parse(await exportedRoute)) === JSON.stringify(circuitRoute),
+            "Circuit route export must include the edited waypoints");
+        } finally {
+          URL.createObjectURL = createObjectURL;
+          HTMLAnchorElement.prototype.click = anchorClick;
+        }
+        await importDebugRoute(circuitOriginal, `${circuit.routeId || circuit.id}-route.json`);
+        circuitOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+        assert(JSON.stringify(circuitRoute) === circuitOriginal && circuitOverlay.classList.contains("is-editing"),
+          "Circuit route import must restore the route without leaving edit mode");
+        debugRoot.querySelector('[data-action="toggle-route"]').click();
+
+        for (let session = 0; session < circuitWeekend.sessions.length; session += 1) {
+          debugRoot.querySelector('[data-action="start-session"]').click();
+          await waitForMarker(debugRoot);
+          const state = debugGame.weekendState;
+          assert(state.sessionIndex === session && debugRoot.querySelectorAll(".pit-wall-moving-driver").length === 10
+            && debugRoot.querySelector(".pit-wall-marker-overlay").getAttribute("viewBox") === `0 0 ${circuit.width} ${circuit.height}`
+            && !debugRoot.querySelector(".pit-wall-schematic"),
+          `${circuit.title} ${circuitWeekend.sessions[session]} must use the mapped circuit and full field`);
+          debugGame.updateTiming();
+          const currentRate = fuelPerLap(debugGame.balance, state.practice.mode, state.practice.upgrades, circuit.length);
+          assert(debugRoot.querySelector('[data-timing="fuel-range"]').textContent
+            === `~${(state.practice.fuel / currentRate).toFixed(1)} laps remaining`,
+          `${circuit.title} must show the circuit-adjusted fuel range`);
+          if (debugGame.isRace()) {
+            const grid = session === 2 ? state.sprintGrid : state.grandPrixGrid;
+            assert(state.race.laps === (session === 2 ? Math.ceil(100 / circuit.length) : circuit.laps)
+              && grid && state.race.entries.every((entry, index) => entry.driver.name === grid.entries[index].driver.name),
+            "Circuit races must use the correct distance and corresponding qualifying grid");
+            state.timerStartedAt -= state.race.startDuration + 100;
+            debugGame.syncPracticeClock();
+            const opponent = state.race.entries.find((entry) => !entry.player);
+            const ai = [...debugRoot.querySelectorAll(".pit-wall-moving-driver")].find((marker) =>
+              marker.querySelector("text").textContent === opponent.driver.name.split(" ").map((part) => part[0]).join(""));
+            assert(state.race.started && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+              "Circuit race AI must appear with their current tyre");
+            opponent.pitWear = Infinity;
+            opponent.pitLap = null;
+            opponent.pitTyre = opponent.session.tyre === "Soft" ? "Hard" : "Soft";
+            callToPit(opponent.session);
+            opponent.session.lapProgress = .999;
+            state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+            debugGame.syncPracticeClock();
+            assert(opponent.session.pitState === "entering" && ai.style.display === "none",
+              "Circuit race AI markers must disappear during pit entry");
+            state.timerStartedAt -= opponent.session.pitRemaining + 10;
+            debugGame.syncPracticeClock();
+            assert(opponent.session.pitState === "none" && ai.style.display !== "none" && ai.dataset.tyre === opponent.pitTyre,
+              "Circuit race AI markers must reappear with their new tyre");
+            const pointsBefore = debugGame.championship.reduce((sum, entry) => sum + entry.points, 0);
+            state.timerStartedAt -= 20000000;
+            debugGame.syncPracticeClock();
+            assert(state.race.finished && debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10,
+              "Circuit races must finish with a full classification");
+            debugGame.completeSession();
+            assert(state.phase === "review" && debugGame.championship.reduce((sum, entry) => sum + entry.points, 0) > pointsBefore,
+              "Circuit race completion must update championship points");
+          } else {
+            const player = debugRoot.querySelector(".pit-wall-moving-driver");
+            assert(player.style.display === "none", "Circuit timed sessions must start with the player in the garage");
+            debugRoot.querySelector('[data-action="send-out"]').click();
+            const initialPosition = player.getAttribute("transform");
+            const opponent = state.classification.opponents[0];
+            opponent.garageRemaining = 1;
+            state.timerStartedAt -= 10000;
+            debugGame.syncPracticeClock();
+            const ai = debugRoot.querySelectorAll(".pit-wall-moving-driver")[1];
+            assert(player.style.display !== "none" && player.getAttribute("transform") !== initialPosition
+              && opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre
+              && ai.querySelector(".pit-wall-marker-team").getAttribute("fill") === opponent.team.colour,
+            "Circuit player and AI markers must move with their team and tyre information");
+            const aiPosition = ai.getAttribute("transform");
+            state.timerStartedAt -= 1000;
+            debugGame.syncPracticeClock();
+            assert(ai.getAttribute("transform") !== aiPosition, "Circuit AI markers must advance with their simulated laps");
+            if (session === 0) {
+              opponent.stintLaps = opponent.session.completedLaps + 1;
+              opponent.session.lapProgress = .999;
+              state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+              debugGame.syncPracticeClock();
+              assert(!opponent.session && ai.style.display === "none", "Circuit practice AI must disappear in the garage");
+              opponent.garageRemaining = 1;
+              state.timerStartedAt -= 50;
+              debugGame.syncPracticeClock();
+              assert(opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+                "Circuit practice AI must reappear on their next stint");
+              debugRoot.querySelector('[data-action="call-pit"]').click();
+              state.practice.lapProgress = .999;
+              state.timerStartedAt -= .001 * state.practice.lapTarget + 10;
+              debugGame.syncPracticeClock();
+              assert(state.practice.pitState === "entering" && player.style.display === "none",
+                "Circuit player marker must disappear during pit entry");
+              state.timerStartedAt -= state.practice.pitRemaining + 10;
+              debugGame.syncPracticeClock();
+              debugRoot.querySelector('[data-setup-tyre="Soft"]').click();
+              debugRoot.querySelector('[data-action="send-out"]').click();
+              debugGame.routeMarker.update();
+              assert(player.style.display !== "none" && player.dataset.tyre === "Soft",
+                "Circuit player marker must reappear with its new tyre");
+            }
+            state.timerStartedAt -= 600000;
+            debugGame.syncPracticeClock();
+            assert(debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10
+              && state.classification.opponents.some((entry) => entry.bestLap !== null),
+            "Circuit timed sessions must update the AI classification");
+            debugRoot.querySelector('[data-action="complete-session"]').click();
+            assert(state.phase === "review", "Circuit timed sessions must reach their review");
+            if (debugGame.isQualifying()) {
+              const grid = session === 1 ? state.sprintGrid : state.grandPrixGrid;
+              assert(grid && grid.entries.length === 10 && grid.playerBest !== null,
+                "Circuit qualifying must produce a timed grid for the following race");
+            }
+          }
+          debugRoot.querySelector('[data-action="continue-review"]').click();
+          if (state.phase === "discovery") debugRoot.querySelector('[data-discovery-index="0"]').click();
+        }
+        assert(debugGame.weekendState.phase === "complete"
+          && debugGame.weekendState.sessionResults.every((result) => result === "completed"),
+        `All five ${circuit.title} sessions must progress to weekend completion`);
+      }
       debugGame.renderWeekend(saudiWeekend);
 
       const debugWindow = debugFrame.contentWindow;

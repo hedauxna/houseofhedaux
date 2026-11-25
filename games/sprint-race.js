@@ -23,7 +23,7 @@ export function createSprintRace(grid, circuitLength, weather, trackCondition, s
     const minFuel = Math.min(settings.aiFuelMinFactor, settings.aiFuelMaxFactor);
     const maxFuel = Math.max(settings.aiFuelMinFactor, settings.aiFuelMaxFactor);
     const fuel = entry.player ? setup.fuel : Math.max(10, Math.min(100,
-      laps * fuelPerLap(balance, grandPrix ? "Balanced" : mode, []) * (minFuel + random() * (maxFuel - minFuel))));
+      laps * fuelPerLap(balance, grandPrix ? "Balanced" : mode, [], circuitLength) * (minFuel + random() * (maxFuel - minFuel))));
     const session = createPracticeSession(entry.driver, entry.team, entry.player ? upgrades : [],
       circuitLength, random, { tyre, fuel }, balance);
     session.duration = Infinity;
@@ -67,7 +67,7 @@ function updateGrandPrixStrategy(race, entry) {
   if (!race.grandPrix || entry.player || entry.strategyLap === session.completedLaps) return;
   entry.strategyLap = session.completedLaps;
   const remaining = Math.max(0, race.laps - session.completedLaps - session.lapProgress);
-  const affordable = (mode) => session.fuel >= remaining * fuelPerLap(race.balance, mode, [])
+  const affordable = (mode) => session.fuel >= remaining * fuelPerLap(race.balance, mode, [], session.circuitLength)
     * (1 + entry.fuelReserve / 100);
   const mode = affordable(entry.preferredMode) ? entry.preferredMode : affordable("Balanced") ? "Balanced" : "Manage";
   setDriverMode(session, mode);
@@ -110,7 +110,7 @@ export function advanceSprintRace(race, milliseconds, playerTyre) {
           entry.pitWear = between(race.random, race.balance.grandPrix.aiPitWearMin, race.balance.grandPrix.aiPitWearMax);
         }
       }
-      const rate = fuelPerLap(session.balance, session.mode, session.upgrades);
+      const rate = fuelPerLap(session.balance, session.mode, session.upgrades, session.circuitLength);
       if (session.pitState !== "entering" && rate > 0 && session.fuel <= 1e-9) {
         entry.retired = true;
       }
@@ -119,7 +119,7 @@ export function advanceSprintRace(race, milliseconds, playerTyre) {
     if (!running.length) break;
     const time = Math.min(remaining, ...running.map(({ session }) => {
       if (session.pitState === "entering") return session.pitRemaining;
-      const rate = fuelPerLap(session.balance, session.mode, session.upgrades);
+      const rate = fuelPerLap(session.balance, session.mode, session.upgrades, session.circuitLength);
       return Math.min((1 - session.lapProgress) * session.lapTarget,
         rate > 0 ? session.fuel / rate * session.lapTarget : Infinity);
     }));
@@ -145,7 +145,7 @@ export function advanceSprintRace(race, milliseconds, playerTyre) {
     for (const entry of running) {
       const session = entry.session;
       if (entry.finishedAt === null && session.pitState !== "entering"
-        && fuelPerLap(session.balance, session.mode, session.upgrades) > 0 && session.fuel <= 1e-9) {
+        && fuelPerLap(session.balance, session.mode, session.upgrades, session.circuitLength) > 0 && session.fuel <= 1e-9) {
         entry.retired = true;
       }
     }

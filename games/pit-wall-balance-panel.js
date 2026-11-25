@@ -24,7 +24,7 @@ const LAP_FIELDS = {
   minimumLapMs: ["Minimum lap target", "ms", 100, 30000],
   tyreWearMsPerPercent: ["Tyre wear penalty", "ms / 1% wear", 0, 1000],
   fuelSavingMsPerPercent: ["Fuel burn-off gain", "ms / 1% fuel used", 0, 1000],
-  fuelPerLap: ["Fuel consumption", "% / lap", 0, 100],
+  fuelPerLap: ["Fuel consumption", "% / reference lap", 0, 100],
   pitBaseMs: ["Base pit time", "ms", 0, 300000],
   pitMinimumMs: ["Minimum pit time", "ms", 0, 300000],
 };

@@ -56,24 +56,118 @@ const WEEKENDS = [
     weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
     circuitLength: "5.278 km", laps: 58, image: new URL("../assets/Australia_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
   },
-  { id: "japan", name: "Japan", title: "Japanese Grand Prix", country: "Japan", track: "Suzuka Circuit", dates: "9-11 April 2027", circuitLength: "5.807 km", sprint: true },
-  { id: "china", name: "China", title: "Chinese Grand Prix", country: "China", track: "Shanghai International Circuit", dates: "16-18 April 2027", circuitLength: "5.451 km" },
-  { id: "miami", name: "Miami", country: "United States", track: "Miami International Autodrome", dates: "30 April-2 May 2027", circuitLength: "5.412 km" },
-  { id: "canada", name: "Canada", title: "Canadian Grand Prix", country: "Canada", track: "Circuit Gilles Villeneuve", dates: "21-23 May 2027", circuitLength: "4.361 km", sprint: true },
-  { id: "monaco", name: "Monaco", country: "Monaco", track: "Circuit de Monaco", dates: "4-6 June 2027", circuitLength: "3.337 km", sprint: true },
-  { id: "portugal", name: "Portugal", title: "Portuguese Grand Prix", country: "Portugal", track: "Algarve International Circuit", dates: "18-20 June 2027", circuitLength: "4.653 km" },
-  { id: "great-britain", name: "Great Britain", title: "British Grand Prix", country: "United Kingdom", track: "Silverstone Circuit", dates: "2-4 July 2027", circuitLength: "5.891 km", sprint: true },
-  { id: "austria", name: "Austria", title: "Austrian Grand Prix", country: "Austria", track: "Red Bull Ring", dates: "9-11 July 2027", circuitLength: "4.326 km" },
-  { id: "belgium", name: "Belgium", title: "Belgian Grand Prix", country: "Belgium", track: "Circuit de Spa-Francorchamps", dates: "23-25 July 2027", circuitLength: "7.004 km" },
-  { id: "hungary", name: "Hungary", title: "Hungarian Grand Prix", country: "Hungary", track: "Hungaroring", dates: "30 July-1 August 2027", circuitLength: "4.381 km" },
-  { id: "italy", name: "Italy", title: "Italian Grand Prix", country: "Italy", track: "Monza Circuit", dates: "3-5 September 2027", circuitLength: "5.793 km", sprint: true },
-  { id: "spain", name: "Spain", title: "Spanish Grand Prix", country: "Spain", track: "Madring", dates: "10-12 September 2027", circuitLength: "5.414 km" },
-  { id: "azerbaijan", name: "Azerbaijan", country: "Azerbaijan", track: "Baku City Circuit", dates: "24-26 September 2027", circuitLength: "6.003 km" },
-  { id: "turkiye", name: "Türkiye", title: "Turkish Grand Prix", country: "Türkiye", track: "Istanbul Park", dates: "1-3 October 2027", circuitLength: "5.338 km" },
-  { id: "singapore", name: "Singapore", country: "Singapore", track: "Marina Bay Street Circuit", dates: "8-10 October 2027", circuitLength: "4.927 km" },
-  { id: "united-states", name: "United States", country: "United States", track: "Circuit of the Americas", dates: "22-24 October 2027", circuitLength: "5.513 km" },
-  { id: "mexico", name: "Mexico", title: "Mexico City Grand Prix", country: "Mexico", track: "Autódromo Hermanos Rodríguez", dates: "29-31 October 2027", circuitLength: "4.304 km" },
-  { id: "brazil", name: "Brazil", title: "São Paulo Grand Prix", country: "Brazil", track: "Interlagos", dates: "5-7 November 2027", circuitLength: "4.309 km", sprint: true },
+  {
+    id: "japan", name: "Japan", title: "Japanese Grand Prix", country: "Japan",
+    track: "Suzuka Circuit", dates: "9-11 April 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.807 km", laps: 53, image: new URL("../assets/Japan_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "china", name: "China", title: "Chinese Grand Prix", country: "China",
+    track: "Shanghai International Circuit", dates: "16-18 April 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.451 km", laps: 56, image: new URL("../assets/China_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "miami", name: "Miami", title: "Miami Grand Prix", country: "United States",
+    track: "Miami International Autodrome", dates: "30 April-2 May 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.412 km", laps: 57, image: new URL("../assets/Miami_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "canada", name: "Canada", title: "Canadian Grand Prix", country: "Canada",
+    track: "Circuit Gilles Villeneuve", dates: "21-23 May 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "4.361 km", laps: 70, image: new URL("../assets/Canada_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "monaco", name: "Monaco", country: "Monaco",
+    track: "Circuit de Monaco", dates: "4-6 June 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "3.337 km", laps: 78, image: new URL("../assets/Monaco_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "portugal", name: "Portugal", title: "Portuguese Grand Prix", country: "Portugal",
+    track: "Algarve International Circuit", dates: "18-20 June 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "4.653 km", laps: 66, image: new URL("../assets/Portuguese_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "great-britain", name: "Great Britain", title: "British Grand Prix", country: "United Kingdom",
+    track: "Silverstone Circuit", dates: "2-4 July 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.891 km", laps: 52, image: new URL("../assets/Great_Britain_Circuit_Trimmed.png", import.meta.url).href,
+    routeId: "greatbritain", mappedRoute: true,
+  },
+  {
+    id: "austria", name: "Austria", title: "Austrian Grand Prix", country: "Austria",
+    track: "Red Bull Ring", dates: "9-11 July 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "4.326 km", laps: 71, image: new URL("../assets/Austria_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "belgium", name: "Belgium", title: "Belgian Grand Prix", country: "Belgium",
+    track: "Circuit de Spa-Francorchamps", dates: "23-25 July 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "7.004 km", laps: 44, image: new URL("../assets/Belgian_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "hungary", name: "Hungary", title: "Hungarian Grand Prix", country: "Hungary",
+    track: "Hungaroring", dates: "30 July-1 August 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "4.381 km", laps: 70, image: new URL("../assets/Hungary_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "italy", name: "Italy", title: "Italian Grand Prix", country: "Italy",
+    track: "Monza Circuit", dates: "3-5 September 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.793 km", laps: 53, image: new URL("../assets/Italy_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "spain", name: "Spain", title: "Madrid Grand Prix", country: "Spain",
+    track: "Madring", dates: "10-12 September 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.414 km", laps: 57, image: new URL("../assets/Madrid_Circuit_Trimmed.png", import.meta.url).href,
+    routeId: "madrid", mappedRoute: true,
+  },
+  {
+    id: "azerbaijan", name: "Azerbaijan", country: "Azerbaijan",
+    track: "Baku City Circuit", dates: "24-26 September 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "6.003 km", laps: 51, image: new URL("../assets/Azerbaijan_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "turkiye", name: "Türkiye", title: "Turkish Grand Prix", country: "Türkiye",
+    track: "Istanbul Park", dates: "1-3 October 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.338 km", laps: 58, image: new URL("../assets/Turkey_Circuit_Trimmed.png", import.meta.url).href,
+    routeId: "turkey", mappedRoute: true,
+  },
+  {
+    id: "singapore", name: "Singapore", country: "Singapore",
+    track: "Marina Bay Street Circuit", dates: "8-10 October 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "4.927 km", laps: 62, image: new URL("../assets/Singapore_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "united-states", name: "United States", country: "United States",
+    track: "Circuit of the Americas", dates: "22-24 October 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.513 km", laps: 56, image: new URL("../assets/USA_Circuit_Trimmed.png", import.meta.url).href,
+    routeId: "usa", mappedRoute: true,
+  },
+  {
+    id: "mexico", name: "Mexico", title: "Mexico Grand Prix", country: "Mexico",
+    track: "Autódromo Hermanos Rodríguez", dates: "29-31 October 2027",
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "4.304 km", laps: 71, image: new URL("../assets/Mexico_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "brazil", name: "Brazil", title: "São Paulo Grand Prix", country: "Brazil",
+    track: "Interlagos", dates: "5-7 November 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "4.309 km", laps: 71, image: new URL("../assets/Brazil_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
   { id: "las-vegas", name: "Las Vegas", country: "United States", track: "Las Vegas Strip Circuit", dates: "18-20 November 2027", circuitLength: "6.201 km" },
   { id: "qatar", name: "Qatar", country: "Qatar", track: "Lusail International Circuit", dates: "3-5 December 2027", circuitLength: "5.419 km", sprint: true },
   { id: "abu-dhabi", name: "Abu Dhabi", country: "United Arab Emirates", track: "Yas Marina Circuit", dates: "10-12 December 2027", circuitLength: "5.281 km", sprint: true },
@@ -764,7 +858,8 @@ class PitWallConsole {
     const practice = this.weekendState.practice;
     const fuel = practice ? practice.fuel : this.weekendState.setup.fuel;
     const mode = practice ? practice.mode : this.weekendState.setup.mode || "Balanced";
-    const rate = fuelPerLap(this.balance, mode, practice ? practice.upgrades : this.activeDiscoveries());
+    const rate = fuelPerLap(this.balance, mode, practice ? practice.upgrades : this.activeDiscoveries(),
+      practice ? practice.circuitLength : parseFloat(this.weekendState.weekend.circuitLength));
     const laps = practice ? practice.lapTimes : [];
     const values = {
       remaining: this.isRace() ? `${practice ? Math.min(practice.completedLaps + 1, this.weekendState.race.laps) : 1} / ${this.weekendState.race?.laps || this.raceLaps()}`
@@ -960,7 +1055,8 @@ class PitWallConsole {
         gridMarker.title = `P${racer.gridPosition} ${racer.driver.name}, ${racer.session.tyre} tyre`;
       }
     }
-    const rate = fuelPerLap(this.balance, practice ? practice.mode : state.setup.mode || "Balanced", this.activeDiscoveries());
+    const rate = fuelPerLap(this.balance, practice ? practice.mode : state.setup.mode || "Balanced", this.activeDiscoveries(),
+      practice ? practice.circuitLength : parseFloat(state.weekend.circuitLength));
     content.querySelector("[data-setup-fuel-value]").textContent = `${state.setup.fuel}%`;
     if (!practice) {
       if (race) content.querySelectorAll("[data-driver-mode]").forEach((button) => {
@@ -1604,7 +1700,7 @@ class PitWallConsole {
     const session = entry.session;
     const pending = state.race.started && this.sessionTimer != null && !state.debugPaused
       ? Math.max(0, performance.now() - state.timerStartedAt) * state.practice.speed : 0;
-    const rate = fuelPerLap(this.balance, session.mode, session.upgrades);
+    const rate = fuelPerLap(this.balance, session.mode, session.upgrades, session.circuitLength);
     const distance = Math.min(1 - session.lapProgress, pending / session.lapTarget,
       rate > 0 ? session.fuel / rate : Infinity);
     return ((session.lapProgress + distance) % 1 + 1) % 1;
