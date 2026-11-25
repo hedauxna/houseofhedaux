@@ -46,7 +46,7 @@ function baseLapTarget(session) {
   return Math.max(base - lap.baseClampMs, Math.min(base + lap.baseClampMs, result));
 }
 
-function updateLapTarget(session) {
+export function updateLapTarget(session) {
   const { lap, tyres, modes } = session.balance;
   session.lapTargetBeforeMode = session.baseLapTarget + tyres[session.tyre].pace
     + session.tyreWear * lap.tyreWearMsPerPercent - (100 - session.fuel) * lap.fuelSavingMsPerPercent

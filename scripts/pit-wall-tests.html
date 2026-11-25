@@ -23,7 +23,7 @@
       for (let i = 0; i < 100 && !container.querySelector(".pit-wall-moving-driver"); i += 1) {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
-      assert(container.querySelector(".pit-wall-moving-driver"), "Bahrain marker did not load");
+      assert(container.querySelector(".pit-wall-moving-driver"), "Session markers did not load");
     };
 
     try {
@@ -614,13 +614,10 @@
       game.mount();
       assert(!root.querySelector('[data-action="balance-toggle"]') && !root.querySelector("#pit-wall-balance-panel"),
         "The developer balance panel must not be present without developer mode");
-      const toggle = root.querySelector('[data-action="toggle-command"]');
       const commandBody = root.querySelector("#pit-wall-command-content");
-      assert(toggle.getAttribute("aria-expanded") === "true" && !commandBody.inert,
-        "Command Centre must start expanded");
-      toggle.click();
-      assert(toggle.getAttribute("aria-expanded") === "false" && commandBody.inert,
-        "Command Centre must collapse");
+      assert(!root.querySelector('[data-action="toggle-command"]') && !commandBody.inert
+        && getComputedStyle(commandBody.firstElementChild).visibility === "visible",
+      "Command Centre must remain visible without a collapse control");
       root.querySelector('[data-action="new-game"]').click();
 
       const cards = [...root.querySelectorAll("[data-driver-index]")];
@@ -708,10 +705,9 @@
       await root.querySelector(".pit-wall-circuit img").decode();
 
       const bahrainWeekend = game.weekendState.weekend;
-      root.querySelector('[data-action="skip-session"]').click();
-      assert(game.isSprintQualifying() && root.querySelector('[data-timing="remaining"]').textContent === "15:00"
-        && Number(root.querySelector("[data-setup-fuel]").min) === .1,
-      "Sprint Qualifying must offer a 15-minute session with short-stint fuel choices");
+      game.skipSession();
+      assert(game.isSprintQualifying() && root.querySelector('[data-timing="remaining"]').textContent === "15:00",
+      "Sprint Qualifying must offer a 15-minute session");
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
       assert(game.weekendState.practice.pitState === "stopped"
@@ -721,10 +717,11 @@
       root.querySelector('[data-driver-mode="Push"]').click();
       root.querySelector('[data-setup-tyre="Soft"]').click();
       const qualifyingFuel = root.querySelector("[data-setup-fuel]");
+      assert(Number(qualifyingFuel.min) === .1, "Qualifying must allow short-stint fuel choices");
       assert(!root.querySelector("[data-fuel-laps]"), "Qualifying must use the slider without fuel shortcuts");
       qualifyingFuel.value = "4.7";
       qualifyingFuel.dispatchEvent(new Event("input", { bubbles: true }));
-      assert(root.querySelector("[data-setup-fuel-value]").textContent.includes("~2.0 laps")
+      assert(root.querySelector("[data-setup-fuel-value]").textContent === "4.7%"
         && root.querySelector('[data-timing="fuel-percent"]').textContent === "100%",
       "Pending qualifying fuel must not replace the current fuel reading before Send Out");
       root.querySelector('[data-action="send-out"]').click();
@@ -775,20 +772,28 @@
       let raceNow = 0;
       try {
         Object.defineProperty(performance, "now", { configurable: true, value: () => raceNow });
+        root.querySelector('[data-action="start-session"]').click();
+        await waitForMarker(root);
+        const liveRace = game.weekendState.race;
+        const playerCar = liveRace.entries.find((entry) => entry.player);
+        root.querySelector('[data-speed="0"]').click();
         root.querySelector('[data-driver-mode="Push"]').click();
         root.querySelector('[data-setup-tyre="Soft"]').click();
         const raceFuel = root.querySelector("[data-setup-fuel]");
         raceFuel.value = "60";
         raceFuel.dispatchEvent(new Event("input", { bubbles: true }));
-        root.querySelector('[data-action="start-session"]').click();
-        await waitForMarker(root);
-        const liveRace = game.weekendState.race;
-        const playerCar = liveRace.entries.find((entry) => entry.player);
+        assert(playerCar.tyreHistory[0] === "Soft"
+          && playerCar.session.lapTargetBeforeMode === playerCar.session.baseLapTarget
+            + game.balance.tyres.Soft.pace - 40 * game.balance.lap.fuelSavingMsPerPercent
+          && !raceFuel.disabled,
+        "Grid setup must update starting tyre history and lap pace while lights are paused");
+        root.querySelector('[data-speed="1"]').click();
         assert(liveRace.entries.map((entry) => entry.driver.name).join("|")
           === sprintGrid.entries.map((entry) => entry.driver.name).join("|")
           && playerCar.session.tyre === "Soft" && playerCar.session.fuel === 60
-          && playerCar.session.mode === "Push" && root.querySelector("[data-setup-fuel]").disabled
+          && playerCar.session.mode === "Push" && !root.querySelector("[data-setup-fuel]").disabled
           && !root.querySelector('[data-action="send-out"]:not([hidden])')
+          && !root.querySelector('[data-action="call-pit"]:not([hidden])')
           && root.querySelectorAll(".pit-wall-start-grid span").length === 10
           && [...root.querySelectorAll(".pit-wall-start-grid span")].every((marker, index) =>
             marker.dataset.tyre === liveRace.entries[index].session.tyre)
@@ -808,18 +813,33 @@
         raceNow += 2;
         game.syncPracticeClock();
         assert(liveRace.started && !root.querySelector(".pit-wall-start-grid, .pit-wall-start-lights")
-          && [...root.querySelectorAll(".pit-wall-moving-driver")].every((marker) => marker.style.display !== "none"),
+          && [...root.querySelectorAll(".pit-wall-moving-driver")].every((marker) => marker.style.display !== "none")
+          && raceFuel.disabled
+          && !root.querySelector('[data-action="call-pit"]').hidden
+          && root.querySelector('[data-action="send-out"]').hidden,
         "Lights out must launch all cars together");
+        const fuelAtLaunch = playerCar.session.fuel;
+        raceFuel.value = "25";
+        raceFuel.dispatchEvent(new Event("input", { bubbles: true }));
+        assert(playerCar.session.fuel === fuelAtLaunch && raceFuel.value === "60",
+          "Fuel cannot be changed after lights out, even by a delayed input event");
         const raceMarkers = [...root.querySelectorAll(".pit-wall-moving-driver")];
         assert(raceMarkers.every((marker, index) => marker.dataset.tyre === liveRace.entries[index].session.tyre
           && marker.closest('[role="img"]').getAttribute("aria-label").includes(marker.dataset.tyre)),
         "Each visible race marker must show and announce its fitted tyre");
         root.querySelector('[data-setup-tyre="Hard"]').click();
         root.querySelector('[data-action="call-pit"]').click();
+        raceNow += (1 - playerCar.session.lapProgress) * playerCar.session.lapTarget + 1;
+        game.syncPracticeClock();
+        assert(playerCar.session.pitState === "entering"
+          && root.querySelector('[data-action="call-pit"]').hidden
+          && root.querySelector('[data-action="send-out"]').hidden,
+        "Race pit entry must hide both actions while the stop is serviced automatically");
         raceNow += 2 * playerCar.session.lapTarget + game.balance.lap.pitBaseMs + 1000;
         game.syncPracticeClock();
         assert(playerCar.session.tyre === "Hard" && playerCar.session.fuel < 60
           && playerCar.session.fuel > 50 && !root.querySelector("[data-setup-fuel]:not(:disabled)")
+          && !root.querySelector('[data-action="call-pit"]').hidden && root.querySelector('[data-action="send-out"]').hidden
           && raceMarkers[liveRace.entries.indexOf(playerCar)].dataset.tyre === "Hard",
         "The player's pit stop must change tyres while retaining the remaining race fuel");
         raceNow += 10000000;
@@ -874,8 +894,8 @@
         assert(race.laps === 57 && race.grandPrix
           && race.entries.map((entry) => entry.driver.name).join("|") === qualifyingGrid.entries.map((entry) => entry.driver.name).join("|")
           && root.querySelectorAll(".pit-wall-start-grid span").length === 10
-          && root.querySelector("[data-setup-fuel]").disabled,
-        "The Bahrain Grand Prix must use the qualifying grid, 57 laps and locked starting fuel");
+          && !root.querySelector("[data-setup-fuel]").disabled,
+        "The Bahrain Grand Prix must use the qualifying grid, 57 laps and adjustable grid fuel");
         gpNow += 3000;
         game.syncPracticeClock();
         assert(root.querySelectorAll(".pit-wall-start-lights .is-lit").length === 5 && !race.started,
@@ -907,7 +927,7 @@
       }
       game.championship = [];
       game.renderWeekend(bahrainWeekend);
-      root.querySelector('[data-action="skip-session"]').click();
+      game.skipSession();
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
       root.querySelector('[data-action="complete-session"]').click();
@@ -917,10 +937,17 @@
       game.permanentUpgrades = [];
       game.uniqueRewards.clear();
       game.renderWeekend(bahrainWeekend);
+      assert(root.querySelector(".pit-wall-command-body").textContent.trim() === "Start Session"
+        && !root.querySelector("[data-driver-mode], [data-setup-tyre], [data-setup-fuel], [data-speed], [data-action='call-pit'], [data-action='send-out']"),
+      "Before starting a session the Command Centre must show only Start Session");
+      root.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(root);
       const setupTyres = [...root.querySelectorAll("[data-setup-tyre]")];
       const setupFuel = root.querySelector("[data-setup-fuel]");
       assert(setupTyres.length === 5 && root.querySelector('[data-setup-tyre="Medium"]').getAttribute("aria-pressed") === "true"
-        && setupFuel.min === "10" && setupFuel.max === "100" && setupFuel.value === "100",
+        && setupFuel.min === "10" && setupFuel.max === "100" && setupFuel.value === "100"
+        && root.querySelector('[data-action="call-pit"]').hidden
+        && !root.querySelector('[data-action="send-out"]').hidden && !root.querySelector('[data-action="send-out"]').disabled,
       "Practice setup must default to Medium and 100% fuel");
       root.querySelector('[data-setup-tyre="Soft"]').click();
       setupFuel.value = "35";
@@ -928,16 +955,14 @@
       assert(root.querySelectorAll('[data-setup-tyre][aria-pressed="true"]').length === 1
         && root.querySelector('[data-setup-tyre="Soft"]').getAttribute("aria-pressed") === "true"
         && root.querySelector("[data-setup-fuel-value]").textContent === "35%"
-        && root.querySelector('[data-timing="tyre"]').textContent === "Soft"
-        && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "35",
-      "Setup choices must update their selection and telemetry preview");
+        && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "100",
+      "Setup choices must update pending selections without changing fitted fuel");
       game.renderSession();
       assert(root.querySelector('[data-setup-tyre="Soft"]').getAttribute("aria-pressed") === "true"
         && root.querySelector("[data-setup-fuel]").value === "35", "Setup must survive a session rerender");
-      root.querySelector('[data-action="start-session"]').click();
-      await waitForMarker(root);
       assert(game.weekendState.practice.pitState === "stopped"
-        && !root.querySelector('[data-action="send-out"]').disabled
+        && !root.querySelector('[data-action="send-out"]').hidden && !root.querySelector('[data-action="send-out"]').disabled
+        && root.querySelector('[data-action="call-pit"]').hidden
         && root.querySelector(".pit-wall-moving-driver").style.display === "none"
         && !root.querySelector(".pit-wall-lap-entry.is-current"),
       "Starting practice must keep the player in the garage until Send Out");
@@ -951,7 +976,9 @@
       root.querySelector('[data-action="send-out"]').click();
       assert(game.weekendState.practice.tyre === "Soft" && game.weekendState.practice.fuel <= 35
         && game.weekendState.practice.fuel > 34.9
-        && root.querySelector(".pit-wall-moving-driver").style.display !== "none",
+        && root.querySelector(".pit-wall-moving-driver").style.display !== "none"
+        && root.querySelector('[data-action="send-out"]').hidden
+        && !root.querySelector('[data-action="call-pit"]').hidden,
       "Send Out must apply the chosen setup and show the player marker");
       const opponent = game.weekendState.classification.opponents[0];
       opponent.garageRemaining = 1;
@@ -975,7 +1002,6 @@
       game.weekendState.timerStartedAt -= 2;
       game.syncPracticeClock();
       assert(opponent.session && opponentMarker.style.display !== "none", "An AI marker must reappear on a later stint");
-      root.querySelector('[data-action="toggle-command"]').click();
       root.querySelector('[data-driver-mode="Push"]').click();
       const chosenPractice = game.weekendState.practice;
       chosenPractice.lapTimes.length = 0;
@@ -989,9 +1015,8 @@
       assert(chosenPractice.lapTimes.length === 2 && chosenPractice.lapTimes[1] > chosenPractice.lapTimes[0]
         && recordedLaps[1].textContent.includes(formatLapTime(chosenPractice.lapTimes[1]))
         && recordedLaps[2].textContent.includes(formatLapTime(chosenPractice.lapTimes[0]))
-        && root.querySelector("[data-mode-feedback]").textContent.includes("less tyre wear & fuel"),
-      "A Soft Push lap followed by Manage must show the slower lap and the mode trade-off");
-      root.querySelector('[data-action="toggle-command"]').click();
+        && root.querySelector('[data-driver-mode="Manage"]').getAttribute("aria-pressed") === "true",
+      "A Soft Push lap followed by Manage must show the slower lap and active mode");
       game.renderWeekend(bahrainWeekend);
       const trackerLabels = () => [...root.querySelectorAll(".pit-wall-session-step")]
         .map((step) => step.getAttribute("aria-label"));
@@ -1012,21 +1037,31 @@
         && !root.querySelector(".pit-wall-route-line, .pit-wall-session-panel progress")
         && !root.querySelector('[data-action="toggle-route"]'),
       "Bahrain Practice 1 must show a moving team-coloured driver marker without debug or timing");
-      assert(root.querySelector('[data-timing="tyre"]').textContent === "Medium"
-        && root.querySelector('[aria-label="Tyre condition"]').getAttribute("aria-valuenow") === "100"
+      assert(root.querySelector('[aria-label="Tyre condition"]').getAttribute("aria-valuenow") === "100"
         && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "100"
-        && !root.querySelector('[data-timing="current-lap"], [data-timing="completed-laps"]'),
-      "Practice telemetry must start with medium tyres and full fuel rather than duplicate lap counts");
+        && [...root.querySelectorAll(".pit-wall-telemetry dt:not([data-timing])")].map((item) => item.textContent).join("|")
+          === "Tyre Condition|Fuel Load|Session Time Remaining"
+        && root.querySelector('[data-timing="fuel-range"]').textContent.includes("laps remaining")
+        && !root.querySelector('[data-timing="tyre"], [data-timing="last-lap"], [data-timing="best-lap"], [data-timing="speed"]'),
+      "Practice telemetry must show condition, fuel and time without duplicated details");
       assert(!root.querySelector('[data-action="skip-session"]')
         && root.querySelector('[data-action="complete-session"]')
         && [...root.querySelectorAll("[data-speed]")].map((button) => button.textContent).join("|") === "⏸|1x|10x|50x",
       "Running practice must expose pause, speed and completion controls without Skip Session");
-      root.querySelector('[data-action="toggle-command"]').click();
+      const commandControls = root.querySelector(".pit-wall-command-controls");
+      assert([...commandControls.children].map((item) => item.className).join("|")
+        === "pit-wall-command-group|pit-wall-command-group|pit-wall-command-group|pit-wall-command-group|pit-wall-command-actions"
+        && [...commandControls.querySelectorAll(".pit-wall-command-group-label")].map((item) => item.textContent).join("|")
+          === "Driver Mode|Next Tyre Choice|Next Fuel|Session Speed"
+        && [...commandControls.querySelector(".pit-wall-command-actions").children].map((item) => item.dataset.action).join("|")
+          === "call-pit|send-out|complete-session"
+        && !root.querySelector("[data-fuel-laps]"),
+      "Command Centre controls must follow the engineering workflow with completion last");
       root.querySelector('[data-driver-mode="Push"]').click();
-      assert(root.querySelector("[data-command-mode]").textContent.includes("Push")
+      assert(root.querySelector('[data-driver-mode="Push"]').getAttribute("aria-pressed") === "true"
         && game.weekendState.practice.mode === "Push"
-        && root.querySelector("[data-mode-feedback]").textContent.includes("more tyre wear & fuel"),
-      "The command centre must show the active mode and its trade-offs");
+        && !root.querySelector("[data-command-mode], [data-mode-feedback]"),
+      "The command centre must show the active mode on its button");
       const currentFuel = game.weekendState.practice.fuel;
       root.querySelector('[data-setup-tyre="Soft"]').click();
       const plannedFuel = root.querySelector("[data-setup-fuel]");
@@ -1036,7 +1071,9 @@
         && game.weekendState.practice.fuel > currentFuel - .1,
       "Preparing a stint while circulating must not alter the current tyre or refuel");
       root.querySelector('[data-action="call-pit"]').click();
-      assert(game.weekendState.practice.pitState === "called", "Call To Pit must queue the stop");
+      assert(game.weekendState.practice.pitState === "called"
+        && !root.querySelector('[data-action="call-pit"]').hidden && root.querySelector('[data-action="call-pit"]').disabled
+        && root.querySelector('[data-action="send-out"]').hidden, "Call To Pit must queue the stop");
       game.weekendState.timerStartedAt -= (1 - game.weekendState.practice.lapProgress) * game.weekendState.practice.lapTarget + 1;
       game.syncPracticeClock();
       await new Promise((resolve) => setTimeout(resolve, 35));
@@ -1047,7 +1084,8 @@
         && Math.hypot(stoppedMarker.e - pitStart.x, stoppedMarker.f - pitStart.y) < 1
         && marker.style.display === "none"
         && root.querySelector("[data-pit-status]").textContent.includes("Pit entry")
-        && root.querySelector('[data-action="send-out"]').disabled,
+        && root.querySelector('[data-action="call-pit"]').hidden
+        && !root.querySelector('[data-action="send-out"]').hidden && root.querySelector('[data-action="send-out"]').disabled,
       "The player must enter the pit before Send Out becomes available");
       const fuelBeforeStop = game.weekendState.practice.fuel;
       root.querySelector('[data-speed="0"]').click();
@@ -1065,14 +1103,15 @@
         "Pending setup must not change the fitted tyre or fuel");
       game.weekendState.timerStartedAt -= 1200;
       game.syncPracticeClock();
-      assert(game.weekendState.practice.pitState === "stopped" && !root.querySelector('[data-action="send-out"]').disabled,
+      assert(game.weekendState.practice.pitState === "stopped" && !root.querySelector('[data-action="send-out"]').hidden
+        && !root.querySelector('[data-action="send-out"]').disabled && root.querySelector('[data-action="call-pit"]').hidden,
         "The driver must wait in the garage after pit entry");
       root.querySelector('[data-action="send-out"]').click();
       assert(game.weekendState.practice.pitState === "none"
-        && root.querySelector('[data-timing="tyre"]').textContent === "Soft"
-        && game.weekendState.practice.fuel === 35,
+        && game.weekendState.practice.tyre === "Soft"
+        && game.weekendState.practice.fuel === 35
+        && root.querySelector('[data-action="send-out"]').hidden && !root.querySelector('[data-action="call-pit"]').hidden,
       "Send Out must release the car with the prepared tyre and fuel");
-      root.querySelector('[data-action="toggle-command"]').click();
       game.renderWeekend(bahrainWeekend);
       root.querySelector('[data-action="start-session"]').click();
       await waitForMarker(root);
@@ -1141,7 +1180,7 @@
       const pausedOpponents = JSON.stringify(game.weekendState.classification.opponents);
       await new Promise((resolve) => setTimeout(resolve, 250));
       assert(root.querySelector('[data-speed="0"]').getAttribute("aria-pressed") === "true"
-        && root.querySelector('[data-timing="speed"]').textContent === "Paused"
+        && root.querySelector('[data-action="call-pit"]').hidden && root.querySelector('[data-action="send-out"]').hidden
         && root.querySelector(".pit-wall-session-running").textContent.includes("Paused")
         && root.querySelector(".pit-wall-moving-driver").getAttribute("transform") === pausedPosition
         && [pausedPractice.elapsed, pausedPractice.lapProgress, pausedPractice.tyreWear, pausedPractice.fuel]
@@ -1156,7 +1195,8 @@
         game.syncPracticeClock();
         const change = game.weekendState.practice.elapsed - before;
         assert(change >= 1000 * speed && change < 1100 * speed
-          && root.querySelector('[data-timing="speed"]').textContent === `${speed}x`
+          && root.querySelector(`[data-speed="${speed}"]`).getAttribute("aria-pressed") === "true"
+          && !root.querySelector('[data-action="call-pit"]').hidden && root.querySelector('[data-action="send-out"]').hidden
           && JSON.stringify(game.weekendState.classification.opponents) !== opponentsBefore,
         `${speed}x must scale simulated time`);
         await new Promise((resolve) => setTimeout(resolve, 35));
@@ -1188,8 +1228,8 @@
       game.syncPracticeClock();
       const completedTimes = game.weekendState.practice.lapTimes;
       assert(completedTimes.length === 3
-        && root.querySelector('[data-timing="best-lap"]').textContent === formatLapTime(Math.min(...completedTimes))
-        && root.querySelector('[data-timing="last-lap"]').textContent === formatLapTime(completedTimes[completedTimes.length - 1])
+        && root.querySelector(".pit-wall-lap-entry.is-fastest").textContent.includes(formatLapTime(Math.min(...completedTimes)))
+        && root.querySelectorAll(".pit-wall-lap-entry")[1].textContent.includes(formatLapTime(completedTimes[completedTimes.length - 1]))
         && root.querySelector("[data-practice-goal]").textContent.includes("achieved"),
       "Completed laps must update live timing and the discovery goal");
       root.querySelector('[data-action="complete-session"]').click();
@@ -1514,14 +1554,17 @@
       game.renderWeekend(bahrainWeekend);
       assert(game.permanentUpgrades.length === permanentCount && game.weekendDiscoveries.length === 0,
         "A new weekend must retain permanent upgrades and clear weekend discoveries");
-      assert(root.querySelector('[data-action="start-session"]') && root.querySelector('[data-action="skip-session"]'),
-        "Ready sessions must offer both Start Session and Skip Session");
-      root.querySelector('[data-action="skip-session"]').click();
+      assert(root.querySelector('[data-action="start-session"]') && !root.querySelector('[data-action="skip-session"]'),
+        "Ready sessions must offer Start Session without Skip Session");
+      game.skipSession();
       assert(game.sessionTimer === null && game.weekendState.sessionResults[0] === "skipped"
         && game.weekendState.sessionIndex === 1 && game.weekendDiscoveries.length === 0
         && game.permanentUpgrades.length === permanentCount,
       "Skipping a session before it starts must award nothing");
-      for (let i = 1; i < 5; i += 1) root.querySelector('[data-action="skip-session"]').click();
+      for (let i = 1; i < 5; i += 1) {
+        assert(!root.querySelector('[data-action="skip-session"]'), "Skip Session must not appear in any session");
+        game.skipSession();
+      }
       assert(game.weekendState.phase === "complete"
         && game.weekendState.sessionResults.every((result) => result === "skipped")
         && game.permanentUpgrades.length === permanentCount,
@@ -1563,7 +1606,7 @@
             && trackerLabels().length === 5
             && trackerLabels()[1].startsWith(weekend.sprint ? "Sprint Qualifying" : "Practice 2"),
           `Round ${round} must show current championship progress and the correct session format`);
-          if (round > 2) {
+          if (round > 3) {
             const placeholder = root.querySelector(".pit-wall-circuit-placeholder");
             assert(placeholder && !root.querySelector(".pit-wall-circuit img")
               && placeholder.textContent.includes("Track Layout Coming Soon")
@@ -1578,7 +1621,7 @@
               Math.random = () => roll;
               root.querySelector('[data-action="start-session"]').click();
               if (game.isTimedSession()) {
-                if (game.hasBahrainRoute()) await waitForMarker(root);
+                if (game.hasSessionRoute()) await waitForMarker(root);
                 root.querySelector('[data-action="send-out"]').click();
                 seasonTime += 600000;
                 game.syncPracticeClock();
@@ -1592,7 +1635,7 @@
             }
           }
           if (round === 24) {
-            for (let i = 0; i < 4; i += 1) root.querySelector('[data-action="skip-session"]').click();
+            for (let i = 0; i < 4; i += 1) game.skipSession();
             Math.random = () => .95;
             root.querySelector('[data-action="start-session"]').click();
             await waitForMarker(root);
@@ -1605,7 +1648,7 @@
             "The final Grand Prix must offer post-race rewards before completing the season");
             root.querySelector('[data-discovery-index="0"]').click();
           }
-          while (game.weekendState.phase === "ready") root.querySelector('[data-action="skip-session"]').click();
+          while (game.weekendState.phase === "ready") game.skipSession();
           assert(game.roundsCompleted === round && game.weekendDiscoveries.length === 0,
             `Completing round ${round} must count once and clear weekend discoveries`);
           if (round === 2) {
@@ -1652,13 +1695,13 @@
         if (!["bahrain", "abu-dhabi"].includes(button.dataset.weekend)) button.click();
       });
       root.querySelector('[data-action="confirm-season"]').click();
-      for (let i = 0; i < 5; i += 1) root.querySelector('[data-action="skip-session"]').click();
+      for (let i = 0; i < 5; i += 1) game.skipSession();
       root.querySelector('[data-action="next-round"]').click();
       assert(game.weekendState.weekend.round === 24
         && root.querySelector(".pit-wall-championship").textContent.includes("Round 24 / 24")
         && root.querySelector(".pit-wall-championship").textContent.includes("Selected: 2 / 2"),
       "A customized season must advance to the next selected round");
-      for (let i = 0; i < 5; i += 1) root.querySelector('[data-action="skip-session"]').click();
+      for (let i = 0; i < 5; i += 1) game.skipSession();
       assert(root.querySelector(".pit-wall-season-finish").textContent.includes("Rounds Completed: 2 / 2"),
         "A customized season must finish after its last selected round");
 
@@ -1668,7 +1711,7 @@
       });
       root.querySelector('[data-action="confirm-season"]').click();
       game.permanentUpgrades = [{ ...blue, level: 1 }];
-      for (let i = 0; i < 4; i += 1) root.querySelector('[data-action="skip-session"]').click();
+      for (let i = 0; i < 4; i += 1) game.skipSession();
       choose(blue);
       assert(root.querySelector(".pit-wall-season-finish .pit-wall-session-notice").textContent.includes("Level 2")
         && root.querySelector(".pit-wall-season-finish dd").textContent === "2",
@@ -1731,7 +1774,6 @@
       const layoutGame = new PitWallConsole(frameRoot);
       layoutGame.mount();
       frameRoot.querySelector('[data-action="new-game"]').click();
-      frameRoot.querySelector('[data-action="toggle-command"]').click();
       await new Promise((resolve) => setTimeout(resolve, 250));
 
       const within = (inner, outer) => {
@@ -1904,14 +1946,6 @@
           && Math.abs(confirmBounds.bottom - season.getBoundingClientRect().bottom) < 1,
           `Confirm Season is not at the bottom-right at ${width}x${height}`);
         seasonConfirm.click();
-        for (const [tyre, colour] of Object.entries(tyreColours)) {
-          const button = frameRoot.querySelector(`[data-setup-tyre="${tyre}"]`);
-          button.click();
-          assert(frame.contentWindow.getComputedStyle(button, "::before").backgroundColor === colour
-            && frame.contentWindow.getComputedStyle(frameRoot.querySelector('[data-timing="tyre"]'), "::before").backgroundColor === colour,
-          `${tyre} must use its compound colour in setup and telemetry`);
-        }
-        frameRoot.querySelector('[data-setup-tyre="Medium"]').click();
         let circuit = frameRoot.querySelector(".pit-wall-circuit img");
         await circuit.decode();
         const imageBounds = circuit.getBoundingClientRect();
@@ -2052,7 +2086,14 @@
         layoutGame.weekendState.phase = "ready";
         layoutGame.renderSession();
         frameRoot.querySelector('[data-action="start-session"]').click();
-        if (layoutGame.isBahrainPractice()) await waitForMarker(frameRoot);
+        if (layoutGame.hasSessionRoute()) await waitForMarker(frameRoot);
+        for (const [tyre, colour] of Object.entries(tyreColours)) {
+          const button = frameRoot.querySelector(`[data-setup-tyre="${tyre}"]`);
+          button.click();
+          assert(frame.contentWindow.getComputedStyle(button, "::before").backgroundColor === colour,
+          `${tyre} must use its compound colour in setup`);
+        }
+        frameRoot.querySelector('[data-setup-tyre="Medium"]').click();
         frameRoot.querySelector('[data-action="send-out"]').click();
         const classification = frameRoot.querySelector(".pit-wall-classification");
         const classificationRows = [...classification.querySelectorAll(".pit-wall-classification-row")];
@@ -2069,8 +2110,8 @@
         assert(within(frameRoot.querySelector(".pit-wall-session-panel"), main)
           && within(circuit, main)
           && circuit.getBoundingClientRect().height > 30
-          && within(frameRoot.querySelector('[data-action="complete-session"]'), main)
-          && [...frameRoot.querySelectorAll("[data-speed]")].every((button) => within(button, main))
+          && within(frameRoot.querySelector('[data-action="complete-session"]'), frameRoot.querySelector(".pit-wall-panel-bottom"))
+          && [...frameRoot.querySelectorAll("[data-speed]")].every((button) => within(button, frameRoot.querySelector(".pit-wall-panel-bottom")))
           && [...frameRoot.querySelectorAll(".pit-wall-telemetry dt, .pit-wall-telemetry dd")]
             .every((item) => within(item, frameRoot.querySelector(".pit-wall-panel-right .pit-wall-panel-content"))),
         `Running session controls must fit at ${width}x${height}`);
@@ -2080,12 +2121,11 @@
         const liveTiming = frameRoot.querySelector(".pit-wall-timing-live");
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const summaryFont = parseFloat(frame.contentWindow.getComputedStyle(summary.querySelector("dt")).fontSize);
-        const bestFont = parseFloat(frame.contentWindow.getComputedStyle(summary.querySelector(".pit-wall-best-lap")).fontSize);
         const initialHistoryFont = parseFloat(frame.contentWindow.getComputedStyle(history.querySelector(".pit-wall-lap-list")).fontSize);
         assert(within(summary, liveTiming) && within(history, liveTiming)
           && Math.abs(summary.getBoundingClientRect().width - liveTiming.getBoundingClientRect().width) < 1
           && summary.getBoundingClientRect().height < (width === 568 ? 155 : 175)
-          && summaryFont > (width === 568 ? 8 : 8.58) && bestFont > summaryFont
+          && summaryFont > (width === 568 ? 8 : 8.58)
           && initialHistoryFont > (width === 568 ? 7.6 : 9)
           && [...summary.querySelectorAll("dl > div")].every((row) =>
             row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1),
@@ -2105,7 +2145,6 @@
           && [...lapList.children].every((item) =>
             item.children[0].getBoundingClientRect().right <= item.children[1].getBoundingClientRect().left + 1)
           && frame.contentWindow.getComputedStyle(lapList.querySelector(".is-fastest")).color === "rgb(211, 169, 237)"
-          && frame.contentWindow.getComputedStyle(frameRoot.querySelector('[data-timing="best-lap"]')).color === "rgb(211, 169, 237)"
           && [...summary.querySelectorAll("dl > div")].every((row) =>
             row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1)
           && timingContent.scrollHeight <= timingContent.clientHeight + 1
@@ -2117,9 +2156,6 @@
         layoutGame.weekendState.practice.lapTimes = [];
         layoutGame.weekendState.practice.lapTyres = [];
         layoutGame.updateTiming();
-        if (frameRoot.querySelector('[data-action="toggle-command"]').getAttribute("aria-expanded") !== "true") {
-          frameRoot.querySelector('[data-action="toggle-command"]').click();
-        }
         frameRoot.querySelector('[data-action="call-pit"]').click();
         layoutGame.weekendState.timerStartedAt -= (1 - layoutGame.weekendState.practice.lapProgress)
           * layoutGame.weekendState.practice.lapTarget + 1;
@@ -2127,6 +2163,7 @@
         await new Promise((resolve) => setTimeout(resolve, 250));
         const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
         const consolePanel = frameRoot.querySelector(".pit-wall-console");
+        const commandButtons = [...command.querySelectorAll("button:not([hidden])")];
         assert([...classification.querySelectorAll(".pit-wall-classification-row")].every((row) =>
           within(row, classification) && row.scrollWidth <= row.clientWidth + 1
             && row.scrollHeight <= row.clientHeight + 1)
@@ -2141,9 +2178,13 @@
           && circuit.getBoundingClientRect().height > 30
           && timingContent.scrollHeight <= timingContent.clientHeight + 1
           && timingContent.scrollWidth <= timingContent.clientWidth + 1
-          && [...command.querySelectorAll("button, strong, [data-pit-status], [data-mode-feedback]")].every((item) =>
+          && [...command.querySelectorAll("button:not([hidden]), strong, [data-pit-status], [data-mode-feedback]")].every((item) =>
             within(item, command) && item.scrollWidth <= item.clientWidth + 1
               && item.scrollHeight <= item.clientHeight + 1)
+          && commandButtons.every((button) =>
+            Math.abs(button.getBoundingClientRect().top - commandButtons[0].getBoundingClientRect().top) < 1)
+          && Math.abs(commandButtons[commandButtons.length - 1].getBoundingClientRect().right
+            - command.querySelector(".pit-wall-command-controls").getBoundingClientRect().right) < 1
           && [...summary.querySelectorAll("dl > div")].every((row) =>
             row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1)
           && consolePanel.scrollHeight <= consolePanel.clientHeight + 1
@@ -2153,10 +2194,10 @@
         layoutGame.weekendState.timerStartedAt -= 22000;
         layoutGame.syncPracticeClock();
         frameRoot.querySelector('[data-action="send-out"]').click();
-        assert(frameRoot.querySelector('[data-timing="tyre"]').textContent === "Intermediate"
+        assert(layoutGame.weekendState.practice.tyre === "Intermediate"
           && [...summary.querySelectorAll("dl > div")].every((row) =>
             row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1),
-        `Long tyre names must fit telemetry at ${width}x${height}`);
+        `Intermediate tyres must be fitted without clipping telemetry at ${width}x${height}`);
         layoutGame.weekendState.practice.lapTimes = [];
         layoutGame.weekendState.practice.lapTyres = [];
         layoutGame.updateTiming();
@@ -2222,31 +2263,34 @@
         `Practice review must fit without clipping at ${width}x${height}`);
         frameRoot.querySelector('[data-action="continue-review"]').click();
         frameRoot.querySelector('[data-discovery-index="0"]').click();
-        for (let i = 1; i < 5; i += 1) frameRoot.querySelector('[data-action="skip-session"]').click();
+        for (let i = 1; i < 5; i += 1) layoutGame.skipSession();
         assert(layoutGame.weekendState.phase === "complete"
           && layoutGame.weekendState.sessionResults[0] === "completed"
           && layoutGame.weekendState.sessionResults.slice(1).every((result) => result === "skipped"),
         `All five Saudi sessions must advance in order at ${width}x${height}`);
         frameRoot.querySelector('[data-action="next-round"]').click();
-        const placeholder = frameRoot.querySelector(".pit-wall-circuit-placeholder");
-        assert(placeholder && within(placeholder, main)
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1333 && circuit.naturalHeight === 693 && within(circuit, main)
           && main.scrollHeight <= main.clientHeight + 1
           && [...frameRoot.querySelectorAll(".pit-wall-garage-setup button, .pit-wall-garage-setup input, .pit-wall-garage-setup output")]
             .every((item) => within(item, main) && item.scrollWidth <= item.clientWidth + 1)
-          && placeholder.textContent.includes("Albert Park Grand Prix Circuit")
-          && placeholder.textContent.includes("5.278 km"),
-        `The next-round placeholder must fit at ${width}x${height}`);
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.278 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("58 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Australian circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Australia at ${width}x${height}`);
         layoutGame.weekendState.phase = "discovery";
         layoutGame.weekendState.options = [green, purple, review];
         layoutGame.renderSession();
-        assert(placeholder.closest(".pit-wall-circuit").hidden
+        assert(circuit.closest(".pit-wall-circuit").hidden
           && frameRoot.querySelectorAll(".pit-wall-discovery-card").length === 3,
-        `A discovery must replace the track placeholder at ${width}x${height}`);
+        `A discovery must replace the Australian circuit at ${width}x${height}`);
         layoutGame.weekendState.phase = "ready";
         layoutGame.renderSession();
-        assert(!placeholder.closest(".pit-wall-circuit").hidden, "The track placeholder must return for the next session");
+        assert(!circuit.closest(".pit-wall-circuit").hidden, "The circuit must return for the next session");
         layoutGame.currentRoundIndex = layoutGame.seasonWeekends.length - 1;
-        for (let i = 0; i < 5; i += 1) frameRoot.querySelector('[data-action="skip-session"]').click();
+        for (let i = 0; i < 5; i += 1) layoutGame.skipSession();
         const finish = frameRoot.querySelector(".pit-wall-season-finish");
         assert(finish && within(finish, main) && finish.scrollHeight <= finish.clientHeight + 1
           && finish.scrollWidth <= finish.clientWidth + 1,
@@ -2327,8 +2371,6 @@
       const desktopTiming = frameRoot.querySelector(".pit-wall-timing-live");
       assert(desktopSummary.getBoundingClientRect().height < 155
         && parseFloat(frame.contentWindow.getComputedStyle(desktopSummary.querySelector("dt")).fontSize) > 10
-        && parseFloat(frame.contentWindow.getComputedStyle(desktopSummary.querySelector(".pit-wall-best-lap")).fontSize)
-          > parseFloat(frame.contentWindow.getComputedStyle(desktopSummary.querySelector("dt")).fontSize)
         && parseFloat(frame.contentWindow.getComputedStyle(desktopTiming.querySelector(".pit-wall-lap-list")).fontSize) > 11,
       "Desktop telemetry must use larger type and a compact summary");
       layoutGame.permanentUpgrades = fullSeasonPermanent;
@@ -2343,10 +2385,7 @@
         const desktopConsole = frameRoot.querySelector(".pit-wall-console");
         const command = frameRoot.querySelector(".pit-wall-panel-bottom");
         const main = frameRoot.querySelector(".pit-wall-track-display");
-        const toggle = frameRoot.querySelector('[data-action="toggle-command"]');
-        for (const expanded of [false, true]) {
-          if ((toggle.getAttribute("aria-expanded") === "true") !== expanded) toggle.click();
-          await new Promise((resolve) => setTimeout(resolve, 220));
+        {
           assert(within(desktopConsole, dialog) && within(command, desktopConsole)
             && dialog.getBoundingClientRect().bottom <= height + 1
             && dialog.getBoundingClientRect().right <= width + 1
@@ -2358,7 +2397,7 @@
               .every((panel) => panel.scrollHeight <= panel.clientHeight + 1 && panel.scrollWidth <= panel.clientWidth + 1)
             && [...frameRoot.querySelectorAll(".pit-wall-garage-setup button, .pit-wall-garage-setup input, .pit-wall-garage-setup output")]
               .every((item) => within(item, main)),
-          `Desktop console and setup must fit at ${width}x${height} with command ${expanded ? "open" : "closed"}`);
+          `Desktop console and setup must fit at ${width}x${height} with command visible`);
         }
       }
       frame.style.width = "1440px";
@@ -2443,7 +2482,7 @@
       frameRoot.querySelector("[data-team-index]").click();
       frameRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
       frameRoot.querySelector('[data-action="confirm-season"]').click();
-      frameRoot.querySelector('[data-action="skip-session"]').click();
+      layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(frameRoot);
       frameRoot.querySelector('[data-driver-mode="Push"]').click();
@@ -2467,9 +2506,21 @@
           const panel = frameRoot.querySelector(".pit-wall-session-panel");
           const currentLap = frameRoot.querySelector(".pit-wall-lap-entry.is-current");
           const classification = frameRoot.querySelector(".pit-wall-classification");
+          const groups = [...command.querySelectorAll(".pit-wall-command-group")];
           assert(within(command, consolePanel) && command.scrollWidth <= command.clientWidth + 1
             && command.scrollHeight <= command.clientHeight + 1
-            && [...command.querySelectorAll("button, label, [data-setup-fuel-value]")].every((item) => within(item, command))
+            && groups.length === 4 && groups.every((group) => {
+              const label = group.querySelector(".pit-wall-command-group-label");
+              const controls = label.nextElementSibling;
+              const labelBounds = label.getBoundingClientRect();
+              const groupBounds = group.getBoundingClientRect();
+              return within(group, command) && within(label, group) && within(controls, group)
+                && label.scrollWidth <= label.clientWidth + 1
+                && labelBounds.bottom <= controls.getBoundingClientRect().top + 1
+                && Math.abs((labelBounds.left + labelBounds.right - groupBounds.left - groupBounds.right) / 2) < 1
+                && parseFloat(frame.contentWindow.getComputedStyle(group).borderTopWidth) >= 1;
+            })
+            && [...command.querySelectorAll("button:not([hidden]), label, [data-setup-fuel-value]")].every((item) => within(item, command))
             && within(frameRoot.querySelector("[data-qualifying-status]"), panel)
             && currentLap.scrollWidth <= currentLap.clientWidth + 1
             && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification))
@@ -2480,7 +2531,7 @@
           `Qualifying ${lap} lap controls and track must fit at ${width}x${height}: ${JSON.stringify({
             command: within(command, consolePanel), commandWidth: command.scrollWidth - command.clientWidth,
             commandHeight: command.scrollHeight - command.clientHeight,
-            controls: [...command.querySelectorAll("button, label, [data-setup-fuel-value]")].every((item) => within(item, command)),
+            controls: [...command.querySelectorAll("button:not([hidden]), label, [data-setup-fuel-value]")].every((item) => within(item, command)),
             status: within(frameRoot.querySelector("[data-qualifying-status]"), panel),
             lapWidth: currentLap.scrollWidth - currentLap.clientWidth,
             rows: [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification)),
@@ -2507,12 +2558,14 @@
       }
       frameRoot.querySelector('[data-action="continue-review"]').click();
       frameRoot.querySelector('[data-discovery-index="0"]').click();
+      frameRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(frameRoot);
+      frameRoot.querySelector('[data-speed="0"]').click();
       frameRoot.querySelector('[data-driver-mode="Push"]').click();
       const layoutRaceFuel = frameRoot.querySelector("[data-setup-fuel]");
       layoutRaceFuel.value = "10";
       layoutRaceFuel.dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
-      frameRoot.querySelector('[data-action="start-session"]').click();
-      await waitForMarker(frameRoot);
+      frameRoot.querySelector('[data-speed="1"]').click();
       layoutGame.clearSessionTimer();
       for (const stage of ["grid", "racing"]) {
         if (stage === "racing") {
@@ -2529,12 +2582,14 @@
           const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
           const circuit = frameRoot.querySelector(".pit-wall-circuit");
           const classification = frameRoot.querySelector(".pit-wall-classification");
+          const buttons = [...command.querySelectorAll("button:not([hidden])")];
           assert(within(command, consolePanel) && command.scrollWidth <= command.clientWidth + 1
             && command.scrollHeight <= command.clientHeight + 1
             && [...command.querySelectorAll("button:not([hidden]), label, [data-setup-fuel-value]")].every((item) => within(item, command))
             && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification))
             && [...frameRoot.querySelectorAll("[data-speed]")].every((button, index, buttons) =>
               Math.abs(button.getBoundingClientRect().top - buttons[0].getBoundingClientRect().top) < 1)
+            && buttons.every((button) => Math.abs(button.getBoundingClientRect().top - buttons[0].getBoundingClientRect().top) < 1)
             && circuit.getBoundingClientRect().height > 30
             && (stage !== "grid" || within(frameRoot.querySelector(".pit-wall-start-grid"), circuit)
               && within(frameRoot.querySelector(".pit-wall-start-lights"), circuit))
@@ -2560,7 +2615,7 @@
       const pointsAfterFirstSprint = new Map(layoutGame.championship.map((entry) => [entry.driver.name, entry.points]));
       frameRoot.querySelector('[data-action="continue-review"]').click();
       frameRoot.querySelector('[data-discovery-index="0"]').click();
-      frameRoot.querySelector('[data-action="skip-session"]').click();
+      layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(frameRoot);
       layoutGame.clearSessionTimer();
@@ -2583,6 +2638,8 @@
       }
       frameRoot.querySelector('[data-action="continue-review"]').click();
       frameRoot.querySelector('[data-discovery-index="0"]').click();
+      layoutGame.weekendState.message = "Research Charter acquired: +1 full reroll per future session.";
+      layoutGame.renderSession();
       for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
         frame.style.width = `${width}px`;
         frame.style.height = `${height}px`;
@@ -2591,6 +2648,7 @@
         const table = complete.querySelector(".pit-wall-standings");
         assert(table.querySelectorAll("tbody tr").length === 10
           && table.querySelector("tr.is-player")
+          && within(complete.querySelector(".pit-wall-session-notice"), frameRoot.querySelector(".pit-wall-track-display"))
           && within(table, frameRoot.querySelector(".pit-wall-track-display"))
           && [...table.querySelectorAll("th, td")].every((cell) => within(cell, complete)
             && cell.scrollWidth <= cell.clientWidth + 1),
@@ -2609,9 +2667,9 @@
             && cell.scrollWidth <= cell.clientWidth + 1),
         `Season review must show the full championship table at ${width}x${height}`);
       }
-      layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "australia"));
-      frameRoot.querySelector('[data-action="skip-session"]').click();
-      frameRoot.querySelector('[data-action="skip-session"]').click();
+      layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "japan"));
+      layoutGame.skipSession();
+      layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(frameRoot);
       assert(frameRoot.querySelector(".pit-wall-schematic[aria-label*='not the actual layout']")
@@ -2627,10 +2685,10 @@
       "Championship points must accumulate across sprint weekends");
       frameRoot.querySelector('[data-action="continue-review"]').click();
       frameRoot.querySelector('[data-discovery-index="0"]').click();
-      frameRoot.querySelector('[data-action="skip-session"]').click();
+      layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(frameRoot);
-      assert(layoutGame.weekendState.race.laps === Math.ceil(305 / 5.278)
+      assert(layoutGame.weekendState.race.laps === Math.ceil(305 / 5.807)
         && frameRoot.querySelector(".pit-wall-schematic"),
       "A Grand Prix without an explicit distance must use the 305 km fallback and schematic route");
       assert(frame.contentWindow.location.href === originalUrl && !doc.querySelector("#games-pit-wall").hidden,
@@ -2834,7 +2892,6 @@
       await waitForMarker(debugRoot);
       debugRoot.querySelector('[data-action="send-out"]').click();
       debugRoot.querySelector('[data-speed="0"]').click();
-      debugRoot.querySelector('[data-action="toggle-command"]').click();
       debugRoot.querySelector('[data-driver-mode="Push"]').click();
       const runningTarget = debugGame.weekendState.practice.lapTarget;
       balanceToggle.click();
@@ -2852,7 +2909,6 @@
       "Editing the panel during practice must affect the next generated lap");
       changeBalance("Push pace", -400);
       balancePanel.querySelector('[data-action="close-balance"]').click();
-      debugRoot.querySelector('[data-action="toggle-command"]').click();
       debugGame.renderWeekend(bahrainWeekend);
       debugRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(debugRoot);
@@ -2867,9 +2923,9 @@
       for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-overlay:not(.pit-wall-marker-overlay)"); i += 1) {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
-      const overlay = debugRoot.querySelector(".pit-wall-route-overlay:not(.pit-wall-marker-overlay)");
+      let overlay = debugRoot.querySelector(".pit-wall-route-overlay:not(.pit-wall-marker-overlay)");
       const markers = overlay && [...overlay.querySelectorAll("[data-waypoint]")];
-      assert(overlay && markers.length === debugGame.bahrainRoute.points.length
+      assert(overlay && markers.length === debugGame.routes.get("bahrain").points.length
         && markers.every((marker, index) => marker.textContent.trim() === String(index))
         && overlay.querySelector(".pit-wall-route-player text").textContent
           === debugGame.driver.name.split(" ").map((part) => part[0]).join("")
@@ -2886,7 +2942,7 @@
       overlay.hasPointerCapture = () => captured;
       overlay.releasePointerCapture = () => { captured = false; };
       const oldPath = overlay.querySelector(".pit-wall-route-line").getAttribute("d");
-      const oldPoint = [...debugGame.bahrainRoute.points[0]];
+      const oldPoint = [...debugGame.routes.get("bahrain").points[0]];
       const screenPoint = new DOMPoint(oldPoint[0] + 10, oldPoint[1] - 10)
         .matrixTransform(overlay.getScreenCTM());
       markers[0].querySelector("circle").dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerdown",
@@ -2894,29 +2950,51 @@
       overlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointermove",
         { bubbles: true, pointerId: 1, clientX: screenPoint.x, clientY: screenPoint.y }));
       overlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
-      assert(debugGame.bahrainRoute.points[0][0] === oldPoint[0] + 10
-        && debugGame.bahrainRoute.points[0][1] === oldPoint[1] - 10
+      assert(debugGame.routes.get("bahrain").points[0][0] === oldPoint[0] + 10
+        && debugGame.routes.get("bahrain").points[0][1] === oldPoint[1] - 10
         && overlay.querySelector(".pit-wall-route-line").getAttribute("d") !== oldPath
         && overlay.querySelector(".pit-wall-route-player").getAttribute("transform") === markers[0].getAttribute("transform")
-        && debugRoot.querySelector(".pit-wall-route-controls").textContent.includes("Waypoint 0"),
-      "Dragging waypoint zero must update the route, marker and selected waypoint");
+        && debugRoot.querySelector("[data-route-selected]").textContent
+          === `Waypoint 0 · ${oldPoint[0] + 10}, ${oldPoint[1] - 10}`,
+      "Dragging waypoint zero must update the route, marker and selected coordinates");
       const createObjectURL = URL.createObjectURL;
       const anchorClick = HTMLAnchorElement.prototype.click;
       let exportedRoute;
+      let exportedName;
       try {
         URL.createObjectURL = (blob) => {
           exportedRoute = blob.text();
           return createObjectURL(blob);
         };
-        HTMLAnchorElement.prototype.click = () => {};
+        HTMLAnchorElement.prototype.click = function () { exportedName = this.download; };
         debugRoot.querySelector('[data-action="export-route"]').click();
         const exported = JSON.parse(await exportedRoute);
-        assert(JSON.stringify(exported) === JSON.stringify(debugGame.bahrainRoute),
+        assert(JSON.stringify(exported) === JSON.stringify(debugGame.routes.get("bahrain"))
+          && exportedName === "bahrain-route.json",
           "Route export must contain the current editable coordinates");
       } finally {
         URL.createObjectURL = createObjectURL;
         HTMLAnchorElement.prototype.click = anchorClick;
       }
+      const importDebugRoute = async (contents, filename) => {
+        const input = debugRoot.querySelector("[data-route-file]");
+        const transfer = new debugFrame.contentWindow.DataTransfer();
+        transfer.items.add(new debugFrame.contentWindow.File([contents], filename, { type: "application/json" }));
+        input.files = transfer.files;
+        input.dispatchEvent(new debugFrame.contentWindow.Event("change", { bubbles: true }));
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      };
+      const bahrainRoute = debugGame.routes.get("bahrain");
+      const importedBahrain = JSON.parse(JSON.stringify(bahrainRoute));
+      importedBahrain.points[1][0] += 5;
+      await importDebugRoute(JSON.stringify(importedBahrain), "bahrain-route.json");
+      overlay = debugRoot.querySelector(".pit-wall-route-debug");
+      assert(debugGame.routes.get("bahrain") === bahrainRoute
+        && JSON.stringify(bahrainRoute) === JSON.stringify(importedBahrain)
+        && overlay.classList.contains("is-editing")
+        && overlay.querySelector('[data-waypoint="1"]').getAttribute("transform")
+          === `translate(${importedBahrain.points[1].join(" ")})`,
+      "Bahrain import must update the shared route and editor without losing edit mode");
       debugRoot.querySelector('[data-action="pause-route-session"]').click();
       assert(!debugRoot.querySelector(".pit-wall-route-overlay:not(.pit-wall-marker-overlay)") && !debugGame.weekendState.debugPaused
         && debugRoot.querySelector(".pit-wall-moving-driver")
@@ -2944,7 +3022,7 @@
       assert(!debugRoot.querySelector(".pit-wall-route-overlay") && debugGame.weekendState.phase === "review",
         "Completing must remove the route overlay and show the review");
       debugRoot.querySelector('[data-action="continue-review"]').click();
-      debugRoot.querySelector('[data-action="skip-session"]').click();
+      debugGame.skipSession();
       debugRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(debugRoot);
       debugRoot.querySelector('[data-action="pause-route-session"]').click();
@@ -2958,19 +3036,201 @@
         && debugRoot.querySelectorAll("[data-discovery-index]").length === 3,
       "A resumed debug session must finish and offer rewards normally");
       debugRoot.querySelector('[data-discovery-index="0"]').click();
-      while (debugGame.weekendState.phase === "ready") debugRoot.querySelector('[data-action="skip-session"]').click();
+      while (debugGame.weekendState.phase === "ready") debugGame.skipSession();
       debugRoot.querySelector('[data-action="next-round"]').click();
+      assert(debugGame.weekendState.weekend.id === "saudi-arabia"
+        && debugGame.weekendState.phase === "ready" && debugGame.sessionTimer == null,
+      "Saudi route development must be available before starting a session");
+      const savedFetch = window.fetch;
+      try {
+        window.fetch = () => Promise.reject(new Error("Test Saudi route unavailable"));
+        debugRoot.querySelector('[data-action="toggle-route"]').click();
+        for (let i = 0; i < 100 && !debugRoot.querySelector("[data-route-error]"); i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        assert(debugRoot.querySelector("[data-route-error]").textContent.includes("Saudi Arabia")
+          && !debugRoot.querySelector(".pit-wall-route-debug")
+          && !debugRoot.querySelector('[data-action="toggle-route"]').disabled,
+        "A Saudi route loading failure must be visible and allow retry without starting a session");
+      } finally {
+        window.fetch = savedFetch;
+      }
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+      for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      const saudiRoute = debugGame.routes.get("saudi-arabia");
+      let saudiOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+      assert(saudiOverlay && saudiRoute && saudiRoute.imageWidth === 1184 && saudiRoute.imageHeight === 697
+        && debugGame.weekendState.phase === "ready" && debugGame.sessionTimer == null
+        && !debugGame.weekendState.practice
+        && saudiOverlay.querySelectorAll("[data-waypoint]").length === saudiRoute.points.length
+        && [...saudiOverlay.querySelectorAll("[data-waypoint]")].every((marker, index) => marker.textContent.trim() === String(index))
+        && saudiOverlay.querySelector(".pit-wall-route-player text").textContent
+          === debugGame.driver.name.split(" ").map((part) => part[0]).join("")
+        && saudiOverlay.querySelector(".pit-wall-route-player").getAttribute("transform")
+          === saudiOverlay.querySelector('[data-waypoint="0"]').getAttribute("transform")
+        && saudiOverlay.querySelector(".pit-wall-route-line").getAttribute("d").endsWith(" Z"),
+      "Saudi debug must show a closed numbered route and driver preview without starting a session");
+      debugRoot.querySelector('[data-action="edit-route"]').click();
+      let saudiCaptured = false;
+      saudiOverlay.setPointerCapture = () => { saudiCaptured = true; };
+      saudiOverlay.hasPointerCapture = () => saudiCaptured;
+      saudiOverlay.releasePointerCapture = () => { saudiCaptured = false; };
+      const saudiPoint = [...saudiRoute.points[1]];
+      const saudiPath = saudiOverlay.querySelector(".pit-wall-route-line").getAttribute("d");
+      const saudiScreenPoint = new DOMPoint(saudiPoint[0] + 5, saudiPoint[1] + 5)
+        .matrixTransform(saudiOverlay.getScreenCTM());
+      saudiOverlay.querySelector('[data-waypoint="1"] circle').dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerdown",
+        { bubbles: true, pointerId: 2, button: 0 }));
+      saudiOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointermove",
+        { bubbles: true, pointerId: 2, clientX: saudiScreenPoint.x, clientY: saudiScreenPoint.y }));
+      saudiOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+      assert(saudiRoute.points[1][0] === saudiPoint[0] + 5 && saudiRoute.points[1][1] === saudiPoint[1] + 5
+        && saudiOverlay.querySelector(".pit-wall-route-line").getAttribute("d") !== saudiPath
+        && debugRoot.querySelector("[data-route-selected]").textContent === `Waypoint 1 · ${saudiPoint[0] + 5}, ${saudiPoint[1] + 5}`,
+      "Saudi editing must immediately update the spline and selected coordinates");
+      try {
+        URL.createObjectURL = (blob) => {
+          exportedRoute = blob.text();
+          return createObjectURL(blob);
+        };
+        HTMLAnchorElement.prototype.click = function () { exportedName = this.download; };
+        debugRoot.querySelector('[data-action="export-route"]').click();
+        assert(exportedName === "saudi-route.json" && JSON.stringify(JSON.parse(await exportedRoute)) === JSON.stringify(saudiRoute),
+          "Saudi export must use saudi-route.json and include edited coordinates");
+      } finally {
+        URL.createObjectURL = createObjectURL;
+        HTMLAnchorElement.prototype.click = anchorClick;
+      }
+      const savedSaudi = JSON.stringify(saudiRoute);
+      await importDebugRoute("{invalid", "saudi-route.json");
+      assert(JSON.stringify(saudiRoute) === savedSaudi && debugRoot.querySelector('[role="alert"]').textContent.includes("Could not import"),
+        "Malformed JSON must not replace the current route");
+      await importDebugRoute('{"imageWidth":958,"imageHeight":645,"points":[[0,0],[1,1],[2,2]]}', "saudi-route.json");
+      assert(JSON.stringify(saudiRoute) === savedSaudi && debugRoot.querySelector('[role="alert"]').textContent.includes("1184"),
+        "An import with incorrect image dimensions must be rejected");
+      await importDebugRoute('{"imageWidth":1184,"imageHeight":697,"points":[[0,0],[1,1],[2000,2]]}', "saudi-route.json");
+      assert(JSON.stringify(saudiRoute) === savedSaudi && debugRoot.querySelector('[role="alert"]').textContent.includes("Could not import"),
+        "Invalid route imports must report an error and preserve existing coordinates");
+      const importedSaudi = { imageWidth: 1184, imageHeight: 697, points: [[10, 10], [50, 20], [40, 60], [20, 50]] };
+      await importDebugRoute(JSON.stringify(importedSaudi), "saudi-route.json");
+      saudiOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+      assert(JSON.stringify(saudiRoute) === JSON.stringify(importedSaudi)
+        && saudiOverlay.querySelectorAll("[data-waypoint]").length === 4
+        && saudiOverlay.classList.contains("is-editing") && !debugRoot.querySelector('[role="alert"]'),
+      "A valid import must replace the preview and retain editing mode");
+      await importDebugRoute(savedSaudi, "saudi-route.json");
+      const saudiWeekend = debugGame.weekendState.weekend;
+      debugGame.renderWeekend({ ...saudiWeekend, id: "saudi", routeId: undefined });
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+      for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      assert(debugRoot.querySelector(".pit-wall-route-debug")
+        && debugGame.routes.has("saudi") && debugGame.sessionTimer == null,
+      "A future image-backed circuit must load its conventionally named route without track-specific logic");
+      debugGame.renderWeekend(saudiWeekend);
       debugRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(debugRoot);
       assert(!debugGame.weekendState.debugPaused && debugGame.sessionTimer != null
-        && !debugRoot.querySelector('[data-action="toggle-route"]'),
-      "Other circuits must not expose or pause for Bahrain route debugging");
+        && debugRoot.querySelector('[data-action="toggle-route"]')
+        && !debugRoot.querySelector(".pit-wall-route-debug"),
+      "Starting Saudi practice must close the preview and start the simulation");
       for (let session = 0; session < 3; session += 1) {
-        if (session) debugRoot.querySelector('[data-action="start-session"]').click();
+        if (session) {
+          debugRoot.querySelector('[data-action="start-session"]').click();
+          await waitForMarker(debugRoot);
+        }
         assert(debugGame.isPractice() && debugGame.weekendState.sessionIndex === session
-          && !debugRoot.querySelector(".pit-wall-moving-driver")
+          && debugRoot.querySelectorAll(".pit-wall-moving-driver").length === 10
+          && debugRoot.querySelector(".pit-wall-marker-overlay").getAttribute("viewBox") === "0 0 1184 697"
           && debugRoot.querySelector('[data-timing="remaining"]').textContent === "60:00",
-        `Saudi Practice ${session + 1} must start its own timed session without a fabricated route`);
-        debugRoot.querySelector('[data-action="send-out"]').click();
+        `Saudi Practice ${session + 1} must use its mapped route and start its own timed session`);
+        if (session === 0) {
+          const markers = debugRoot.querySelectorAll(".pit-wall-moving-driver");
+          const player = markers[0];
+          const opponent = debugGame.weekendState.classification.opponents[0];
+          const ai = markers[1];
+          const path = debugRoot.querySelector(".pit-wall-marker-overlay path");
+          const assertPosition = (marker, progress, label) => {
+            const point = path.getPointAtLength(path.getTotalLength() * progress);
+            const position = marker.transform.baseVal.consolidate().matrix;
+            assert(Math.hypot(position.e - point.x, position.f - point.y) < 1, label);
+          };
+          debugGame.setPracticeSpeed(0);
+          assert(player.style.display === "none" && ai.style.display === "none",
+            "Saudi practice markers must be hidden while drivers are in the garage");
+          debugRoot.querySelector('[data-setup-tyre="Soft"]').click();
+          debugRoot.querySelector('[data-action="send-out"]').click();
+          debugGame.weekendState.practice.lapProgress = .25;
+          debugGame.routeMarker.update();
+          assert(player.style.display !== "none" && player.dataset.tyre === "Soft"
+            && player.querySelector(".pit-wall-marker-team").getAttribute("fill") === debugGame.team.colour
+            && player.querySelector("text").textContent === debugGame.driver.name.split(" ").map((part) => part[0]).join(""),
+          "The Saudi player marker must show the driver, team colour and fitted tyre after leaving the garage");
+          assertPosition(player, .25, "The Saudi player marker must follow simulated lap progress on the route spline");
+          debugGame.weekendState.practice.lapProgress = .55;
+          debugGame.routeMarker.update();
+          assertPosition(player, .55, "The Saudi player marker must move as lap progress changes");
+
+          opponent.garageRemaining = 1;
+          debugGame.setPracticeSpeed(1);
+          debugGame.weekendState.timerStartedAt -= 50;
+          debugGame.syncPracticeClock();
+          debugGame.setPracticeSpeed(0);
+          assert(opponent.session && ai.style.display !== "none"
+            && ai.dataset.tyre === opponent.session.tyre
+            && ai.querySelector(".pit-wall-marker-team").getAttribute("fill") === opponent.team.colour
+            && ai.querySelector("text").textContent === opponent.driver.name.split(" ").map((part) => part[0]).join(""),
+          "A Saudi AI marker must appear with its driver, team colour and fitted tyre when its stint starts");
+          opponent.session.lapProgress = .6;
+          debugGame.routeMarker.update();
+          assertPosition(ai, .6, "The Saudi AI marker must follow its own simulated lap progress");
+          opponent.stintLaps = 1;
+          opponent.session.lapProgress = .999;
+          debugGame.setPracticeSpeed(1);
+          debugGame.weekendState.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+          debugGame.syncPracticeClock();
+          debugGame.setPracticeSpeed(0);
+          assert(!opponent.session && ai.style.display === "none",
+            "A Saudi AI marker must disappear when its stint ends in the garage");
+          opponent.garageRemaining = 1;
+          debugGame.setPracticeSpeed(1);
+          debugGame.weekendState.timerStartedAt -= 50;
+          debugGame.syncPracticeClock();
+          debugGame.setPracticeSpeed(0);
+          assert(opponent.session && ai.style.display !== "none" && ai.dataset.tyre === opponent.session.tyre,
+            "A Saudi AI marker must reappear with its current tyre on the next stint");
+
+          debugGame.setPracticeSpeed(1);
+          debugRoot.querySelector('[data-action="call-pit"]').click();
+          debugGame.weekendState.practice.lapProgress = .999;
+          debugGame.weekendState.timerStartedAt -= .001 * debugGame.weekendState.practice.lapTarget + 10;
+          debugGame.syncPracticeClock();
+          assert(debugGame.weekendState.practice.pitState === "entering" && player.style.display === "none",
+            "The Saudi player marker must disappear during pit entry");
+          debugGame.weekendState.timerStartedAt -= debugGame.weekendState.practice.pitRemaining + 10;
+          debugGame.syncPracticeClock();
+          debugRoot.querySelector('[data-setup-tyre="Medium"]').click();
+          debugRoot.querySelector('[data-action="send-out"]').click();
+          debugGame.routeMarker.update();
+          assert(debugGame.weekendState.practice.pitState === "none"
+            && player.style.display !== "none" && player.dataset.tyre === "Medium",
+          "The Saudi player marker must reappear with the new tyre after leaving the pits");
+          debugRoot.querySelector('[data-action="toggle-route"]').click();
+          for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+          assert(debugGame.weekendState.debugPaused && debugGame.sessionTimer == null
+            && debugRoot.querySelector(".pit-wall-route-debug"),
+          "Showing the Saudi route during practice must pause the session");
+          debugRoot.querySelector('[data-action="pause-route-session"]').click();
+          assert(!debugGame.weekendState.debugPaused && debugGame.sessionTimer != null
+            && !debugRoot.querySelector(".pit-wall-route-debug"),
+          "Resuming Saudi practice must close the preview and restart the clock");
+        }
+        if (session) debugRoot.querySelector('[data-action="send-out"]').click();
         debugGame.weekendState.timerStartedAt -= 600000;
         debugGame.syncPracticeClock();
         debugRoot.querySelector('[data-action="complete-session"]').click();
@@ -2979,6 +3239,253 @@
         debugRoot.querySelector('[data-action="continue-review"]').click();
         debugRoot.querySelector('[data-discovery-index="0"]').click();
       }
+      debugRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(debugRoot);
+      assert(debugGame.isQualifying() && debugRoot.querySelectorAll(".pit-wall-moving-driver").length === 10
+        && debugRoot.querySelector(".pit-wall-marker-overlay").getAttribute("viewBox") === "0 0 1184 697",
+      "Saudi qualifying must use the same mapped vehicle markers");
+      debugRoot.querySelector('[data-action="complete-session"]').click();
+      debugRoot.querySelector('[data-action="continue-review"]').click();
+      debugRoot.querySelector('[data-discovery-index="0"]').click();
+      debugRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(debugRoot);
+      assert(!debugRoot.querySelector(".pit-wall-schematic")
+        && debugRoot.querySelector(".pit-wall-marker-overlay").getAttribute("viewBox") === "0 0 1184 697",
+      "Saudi races must use the mapped circuit rather than a schematic");
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+      for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      assert(debugGame.weekendState.debugPaused && debugRoot.querySelector(".pit-wall-route-debug")
+        && debugRoot.querySelector(".pit-wall-marker-overlay").style.display === "none",
+      "Saudi race route development must hide moving markers during the preview");
+      debugRoot.querySelector('[data-action="pause-route-session"]').click();
+      assert(debugRoot.querySelector(".pit-wall-marker-overlay").style.display !== "none",
+        "Resuming a Saudi race must restore its moving markers");
+      debugGame.weekendState.timerStartedAt -= debugGame.weekendState.race.startDuration + 100;
+      debugGame.syncPracticeClock();
+      const raceOpponent = debugGame.weekendState.race.entries.find((entry) => !entry.player);
+      const raceMarker = [...debugRoot.querySelectorAll(".pit-wall-moving-driver")].find((marker) =>
+        marker.querySelector("text").textContent === raceOpponent.driver.name.split(" ").map((part) => part[0]).join(""));
+      assert(debugGame.weekendState.race.started && raceMarker.style.display !== "none"
+        && raceMarker.dataset.tyre === raceOpponent.session.tyre,
+      "Saudi race AI markers must appear on the mapped route after the start");
+      raceOpponent.pitWear = Infinity;
+      raceOpponent.pitTyre = raceOpponent.session.tyre === "Soft" ? "Hard" : "Soft";
+      callToPit(raceOpponent.session);
+      raceOpponent.session.lapProgress = .999;
+      debugGame.weekendState.timerStartedAt -= .001 * raceOpponent.session.lapTarget + 10;
+      debugGame.syncPracticeClock();
+      assert(raceOpponent.session.pitState === "entering" && raceMarker.style.display === "none",
+        "Saudi race AI markers must disappear during pit entry");
+      debugGame.weekendState.timerStartedAt -= raceOpponent.session.pitRemaining + 10;
+      debugGame.syncPracticeClock();
+      assert(raceOpponent.session.pitState === "none" && raceMarker.style.display !== "none"
+        && raceMarker.dataset.tyre === raceOpponent.pitTyre,
+      "Saudi race AI markers must reappear with their new tyre after service");
+      debugGame.renderWeekend(saudiWeekend);
+      debugGame.routes.delete("saudi-arabia");
+      try {
+        window.fetch = () => Promise.reject(new Error("Test Saudi session route unavailable"));
+        debugRoot.querySelector('[data-action="start-session"]').click();
+        for (let i = 0; i < 100 && !debugGame.weekendState.markerError; i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        assert(debugGame.weekendState.markerError.includes("Saudi Arabia") && debugGame.sessionTimer == null
+          && debugRoot.querySelector('[data-action="send-out"]').disabled,
+        "A failed Saudi session route must stop the clock, report the error and prevent sending out");
+      } finally {
+        window.fetch = savedFetch;
+      }
+      debugRoot.querySelector('[data-action="retry-marker"]').click();
+      await waitForMarker(debugRoot);
+      assert(!debugGame.weekendState.markerError && debugGame.sessionTimer != null
+        && !debugRoot.querySelector('[data-action="send-out"]').disabled,
+      "Retrying a Saudi route must restore session controls and the clock");
+      debugGame.renderWeekend(saudiWeekend);
+
+      const australiaWeekend = debugGame.seasonWeekends.find((weekend) => weekend.id === "australia");
+      debugGame.renderWeekend(australiaWeekend);
+      const australiaImage = debugRoot.querySelector(".pit-wall-circuit img");
+      await australiaImage.decode();
+      assert(australiaWeekend.country === "Australia" && australiaWeekend.circuitLength === "5.278 km"
+        && australiaWeekend.laps === 58 && australiaWeekend.sprint && australiaWeekend.weather === "Sunny"
+        && australiaWeekend.trackCondition === "Green"
+        && australiaWeekend.sessions.join("|") === "Practice 1|Sprint Qualifying|Sprint Race|Qualifying|Grand Prix"
+        && australiaImage.naturalWidth === 1333 && australiaImage.naturalHeight === 693,
+      "Australia must load its supplied image, weather, distance and sprint-weekend metadata");
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+      for (let i = 0; i < 100 && !debugRoot.querySelector(".pit-wall-route-debug"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      let australiaOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+      const australiaRoute = debugGame.routes.get("australia");
+      assert(australiaOverlay && australiaRoute && australiaRoute.points.length >= 3
+        && australiaOverlay.querySelectorAll("[data-waypoint]").length === australiaRoute.points.length
+        && [...australiaOverlay.querySelectorAll("[data-waypoint]")].every((marker, index) => marker.textContent.trim() === String(index))
+        && australiaOverlay.querySelector(".pit-wall-route-player text").textContent
+          === debugGame.driver.name.split(" ").map((part) => part[0]).join("")
+        && australiaOverlay.querySelector(".pit-wall-route-player").getAttribute("transform")
+          === australiaOverlay.querySelector('[data-waypoint="0"]').getAttribute("transform")
+        && australiaOverlay.querySelector(".pit-wall-route-line").getAttribute("d").endsWith(" Z"),
+      "Australian route debug must show numbered waypoints, a closed spline and the player preview");
+      const routeCanvas = debugFrame.contentDocument.createElement("canvas");
+      routeCanvas.width = australiaImage.naturalWidth;
+      routeCanvas.height = australiaImage.naturalHeight;
+      const routeContext = routeCanvas.getContext("2d", { willReadFrequently: true });
+      routeContext.drawImage(australiaImage, 0, 0);
+      const routePixels = routeContext.getImageData(0, 0, routeCanvas.width, routeCanvas.height).data;
+      const australiaPath = australiaOverlay.querySelector(".pit-wall-route-line");
+      const routeLength = australiaPath.getTotalLength();
+      for (let i = 0; i < 2000; i += 1) {
+        const point = australiaPath.getPointAtLength(routeLength * i / 2000);
+        const offset = (Math.round(point.y) * routeCanvas.width + Math.round(point.x)) * 4;
+        assert(routePixels[offset + 3] >= 220, `Australian spline leaves the circuit at sample ${i}`);
+      }
+      debugRoot.querySelector('[data-action="edit-route"]').click();
+      let australiaCaptured = false;
+      australiaOverlay.setPointerCapture = () => { australiaCaptured = true; };
+      australiaOverlay.hasPointerCapture = () => australiaCaptured;
+      australiaOverlay.releasePointerCapture = () => { australiaCaptured = false; };
+      const australiaOriginal = JSON.stringify(australiaRoute);
+      const australiaPoint = [...australiaRoute.points[1]];
+      const australiaScreenPoint = new DOMPoint(australiaPoint[0] + 2, australiaPoint[1] + 2)
+        .matrixTransform(australiaOverlay.getScreenCTM());
+      australiaOverlay.querySelector('[data-waypoint="1"] circle').dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerdown",
+        { bubbles: true, pointerId: 3, button: 0 }));
+      australiaOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointermove",
+        { bubbles: true, pointerId: 3, clientX: australiaScreenPoint.x, clientY: australiaScreenPoint.y }));
+      australiaOverlay.dispatchEvent(new debugFrame.contentWindow.PointerEvent("pointerup", { bubbles: true, pointerId: 3 }));
+      assert(australiaRoute.points[1][0] === australiaPoint[0] + 2 && australiaRoute.points[1][1] === australiaPoint[1] + 2
+        && debugRoot.querySelector("[data-route-selected]").textContent === `Waypoint 1 · ${australiaPoint[0] + 2}, ${australiaPoint[1] + 2}`,
+      "Australian route editing must update waypoint coordinates");
+      try {
+        URL.createObjectURL = (blob) => {
+          exportedRoute = blob.text();
+          return createObjectURL(blob);
+        };
+        HTMLAnchorElement.prototype.click = function () { exportedName = this.download; };
+        debugRoot.querySelector('[data-action="export-route"]').click();
+        assert(exportedName === "australia-route.json" && JSON.stringify(JSON.parse(await exportedRoute)) === JSON.stringify(australiaRoute),
+          "Australian route export must include the edited waypoints");
+      } finally {
+        URL.createObjectURL = createObjectURL;
+        HTMLAnchorElement.prototype.click = anchorClick;
+      }
+      await importDebugRoute(australiaOriginal, "australia-route.json");
+      australiaOverlay = debugRoot.querySelector(".pit-wall-route-debug");
+      assert(JSON.stringify(australiaRoute) === australiaOriginal && australiaOverlay.classList.contains("is-editing"),
+        "Australian route import must restore the route without leaving edit mode");
+      debugRoot.querySelector('[data-action="toggle-route"]').click();
+
+      for (let session = 0; session < australiaWeekend.sessions.length; session += 1) {
+        debugRoot.querySelector('[data-action="start-session"]').click();
+        await waitForMarker(debugRoot);
+        const state = debugGame.weekendState;
+        assert(state.sessionIndex === session && debugRoot.querySelectorAll(".pit-wall-moving-driver").length === 10
+          && debugRoot.querySelector(".pit-wall-marker-overlay").getAttribute("viewBox") === "0 0 1333 693"
+          && !debugRoot.querySelector(".pit-wall-schematic"),
+        `Australia ${australiaWeekend.sessions[session]} must use the mapped circuit and full field`);
+        if (debugGame.isRace()) {
+          assert(state.race.laps === (session === 2 ? Math.ceil(100 / 5.278) : 58),
+            "Australian race distances must match the sprint and Grand Prix formats");
+          const qualifyingGrid = session === 2 ? state.sprintGrid : state.grandPrixGrid;
+          assert(qualifyingGrid && state.race.entries.every((entry, index) =>
+            entry.driver.name === qualifyingGrid.entries[index].driver.name),
+          "Australian race grids must follow the corresponding qualifying classification");
+          state.timerStartedAt -= state.race.startDuration + 100;
+          debugGame.syncPracticeClock();
+          const entry = state.race.entries.find((racer) => !racer.player);
+          const aiMarker = [...debugRoot.querySelectorAll(".pit-wall-moving-driver")].find((marker) =>
+            marker.querySelector("text").textContent === entry.driver.name.split(" ").map((part) => part[0]).join(""));
+          assert(state.race.started && aiMarker.style.display !== "none" && aiMarker.dataset.tyre === entry.session.tyre,
+            "Australian race AI must appear with their current tyre after lights out");
+          if (session === 4) entry.pitWear = Infinity;
+          entry.pitLap = null;
+          entry.pitTyre = entry.session.tyre === "Soft" ? "Hard" : "Soft";
+          callToPit(entry.session);
+          entry.session.lapProgress = .999;
+          state.timerStartedAt -= .001 * entry.session.lapTarget + 10;
+          debugGame.syncPracticeClock();
+          assert(entry.session.pitState === "entering" && aiMarker.style.display === "none",
+            "Australian race AI must disappear during pit entry");
+          state.timerStartedAt -= entry.session.pitRemaining + 10;
+          debugGame.syncPracticeClock();
+          assert(entry.session.pitState === "none" && aiMarker.style.display !== "none" && aiMarker.dataset.tyre === entry.pitTyre,
+            "Australian race AI must reappear with their new tyre after service");
+          const pointsBefore = debugGame.championship.reduce((sum, racer) => sum + racer.points, 0);
+          state.timerStartedAt -= 20000000;
+          debugGame.syncPracticeClock();
+          assert(state.race.finished && debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10,
+            "Australian race simulation must finish with a full classification");
+          debugGame.completeSession();
+          assert(state.phase === "review" && debugGame.championship.reduce((sum, racer) => sum + racer.points, 0) > pointsBefore,
+            "Australian race completion must update championship points");
+        } else {
+          const player = debugRoot.querySelector(".pit-wall-moving-driver");
+          assert(player.style.display === "none", "Australian timed sessions must start with the player in the garage");
+          debugRoot.querySelector('[data-action="send-out"]').click();
+          const initialPosition = player.getAttribute("transform");
+          state.classification.opponents[0].garageRemaining = 1;
+          state.timerStartedAt -= 10000;
+          debugGame.syncPracticeClock();
+          const aiMarker = debugRoot.querySelectorAll(".pit-wall-moving-driver")[1];
+          const opponent = state.classification.opponents[0];
+          assert(player.style.display !== "none" && player.getAttribute("transform") !== initialPosition
+            && opponent.session && aiMarker.style.display !== "none" && aiMarker.dataset.tyre === opponent.session.tyre
+            && aiMarker.querySelector(".pit-wall-marker-team").getAttribute("fill") === opponent.team.colour,
+          "Australian player and AI markers must move with their team and tyre information");
+          const aiPosition = aiMarker.getAttribute("transform");
+          state.timerStartedAt -= 1000;
+          debugGame.syncPracticeClock();
+          assert(aiMarker.getAttribute("transform") !== aiPosition,
+            "Australian AI markers must advance with their simulated laps");
+          if (session === 0) {
+            opponent.stintLaps = opponent.session.completedLaps + 1;
+            opponent.session.lapProgress = .999;
+            state.timerStartedAt -= .001 * opponent.session.lapTarget + 10;
+            debugGame.syncPracticeClock();
+            assert(!opponent.session && aiMarker.style.display === "none",
+              "Australian practice AI must disappear when returning to the garage");
+            opponent.garageRemaining = 1;
+            state.timerStartedAt -= 50;
+            debugGame.syncPracticeClock();
+            assert(opponent.session && aiMarker.style.display !== "none" && aiMarker.dataset.tyre === opponent.session.tyre,
+              "Australian practice AI must reappear with their current tyre after leaving the garage");
+            debugRoot.querySelector('[data-action="call-pit"]').click();
+            state.practice.lapProgress = .999;
+            state.timerStartedAt -= .001 * state.practice.lapTarget + 10;
+            debugGame.syncPracticeClock();
+            assert(state.practice.pitState === "entering" && player.style.display === "none",
+              "The Australian player marker must disappear during pit entry");
+            state.timerStartedAt -= state.practice.pitRemaining + 10;
+            debugGame.syncPracticeClock();
+            debugRoot.querySelector('[data-setup-tyre="Soft"]').click();
+            debugRoot.querySelector('[data-action="send-out"]').click();
+            debugGame.routeMarker.update();
+            assert(player.style.display !== "none" && player.dataset.tyre === "Soft",
+              "The Australian player marker must reappear with its new tyre after leaving the garage");
+          }
+          state.timerStartedAt -= 600000;
+          debugGame.syncPracticeClock();
+          assert(debugRoot.querySelectorAll(".pit-wall-classification-row").length === 10
+            && state.classification.opponents.some((entry) => entry.bestLap !== null),
+          "Australian timed sessions must update the AI classification");
+          debugRoot.querySelector('[data-action="complete-session"]').click();
+          assert(state.phase === "review", "Australian timed sessions must reach their review");
+          if (debugGame.isQualifying()) {
+            const grid = session === 1 ? state.sprintGrid : state.grandPrixGrid;
+            assert(grid && grid.entries.length === 10 && grid.playerBest !== null,
+              "Australian qualifying must produce a timed grid for the following race");
+          }
+        }
+        debugRoot.querySelector('[data-action="continue-review"]').click();
+        if (state.phase === "discovery") debugRoot.querySelector('[data-discovery-index="0"]').click();
+      }
+      assert(debugGame.weekendState.phase === "complete"
+        && debugGame.weekendState.sessionResults.every((result) => result === "completed"),
+      "All five Australian sessions must progress to weekend completion");
+      debugGame.renderWeekend(saudiWeekend);
 
       const debugWindow = debugFrame.contentWindow;
       const originalRaf = debugWindow.requestAnimationFrame;
@@ -2989,7 +3496,7 @@
       const markerContainer = debugDoc.createElement("div");
       debugDoc.body.append(markerContainer);
       try {
-        const testRoute = JSON.parse(JSON.stringify(debugGame.bahrainRoute));
+        const testRoute = JSON.parse(JSON.stringify(debugGame.routes.get("bahrain")));
         let simulatedTime = 0;
         const lapDuration = 90000;
         const moving = mountRouteMarker(markerContainer, testRoute, "AV", "#285ca7",
@@ -3046,7 +3553,7 @@
         markerContainer.remove();
       }
 
-      debugGame.bahrainRoute = null;
+      debugGame.routes.delete("bahrain");
       debugGame.renderWeekend(bahrainWeekend);
       const originalFetch = window.fetch;
       try {
@@ -3070,13 +3577,17 @@
       debugRoot.querySelector('[data-action="continue-review"]').click();
 
       for (const action of ["restart-weekend", "new-game"]) {
-        debugGame.bahrainRoute = null;
+        debugGame.routes.delete("bahrain");
         debugGame.renderWeekend(bahrainWeekend);
         const response = await originalFetch("../games/bahrain-route.json");
         let finishFetch;
         try {
           window.fetch = () => new Promise((resolve) => { finishFetch = resolve; });
           debugRoot.querySelector('[data-action="start-session"]').click();
+          for (let i = 0; i < 100 && !finishFetch; i += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+          assert(finishFetch, "The delayed route request must begin");
           if (action === "new-game") debugGame.startDraft();
           else debugGame.renderWeekend(bahrainWeekend);
           finishFetch(response);

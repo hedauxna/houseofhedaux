@@ -516,7 +516,8 @@
     }
 
     .pit-wall-panel.pit-wall-panel-bottom {
-      height: auto;
+      height: 74px;
+      flex: 0 0 74px;
     }
 
     .pit-wall-panel-header {
@@ -1430,9 +1431,8 @@
     .pit-wall-lap-entry.is-fastest { color: #d3a9ed; font-weight: 700; }
     .pit-wall-lap-empty { color: rgba(243, 239, 227, .6); }
 
-    .pit-wall-speed-controls {
+    .pit-wall-session-status {
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
       gap: 3px;
       color: var(--gold);
@@ -1447,7 +1447,6 @@
       white-space: nowrap;
     }
 
-    .pit-wall-speed-controls button[data-speed],
     .pit-wall-session-review button {
       padding: 4px 8px;
       border: 1px solid rgba(215, 189, 133, .4);
@@ -1458,19 +1457,11 @@
       cursor: pointer;
     }
 
-    .pit-wall-speed-controls button[data-speed]:hover,
     .pit-wall-session-review button:hover {
       border-color: var(--gold);
       background: rgba(215, 189, 133, .16);
     }
 
-    .pit-wall-speed-controls button[data-speed][aria-pressed="true"] {
-      border-color: var(--gold);
-      background: var(--gold);
-      color: #031a34;
-    }
-
-    .pit-wall-speed-controls button[data-speed]:focus-visible,
     .pit-wall-session-review button:focus-visible {
       outline: 2px solid var(--gold);
       outline-offset: 2px;
@@ -1826,6 +1817,11 @@
       display: none;
     }
 
+    .pit-wall-circuit:has(.pit-wall-route-debug) .pit-wall-schematic,
+    .pit-wall-circuit:has(.pit-wall-route-debug) .pit-wall-schematic-label {
+      display: none;
+    }
+
     .pit-wall-schematic-label {
       position: absolute;
       right: 4px;
@@ -1844,6 +1840,13 @@
 
     .pit-wall-route-error {
       color: #ffb6a3;
+    }
+
+    .pit-wall-route-selection {
+      flex-basis: 100%;
+      height: 1.2em;
+      line-height: 1.2;
+      white-space: nowrap;
     }
 
     .pit-wall-route-overlay {
@@ -1989,31 +1992,19 @@
     .pit-wall-panel-bottom .pit-wall-panel-content {
       flex-direction: row;
       justify-content: flex-start;
-      align-items: flex-start;
-      gap: 12px;
-      min-height: 32px;
+      align-items: center;
+      height: 100%;
     }
 
     .pit-wall-command-body {
-      display: grid;
-      grid-template-rows: 0fr;
-      transition: grid-template-rows .2s ease;
+      flex: 1;
+      min-height: 0;
     }
 
     .pit-wall-command-body > .pit-wall-panel-content {
       min-height: 0;
       overflow: hidden;
-      padding: 0 8px;
-      visibility: hidden;
-    }
-
-    .pit-wall-panel-bottom:has(.pit-wall-command-toggle[aria-expanded="true"]) .pit-wall-command-body {
-      grid-template-rows: 1fr;
-    }
-
-    .pit-wall-panel-bottom:has(.pit-wall-command-toggle[aria-expanded="true"]) .pit-wall-command-body > .pit-wall-panel-content {
-      padding: 10px 8px;
-      visibility: visible;
+      padding: 4px 8px;
     }
 
     .pit-wall-panel-bottom .pit-wall-placeholder-block {
@@ -2026,18 +2017,12 @@
       font: 10px/1.3 var(--sans);
     }
 
-    .pit-wall-command-mode {
-      margin-left: auto;
-      margin-right: 10px;
-      color: var(--paper);
-      font: 600 11px/1.1 var(--sans);
-    }
-
     .pit-wall-command-controls {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px 16px;
+      width: 100%;
+      flex-wrap: nowrap;
+      align-items: flex-end;
+      gap: clamp(2px, .7vw, 12px);
       color: var(--paper);
       font: 11px/1.2 var(--sans);
     }
@@ -2049,16 +2034,38 @@
       white-space: nowrap;
     }
 
-    .pit-wall-command-controls .pit-wall-setup-fuel input { width: clamp(70px, 9vw, 120px); }
+    .pit-wall-command-controls .pit-wall-setup-fuel input { width: clamp(35px, 6vw, 90px); }
 
     .pit-wall-command-group:not([hidden]) {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 3px 5px;
+      border: 1px solid rgba(215, 189, 133, .4);
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+
+    .pit-wall-command-group-label {
+      color: var(--gold);
+      font: 600 10px/1 var(--sans);
+    }
+
+    .pit-wall-command-group-controls,
+    .pit-wall-command-actions {
+      display: flex;
+      flex-wrap: nowrap;
       align-items: center;
       gap: 4px;
     }
 
-    .pit-wall-command-group button[aria-pressed="true"] {
+    .pit-wall-command-actions { margin-left: auto; margin-bottom: 4px; }
+    .pit-wall-command-controls button { white-space: nowrap; }
+    .pit-wall-tyre-short { display: none; }
+
+    .pit-wall-command-controls button[aria-pressed="true"] {
       background: var(--gold);
       color: #031a34;
     }
@@ -2068,46 +2075,7 @@
       cursor: default;
     }
 
-    .pit-wall-command-toggle {
-      flex-shrink: 0;
-      width: 20px;
-      height: 20px;
-      padding: 0;
-      margin: 0;
-      border: 1px solid rgba(215, 189, 133, .4);
-      background: transparent;
-      color: var(--gold);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all .2s ease;
-      border-radius: 2px;
-    }
-
-    .pit-wall-command-toggle:hover,
-    .pit-wall-command-toggle:focus-visible {
-      background: rgba(215, 189, 133, .15);
-      border-color: rgba(215, 189, 133, .6);
-    }
-
-    .pit-wall-command-icon {
-      width: 12px;
-      height: 12px;
-      display: block;
-      transition: transform .2s ease;
-    }
-
-    .pit-wall-command-toggle[aria-expanded="true"] .pit-wall-command-icon {
-      transform: rotate(180deg);
-    }
-
     @media (prefers-reduced-motion: reduce) {
-      .pit-wall-command-body,
-      .pit-wall-command-icon {
-        transition: none;
-      }
-
       .pit-wall-draft,
       .pit-wall-weekend {
         animation: none;
@@ -2831,15 +2799,12 @@
         width: clamp(45px, 9vw, 75px);
       }
 
-      .pit-wall-speed-controls {
+      .pit-wall-session-status {
         gap: 2px;
         font-size: clamp(8px, 2.2vh, 10px);
       }
 
       .pit-wall-speed-buttons { gap: 2px; }
-      .pit-wall-speed-buttons > span { display: none; }
-
-      .pit-wall-speed-controls button[data-speed],
       .pit-wall-session-review button {
         padding: 2px 4px;
         font-size: clamp(8px, 2.2vh, 10px);
@@ -2988,17 +2953,21 @@
         margin: 1px 0 4px;
       }
 
-      .pit-wall-panel-bottom:has(.pit-wall-command-toggle[aria-expanded="true"]) .pit-wall-command-body > .pit-wall-panel-content {
-        padding: 5px 8px;
+      .pit-wall-panel.pit-wall-panel-bottom {
+        height: 52px;
+        flex-basis: 52px;
+      }
+
+      .pit-wall-command-body > .pit-wall-panel-content {
+        padding: 0 3px;
       }
 
       .pit-wall-panel-bottom .pit-wall-placeholder-block {
         min-height: 0;
       }
 
-      .pit-wall-command-mode,
       .pit-wall-command-controls {
-        font-size: clamp(8px, 2.4vh, 10px);
+        font-size: clamp(7px, 2.2vh, 10px);
       }
 
       .pit-wall-console .pit-wall-panel-bottom .pit-wall-placeholder-label,
@@ -3007,14 +2976,39 @@
       }
 
       .pit-wall-command-controls {
-        gap: 3px 8px;
+        gap: 2px;
       }
 
-      .pit-wall-command-group button {
-        padding: 2px 4px;
-        font-size: clamp(8px, 2.4vh, 10px);
+      .pit-wall-panel-bottom .pit-wall-panel-header { height: 16px; padding: 1px 6px; }
+      .pit-wall-panel-bottom .pit-wall-panel-header h3 {
+        height: 12px;
+        font-size: 12px !important;
+        line-height: 12px !important;
       }
+      .pit-wall-command-group:not([hidden]) { gap: 1px; padding: 1px 2px; }
+      .pit-wall-command-group-label { font-size: clamp(7px, 2.2vh, 9px); }
+      .pit-wall-command-controls .pit-wall-setup-fuel input { height: 14px; margin: 0; }
+      .pit-wall-command-group-controls,
+      .pit-wall-command-actions,
+      .pit-wall-speed-buttons { gap: 1px; }
+      .pit-wall-command-actions { margin-bottom: 2px; }
 
+      .pit-wall-command-controls button {
+        padding: 1px 2px;
+        font-size: clamp(7px, 2.2vh, 10px);
+      }
+    }
+
+    @media (max-width: 700px) and (orientation: landscape) {
+      .pit-wall-tyre-full { display: none; }
+      .pit-wall-tyre-short { display: inline; }
+      .pit-wall-command-controls .pit-wall-setup-fuel { gap: 1px; }
+      .pit-wall-command-controls .pit-wall-setup-fuel input { width: 34px; }
+    }
+
+    @media (max-width: 1200px) and (max-height: 350px) and (orientation: landscape) {
+      .pit-wall-panel.pit-wall-panel-bottom { height: 44px; flex-basis: 44px; }
+      .pit-wall-session-complete > .pit-wall-standings { line-height: 1; }
     }
 
     /* Pit Wall Mobile Portrait Mode */

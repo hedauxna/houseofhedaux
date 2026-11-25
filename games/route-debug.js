@@ -1,4 +1,3 @@
-const ROUTE_URL = new URL("./bahrain-route.json", import.meta.url);
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 export function spline(points) {
@@ -11,26 +10,33 @@ export function spline(points) {
   }).join(" ") + " Z";
 }
 
-export async function loadBahrainRoute() {
-  const response = await fetch(ROUTE_URL);
-  if (!response.ok) throw new Error(`Bahrain route request failed (${response.status})`);
-  const route = await response.json();
-  if (route.imageWidth !== 958 || route.imageHeight !== 645 || !Array.isArray(route.points)
-    || route.points.length < 3 || !route.points.every((point) => Array.isArray(point)
+export function validateRoute(route, imageWidth, imageHeight) {
+  if (!Number.isInteger(imageWidth) || imageWidth <= 0 || !Number.isInteger(imageHeight) || imageHeight <= 0
+    || !route || route.imageWidth !== imageWidth || route.imageHeight !== imageHeight) {
+    throw new Error(`Route image dimensions must be ${imageWidth} × ${imageHeight}`);
+  }
+  if (!Array.isArray(route.points) || route.points.length < 3 || !route.points.every((point) => Array.isArray(point)
       && point.length === 2 && point.every(Number.isFinite)
       && point[0] >= 0 && point[0] <= route.imageWidth
-      && point[1] >= 0 && point[1] <= route.imageHeight)) {
-    throw new Error("Bahrain route has invalid coordinates or image dimensions");
+      && point[1] >= 0 && point[1] <= route.imageHeight)
+    || new Set(route.points.map((point) => point.join(","))).size < 3) {
+    throw new Error("Route needs at least three distinct waypoints within the image bounds");
   }
   return route;
 }
 
-export function mountRouteDebug(container, route, initials, onSelect) {
-  const svg = document.createElementNS(SVG_NS, "svg");
+export async function loadRoute(filename, imageWidth, imageHeight) {
+  const response = await fetch(new URL(`./${filename}`, import.meta.url));
+  if (!response.ok) throw new Error(`Route request failed (${response.status})`);
+  return validateRoute(await response.json(), imageWidth, imageHeight);
+}
+
+export function mountRouteDebug(container, route, initials, onSelect, trackName) {
+  const svg = container.ownerDocument.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", `0 0 ${route.imageWidth} ${route.imageHeight}`);
   svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-  svg.setAttribute("aria-label", "Bahrain route, numbered from waypoint 0");
-  svg.classList.add("pit-wall-route-overlay");
+  svg.setAttribute("aria-label", `${trackName} route, numbered from waypoint 0`);
+  svg.classList.add("pit-wall-route-overlay", "pit-wall-route-debug");
   svg.innerHTML = `<path class="pit-wall-route-line"></path>
     ${route.points.map((_, index) => `<g class="pit-wall-route-point" data-waypoint="${index}">
       <circle r="5"></circle><text x="${index === 0 ? 17 : 7}" y="${index === 0 ? -12 : -7}">${index}</text>
@@ -54,7 +60,7 @@ export function mountRouteDebug(container, route, initials, onSelect) {
     if (!editing || !marker || event.button !== 0) return;
     selected = Number(marker.dataset.waypoint);
     markers.forEach((item, index) => item.classList.toggle("is-selected", index === selected));
-    onSelect(selected);
+    onSelect(selected, route.points[selected]);
     svg.setPointerCapture(event.pointerId);
     event.preventDefault();
   });
@@ -68,6 +74,7 @@ export function mountRouteDebug(container, route, initials, onSelect) {
       Math.round(Math.max(0, Math.min(route.imageHeight, point.y)) * 100) / 100,
     ];
     update();
+    onSelect(selected, route.points[selected]);
   });
   const release = (event) => {
     if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);

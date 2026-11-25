@@ -1,9 +1,9 @@
-import { loadBahrainRoute, mountRouteDebug } from "./route-debug.js";
+import { loadRoute, mountRouteDebug, validateRoute } from "./route-debug.js";
 import { mountRouteMarkers } from "./route-marker.js";
 import { DEFAULT_BALANCE, DISCOVERY_PACE_FIELDS, createBalance } from "./pit-wall-balance.js";
 import { mountBalancePanel } from "./pit-wall-balance-panel.js";
 import { createPracticeClassification, advancePracticeClassification, practiceClassification } from "./practice-classification.js";
-import { createSprintRace, advanceSprintRace, sprintClassification, SPRINT_POINTS, GRAND_PRIX_POINTS } from "./sprint-race.js";
+import { createSprintRace, advanceSprintRace, sprintClassification, setRaceStartingSetup, SPRINT_POINTS, GRAND_PRIX_POINTS } from "./sprint-race.js";
 import {
   PRACTICE_DURATION, SPRINT_QUALIFYING_DURATION, MINIMUM_LAPS, createPracticeSession, advancePracticeSession, fuelPerLap,
   formatSessionTime, formatLapTime, setDriverMode, callToPit, parkPracticeSession, sendPracticeOut,
@@ -42,15 +42,20 @@ const WEEKENDS = [
   {
     id: "bahrain", name: "Bahrain", country: "Bahrain", track: "Bahrain International Circuit", dates: "12-14 March 2027", sprint: true,
     weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable",
-    circuitLength: "5.412 km", laps: 57, image: new URL("../assets/Bahrain_Circuit_Trimmed.png", import.meta.url).href,
+    circuitLength: "5.412 km", laps: 57, image: new URL("../assets/Bahrain_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
   },
   {
     id: "saudi-arabia", name: "Saudi Arabia", title: "Saudi Arabian Grand Prix", country: "Saudi Arabia",
     track: "Jeddah Corniche Circuit", dates: "19-21 March 2027",
     weather: "Hot Conditions", weatherIcon: "&#9728;", forecast: "Stable",
-    circuitLength: "6.174 km", laps: 50, image: new URL("../assets/Saudi_Arabia_Circuit_Trimmed.png", import.meta.url).href,
+    circuitLength: "6.174 km", laps: 50, image: new URL("../assets/Saudi_Arabia_Circuit_Trimmed.png", import.meta.url).href, routeId: "saudi", mappedRoute: true,
   },
-  { id: "australia", name: "Australia", title: "Australian Grand Prix", country: "Australia", track: "Albert Park Grand Prix Circuit", dates: "2-4 April 2027", circuitLength: "5.278 km", sprint: true },
+  {
+    id: "australia", name: "Australia", title: "Australian Grand Prix", country: "Australia",
+    track: "Albert Park Grand Prix Circuit", dates: "2-4 April 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.278 km", laps: 58, image: new URL("../assets/Australia_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
   { id: "japan", name: "Japan", title: "Japanese Grand Prix", country: "Japan", track: "Suzuka Circuit", dates: "9-11 April 2027", circuitLength: "5.807 km", sprint: true },
   { id: "china", name: "China", title: "Chinese Grand Prix", country: "China", track: "Shanghai International Circuit", dates: "16-18 April 2027", circuitLength: "5.451 km" },
   { id: "miami", name: "Miami", country: "United States", track: "Miami International Autodrome", dates: "30 April-2 May 2027", circuitLength: "5.412 km" },
@@ -263,6 +268,7 @@ class PitWallConsole {
   constructor(rootElement) {
     this.rootElement = rootElement;
     this.routeDebugEnabled = new URLSearchParams(rootElement.ownerDocument.defaultView.location.search).get("pitWallDebug") === "1";
+    this.routes = new Map();
     this.balance = createBalance();
   }
 
@@ -334,12 +340,6 @@ class PitWallConsole {
         <footer class="pit-wall-panel pit-wall-panel-bottom">
           <div class="pit-wall-panel-header">
             <h3>Command Centre</h3>
-            <span class="pit-wall-command-mode" data-command-mode></span>
-            <button type="button" class="pit-wall-command-toggle" aria-label="Collapse Command Centre" aria-expanded="true" aria-controls="pit-wall-command-content" data-action="toggle-command">
-              <svg class="pit-wall-command-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="m6 15 6-6 6 6"/>
-              </svg>
-            </button>
           </div>
           <div class="pit-wall-command-body" id="pit-wall-command-content">
             <div class="pit-wall-panel-content">
@@ -367,14 +367,6 @@ class PitWallConsole {
       this.startDraft();
     });
 
-    const toggle = this.rootElement.querySelector('[data-action="toggle-command"]');
-    const commandBody = this.rootElement.querySelector(".pit-wall-command-body");
-    toggle.addEventListener("click", () => {
-      const expanded = toggle.getAttribute("aria-expanded") !== "true";
-      toggle.setAttribute("aria-expanded", String(expanded));
-      toggle.setAttribute("aria-label", `${expanded ? "Collapse" : "Expand"} Command Centre`);
-      commandBody.inert = !expanded;
-    });
   }
 
   startDraft() {
@@ -382,7 +374,7 @@ class PitWallConsole {
     this.clearRouteMarker();
     this.routeOverlay?.remove();
     this.routeOverlay = null;
-    this.bahrainRoute = null;
+    this.routes.clear();
     this.driver = null;
     this.team = null;
     this.permanentUpgrades = [];
@@ -736,16 +728,12 @@ class PitWallConsole {
           <section class="pit-wall-telemetry" aria-label="Telemetry Summary">
             <p class="pit-wall-placeholder-label">Telemetry Summary</p>
             <dl>
-              <div><dt>Current Tyre</dt><dd data-timing="tyre" class="pit-wall-tyre-label"></dd></div>
               <div class="pit-wall-gauge-row"><dt>Tyre Condition</dt>
                 <dd class="pit-wall-gauge" role="meter" aria-label="Tyre condition" aria-valuemin="0" aria-valuemax="100"><span></span></dd></div>
               <div class="pit-wall-gauge-row"><dt>Fuel Load</dt>
                 <dd class="pit-wall-gauge" role="meter" aria-label="Fuel load" aria-valuemin="0" aria-valuemax="100"><span></span></dd></div>
               <div class="pit-wall-fuel-readout"><dt data-timing="fuel-percent"></dt><dd data-timing="fuel-range"></dd></div>
-              <div><dt>Last Lap</dt><dd data-timing="last-lap"></dd></div>
-              <div><dt>Best Lap</dt><dd class="pit-wall-best-lap" data-timing="best-lap"></dd></div>
               <div><dt>${this.isRace() ? "Race Lap" : "Session Time Remaining"}</dt><dd data-timing="remaining"></dd></div>
-              <div><dt>Session Speed</dt><dd data-timing="speed"></dd></div>
             </dl>
           </section>
           <section class="pit-wall-lap-history" aria-label="Lap History">
@@ -779,13 +767,9 @@ class PitWallConsole {
     const rate = fuelPerLap(this.balance, mode, practice ? practice.upgrades : this.activeDiscoveries());
     const laps = practice ? practice.lapTimes : [];
     const values = {
-      tyre: practice ? practice.tyre : this.weekendState.setup.tyre,
-      "last-lap": formatLapTime(laps.length ? laps[laps.length - 1] : null),
-      "best-lap": formatLapTime(laps.length ? Math.min(...laps) : null),
       remaining: this.isRace() ? `${practice ? Math.min(practice.completedLaps + 1, this.weekendState.race.laps) : 1} / ${this.weekendState.race?.laps || this.raceLaps()}`
         : formatSessionTime((this.isQualifying() ? SPRINT_QUALIFYING_DURATION : PRACTICE_DURATION)
           - (practice ? practice.elapsed : 0)),
-      speed: practice && practice.speed === 0 ? "Paused" : `${practice ? practice.speed : 1}x`,
       "fuel-percent": `${Math.round(fuel * 10) / 10}%`,
       "fuel-range": rate > 0 ? `~${(fuel / rate).toFixed(1)} laps remaining` : "No fuel use",
     };
@@ -793,7 +777,6 @@ class PitWallConsole {
       const field = timing.querySelector(`[data-timing="${key}"]`);
       if (field.textContent !== String(value)) field.textContent = value;
     });
-    timing.querySelector('[data-timing="tyre"]').dataset.tyre = values.tyre;
     for (const [label, value] of [
       ["Tyre condition", practice ? 100 - practice.tyreWear : 100],
       ["Fuel load", practice ? practice.fuel : this.weekendState.setup.fuel],
@@ -859,33 +842,53 @@ class PitWallConsole {
         <p class="pit-wall-placeholder-label">Radio & Strategy Controls</p>
         <p class="pit-wall-placeholder-info">Controls are available during practice, qualifying and races.</p>
       </div>`;
-      this.rootElement.querySelector("[data-command-mode]").textContent = "";
+      return;
+    }
+    if (!running) {
+      content.innerHTML = '<div class="pit-wall-command-controls"><div class="pit-wall-command-actions"><button type="button" class="pit-wall-discovery-action" data-action="start-session">Start Session</button></div></div>';
+      content.querySelector('[data-action="start-session"]').addEventListener("click", () => this.startSession());
       return;
     }
     const race = this.isRace();
     content.innerHTML = `
       <div class="pit-wall-command-controls">
         <div class="pit-wall-command-group" role="group" aria-label="Driver mode">
-          <strong>Driver Mode</strong>
+          <span class="pit-wall-command-group-label">Driver Mode</span>
+          <div class="pit-wall-command-group-controls">
           ${Object.keys(this.balance.modes).map((mode) =>
-    `<button type="button" class="pit-wall-discovery-action" data-driver-mode="${mode}"${running || race ? "" : " disabled"}>${mode}</button>`).join("")}
-          <span data-mode-feedback></span>
-        </div>
-        <div class="pit-wall-command-group">
-          <button type="button" class="pit-wall-discovery-action" data-action="call-pit" disabled>Call To Pit</button>
-          <button type="button" class="pit-wall-discovery-action" data-action="send-out" disabled${race ? " hidden" : ""}>Send Out</button>
-          <span data-pit-status role="status"></span>
+    `<button type="button" class="pit-wall-discovery-action" data-driver-mode="${mode}">${mode}</button>`).join("")}
+          </div>
         </div>
         <div class="pit-wall-command-group" role="group" aria-label="Next stint tyre">
-          <strong>Next Tyre</strong>
+          <span class="pit-wall-command-group-label">Next Tyre Choice</span>
+          <div class="pit-wall-command-group-controls">
           ${Object.keys(this.balance.tyres).map((tyre) =>
-    `<button type="button" class="pit-wall-discovery-action pit-wall-tyre-button" data-tyre="${tyre}" data-setup-tyre="${tyre}">${tyre}</button>`).join("")}
+    `<button type="button" class="pit-wall-discovery-action pit-wall-tyre-button" data-tyre="${tyre}" data-setup-tyre="${tyre}" aria-label="${tyre}" title="${tyre}"><span class="pit-wall-tyre-full">${tyre}</span><span class="pit-wall-tyre-short" aria-hidden="true">${tyre[0]}</span></button>`).join("")}
+          </div>
         </div>
-        <label class="pit-wall-setup-fuel">${race ? "Start Fuel" : "Next Fuel"}
-          <input type="range" min="${this.isQualifying() ? ".1" : "10"}" max="100" step="${this.isQualifying() ? ".1" : "1"}" value="${state.setup.fuel}" data-setup-fuel${race && running ? " disabled" : ""}>
-          <output data-setup-fuel-value>${state.setup.fuel}%</output>
-        </label>
+        <div class="pit-wall-command-group" role="group" aria-label="Next fuel">
+          <span class="pit-wall-command-group-label">Next Fuel</span>
+          <label class="pit-wall-setup-fuel">
+            <input type="range" aria-label="Next Fuel" min="${this.isQualifying() ? ".1" : "10"}" max="100" step="${this.isQualifying() ? ".1" : "1"}" value="${state.setup.fuel}" data-setup-fuel>
+            <output data-setup-fuel-value>${state.setup.fuel}%</output>
+          </label>
+        </div>
+        <div class="pit-wall-command-group" role="group" aria-label="Session speed">
+          <span class="pit-wall-command-group-label">Session Speed</span>
+          <div class="pit-wall-speed-buttons">
+          ${[0, 1, 10, 50].map((speed) => `<button type="button" class="pit-wall-discovery-action" data-speed="${speed}" aria-pressed="${state.practice.speed === speed}"${speed === 0 ? ' aria-label="Pause"' : ""}>${speed === 0 ? "⏸" : `${speed}x`}</button>`).join("")}
+          </div>
+        </div>
+        <div class="pit-wall-command-actions">
+          <button type="button" class="pit-wall-discovery-action" data-action="call-pit" disabled hidden>Call To Pit</button>
+          <button type="button" class="pit-wall-discovery-action" data-action="send-out" disabled${race ? " hidden" : ""}>Send Out</button>
+          ${race ? "" : `<button type="button" class="pit-wall-discovery-action" data-action="complete-session"${this.hasSessionRoute() && !this.routeMarker ? " disabled" : ""}>Complete Session</button>`}
+        </div>
       </div>`;
+    content.querySelector('[data-action="complete-session"]')?.addEventListener("click", () => this.completeSession());
+    content.querySelectorAll("[data-speed]").forEach((button) => {
+      button.addEventListener("click", () => this.setPracticeSpeed(Number(button.dataset.speed)));
+    });
     const sync = () => {
       if (this.sessionTimer != null && this.syncPracticeClock()) {
         this.completeSession();
@@ -895,15 +898,11 @@ class PitWallConsole {
     };
     content.querySelectorAll("[data-driver-mode]").forEach((button) => {
       button.addEventListener("click", () => {
-        if (race && !running) {
-          state.setup.mode = button.dataset.driverMode;
-          this.updateTiming();
-          return;
-        }
         if (!sync()) return;
         if (race && (state.race.entries.find((entry) => entry.player).retired
           || state.race.entries.find((entry) => entry.player).finishedAt !== null)) return;
         setDriverMode(state.practice, button.dataset.driverMode);
+        if (race && !state.race.started) state.setup.mode = button.dataset.driverMode;
         this.updateTiming();
       });
     });
@@ -921,15 +920,21 @@ class PitWallConsole {
     });
     content.querySelectorAll("[data-setup-tyre]").forEach((button) => {
       button.addEventListener("click", () => {
-        if (running && !sync()) return;
+        if (!sync()) return;
         state.setup.tyre = button.dataset.setupTyre;
+        if (race && !state.race.started) setRaceStartingSetup(state.race, state.setup);
         this.updateTiming();
       });
     });
     content.querySelector("[data-setup-fuel]").addEventListener("input", (event) => {
       const fuel = Number(event.currentTarget.value);
-      if (running && !sync()) return;
+      if (!sync()) return;
+      if (race && state.race.started) {
+        this.updateTiming();
+        return;
+      }
       state.setup.fuel = fuel;
+      if (race) setRaceStartingSetup(state.race, state.setup);
       this.updateTiming();
     });
     this.updateCommand();
@@ -946,39 +951,38 @@ class PitWallConsole {
     });
     content.querySelector("[data-setup-fuel]").value = String(state.setup.fuel);
     const race = this.isRace();
+    content.querySelector("[data-setup-fuel]").disabled = race && state.race.started;
+    if (race && !state.race.started) {
+      const racer = state.race.entries.find((entry) => entry.player);
+      const gridMarker = this.rootElement.querySelector(`.pit-wall-start-grid span:nth-child(${racer.gridPosition})`);
+      if (gridMarker) {
+        gridMarker.dataset.tyre = racer.session.tyre;
+        gridMarker.title = `P${racer.gridPosition} ${racer.driver.name}, ${racer.session.tyre} tyre`;
+      }
+    }
     const rate = fuelPerLap(this.balance, practice ? practice.mode : state.setup.mode || "Balanced", this.activeDiscoveries());
-    const estimate = this.isQualifying() ? rate > 0
-      ? ` · ~${(Math.floor(state.setup.fuel / rate * 10) / 10).toFixed(1)} laps incl. out` : " · no fuel use"
-      : race && rate > 0 ? ` · ~${((practice ? practice.fuel : state.setup.fuel) / rate).toFixed(1)} laps${practice ? " left" : ""}` : "";
-    content.querySelector("[data-setup-fuel-value]").textContent = `${state.setup.fuel}%${estimate}`;
+    content.querySelector("[data-setup-fuel-value]").textContent = `${state.setup.fuel}%`;
     if (!practice) {
-      this.rootElement.querySelector("[data-command-mode]").textContent = "";
       if (race) content.querySelectorAll("[data-driver-mode]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.driverMode === (state.setup.mode || "Balanced")));
       });
       return;
     }
-    this.rootElement.querySelector("[data-command-mode]").textContent = `Driver Mode: ${practice.mode}${practice.pitState === "stopped" ? " · GARAGE" : practice.pitState === "entering" ? " · PIT ENTRY" : practice.pitState === "called" ? " · PIT CALLED" : ""}`;
     content.querySelectorAll("[data-driver-mode]").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.driverMode === practice.mode));
     });
     const call = content.querySelector('[data-action="call-pit"]');
     if (!call) return;
-    const mode = this.balance.modes[practice.mode];
-    const baseline = this.balance.modes.Balanced;
-    const paceFeedback = mode.pace < baseline.pace ? "Faster pace" : mode.pace > baseline.pace ? "Slower pace" : "Balanced pace";
-    const usageFeedback = mode.wear > baseline.wear && mode.fuel > baseline.fuel ? "more tyre wear & fuel"
-      : mode.wear < baseline.wear && mode.fuel < baseline.fuel ? "less tyre wear & fuel"
-        : mode.wear === baseline.wear && mode.fuel === baseline.fuel ? "normal wear & fuel"
-          : `tyre wear ${mode.wear}x · fuel ${mode.fuel}x`;
-    const modeFeedback = content.querySelector("[data-mode-feedback]");
-    const feedback = `${paceFeedback} · ${usageFeedback}`;
-    if (modeFeedback.textContent !== feedback) modeFeedback.textContent = feedback;
     const racer = race ? state.race.entries.find((entry) => entry.player) : null;
+    const onTrack = ["none", "called"].includes(practice.pitState)
+      && (!race || (state.race.started && !racer.retired && racer.finishedAt === null));
+    call.hidden = !onTrack || practice.speed === 0 || state.debugPaused;
     call.disabled = practice.pitState !== "none" || (race && (!state.race.started || racer.retired || racer.finishedAt !== null));
-    content.querySelector('[data-action="send-out"]').disabled = practice.pitState !== "stopped"
-      || (this.hasBahrainRoute() && !this.routeMarker);
-    const status = content.querySelector("[data-pit-status]");
+    const send = content.querySelector('[data-action="send-out"]');
+    send.hidden = race || onTrack;
+    send.disabled = practice.pitState !== "stopped"
+      || (this.hasSessionRoute() && !this.routeMarker);
+    const status = this.rootElement.querySelector("[data-pit-status]");
     const fuelShort = race && rate > 0 && practice.fuel / rate + 1e-6
       < state.race.laps - practice.completedLaps - practice.lapProgress;
     const statusText = race && racer.retired ? "Out of fuel · retired"
@@ -987,7 +991,7 @@ class PitWallConsole {
       : practice.pitState === "entering" ? `Pit entry · ${Math.ceil(practice.pitRemaining / 1000)}s`
         : practice.pitState === "stopped" ? "In garage · ready to send out"
         : fuelShort ? "Fuel short at this mode" : "";
-    if (status.textContent !== statusText) status.textContent = statusText;
+    if (status && status.textContent !== statusText) status.textContent = statusText;
   }
 
   clearSessionTimer() {
@@ -1005,17 +1009,36 @@ class PitWallConsole {
     this.rootElement.querySelector(".pit-wall-circuit")?.classList.remove("has-schematic");
   }
 
-  isBahrainPractice() {
-    const state = this.weekendState;
-    return state.weekend.id === "bahrain" && this.isPractice();
-  }
-
-  hasBahrainRoute() {
-    return this.weekendState.weekend.id === "bahrain" && this.isTimedSession();
+  hasMappedRoute() {
+    return Boolean(this.weekendState.weekend.mappedRoute) && this.isTimedSession();
   }
 
   hasSessionRoute() {
-    return this.hasBahrainRoute() || this.isRace();
+    return this.hasMappedRoute() || this.isRace();
+  }
+
+  routeFilename(weekend) {
+    return `${weekend.routeId || weekend.id}-route.json`;
+  }
+
+  async readTrackRoute(state) {
+    const cached = this.routes.get(state.weekend.id);
+    if (cached) return cached;
+    const image = this.rootElement.querySelector(".pit-wall-circuit img");
+    if (!image) throw new Error("Circuit image is unavailable");
+    await image.decode();
+    return loadRoute(this.routeFilename(state.weekend), image.naturalWidth, image.naturalHeight);
+  }
+
+  mountTrackRouteDebug(state, route) {
+    this.routeOverlay?.remove();
+    this.routeOverlay = mountRouteDebug(this.rootElement.querySelector(".pit-wall-circuit"),
+      route, driverInitials(this.driver), (index, point) => {
+        state.selectedWaypoint = index;
+        const selected = this.rootElement.querySelector("[data-route-selected]");
+        if (selected) selected.textContent = `Waypoint ${index} · ${point[0]}, ${point[1]}`;
+      }, state.weekend.name);
+    this.routeOverlay.setEditing(state.editRoute);
   }
 
   isPractice() {
@@ -1061,7 +1084,7 @@ class PitWallConsole {
     const panel = this.rootElement.querySelector(".pit-wall-session-panel");
     const circuit = this.rootElement.querySelector(".pit-wall-circuit");
     circuit.hidden = state.phase === "discovery" || state.phase === "review" || state.phase === "complete";
-    if (state.phase !== "running" || !state.showRoute) {
+    if (!state.showRoute || !["ready", "running"].includes(state.phase)) {
       this.routeOverlay?.remove();
       this.routeOverlay = null;
     }
@@ -1230,53 +1253,45 @@ class PitWallConsole {
           ${session === "Sprint Race" && state.sprintGrid ? `<span>Sprint Grid: ${state.sprintGrid.position === null ? "No qualifying time" : `P${state.sprintGrid.position}`}</span>` : ""}
           ${session === "Grand Prix" && state.grandPrixGrid ? `<span>Race Grid: ${state.grandPrixGrid.position === null ? "No qualifying time" : `P${state.grandPrixGrid.position}`}</span>` : ""}
         </div>
-        <div class="pit-wall-session-actions">
-          ${state.phase === "running" ? `
+        ${state.phase === "running" ? `
+          <div class="pit-wall-session-actions">
             <span class="pit-wall-session-running">${session} ${state.debugPaused ? "Paused (Route Debug)" : state.practice && state.practice.speed === 0 ? "Paused" : "Running..."}</span>
             ${this.isTimedSession() ? "" : `<progress aria-label="${session} progress" max="${SESSION_DURATION}" value="${state.elapsed}"></progress>`}
-            ${this.isRace() ? "" : `<button type="button" class="pit-wall-menu-button" data-action="complete-session"${this.hasSessionRoute() && !this.routeMarker ? " disabled" : ""}>Complete Session</button>`}
-          ` : `
-            <button type="button" class="pit-wall-menu-button" data-action="start-session">Start Session</button>
-            <button type="button" class="pit-wall-menu-button" data-action="skip-session">Skip Session</button>
-          `}
-        </div>
+          </div>
+        ` : ""}
         ${state.phase === "running" && this.isTimedSession() ? `
-          <div class="pit-wall-speed-controls" role="group" aria-label="Session speed">
-            <div class="pit-wall-speed-buttons"><span>Session Speed</span>
-            ${[0, 1, 10, 50].map((speed) => `<button type="button" class="pit-wall-discovery-action" data-speed="${speed}" aria-pressed="${state.practice.speed === speed}"${speed === 0 ? ' aria-label="Pause"' : ""}>${speed === 0 ? "⏸" : `${speed}x`}</button>`).join("")}</div>
+          <div class="pit-wall-session-status">
             ${this.isRace() ? '<span data-race-status>Starting lights</span>' : this.isQualifying() ? '<span data-qualifying-status>In garage</span>' : `<span data-practice-goal>${state.practice.lapTimes.length >= MINIMUM_LAPS ? "Discovery goal achieved" : `Discovery data: ${state.practice.lapTimes.length} / ${MINIMUM_LAPS} laps`}</span>`}
+            <span data-pit-status role="status"></span>
           </div>
         ` : ""}
       </div>
-      ${state.phase === "running" && state.markerLoading ? '<p class="pit-wall-session-notice" role="status">Loading Bahrain route...</p>' : ""}
+      ${state.phase === "running" && state.markerLoading ? `<p class="pit-wall-session-notice" role="status">Loading ${state.weekend.name} route...</p>` : ""}
       ${state.phase === "running" && state.markerError ? `
         <div class="pit-wall-route-error" role="alert">${state.markerError}
           <button type="button" class="pit-wall-discovery-action" data-action="retry-marker">Retry Route</button>
         </div>
       ` : ""}
-      ${state.phase === "running" && this.routeDebugEnabled && state.weekend.id === "bahrain" ? `
+      ${["ready", "running"].includes(state.phase) && this.routeDebugEnabled && state.weekend.image ? `
         <div class="pit-wall-route-controls">
           <span>Developer Route Debug</span>
           <button type="button" class="pit-wall-discovery-action" data-action="toggle-route" aria-pressed="${state.showRoute}"${state.routeLoading || state.markerLoading ? " disabled" : ""}>${state.routeLoading ? "Loading Route..." : state.showRoute ? "Hide Route" : "Show Route"}</button>
           ${state.showRoute ? `
             <button type="button" class="pit-wall-discovery-action" data-action="edit-route" aria-pressed="${state.editRoute}">Edit Route</button>
             <button type="button" class="pit-wall-discovery-action" data-action="export-route">Export JSON</button>
-            ${state.selectedWaypoint !== null ? `<span>Waypoint ${state.selectedWaypoint}</span>` : ""}
+            <button type="button" class="pit-wall-discovery-action" data-action="import-route">Import JSON</button>
+            <input type="file" accept=".json,application/json" data-route-file hidden>
+            <span class="pit-wall-route-selection" data-route-selected>${state.selectedWaypoint !== null ? `Waypoint ${state.selectedWaypoint} · ${this.routes.get(state.weekend.id).points[state.selectedWaypoint].join(", ")}` : ""}</span>
           ` : ""}
-          <button type="button" class="pit-wall-discovery-action" data-action="pause-route-session"${state.routeLoading ? " disabled" : ""}>${state.debugPaused ? "Resume Session" : "Pause Session"}</button>
-          ${state.routeError ? `<span class="pit-wall-route-error" role="alert">${state.routeError}</span>` : ""}
+          ${state.phase === "running" ? `<button type="button" class="pit-wall-discovery-action" data-action="pause-route-session"${state.routeLoading ? " disabled" : ""}>${state.debugPaused ? "Resume Session" : "Pause Session"}</button>` : ""}
+          ${state.routeError ? '<span class="pit-wall-route-error" role="alert" data-route-error></span>' : ""}
         </div>
       ` : ""}
       ${state.message ? `<p class="pit-wall-session-notice" role="status">${state.message}</p>` : ""}
     `;
-    if (state.phase === "ready") {
-      panel.querySelector('[data-action="start-session"]').addEventListener("click", () => this.startSession());
-    }
-    panel.querySelector('[data-action="skip-session"]')?.addEventListener("click", () => this.skipSession());
-    panel.querySelector('[data-action="complete-session"]')?.addEventListener("click", () => this.completeSession());
-    panel.querySelectorAll("[data-speed]").forEach((button) => {
-      button.addEventListener("click", () => this.setPracticeSpeed(Number(button.dataset.speed)));
-    });
+    const routeError = panel.querySelector("[data-route-error]");
+    if (routeError) routeError.textContent = state.routeError;
+    this.updateCommand();
     panel.querySelector('[data-action="retry-marker"]')?.addEventListener("click", () => this.startRouteMarker());
     panel.querySelector('[data-action="toggle-route"]')?.addEventListener("click", () => this.toggleRoute());
     panel.querySelector('[data-action="edit-route"]')?.addEventListener("click", () => {
@@ -1286,18 +1301,45 @@ class PitWallConsole {
       panel.querySelector('[data-action="edit-route"]').focus();
     });
     panel.querySelector('[data-action="export-route"]')?.addEventListener("click", () => {
-      const url = URL.createObjectURL(new Blob([JSON.stringify(this.bahrainRoute, null, 2) + "\n"], { type: "application/json" }));
+      const url = URL.createObjectURL(new Blob([JSON.stringify(this.routes.get(state.weekend.id), null, 2) + "\n"], { type: "application/json" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = "bahrain-route.json";
+      link.download = this.routeFilename(state.weekend);
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    panel.querySelector('[data-action="import-route"]')?.addEventListener("click", () => {
+      panel.querySelector("[data-route-file]").click();
+    });
+    panel.querySelector("[data-route-file]")?.addEventListener("change", async (event) => {
+      const file = event.currentTarget.files[0];
+      if (!file) return;
+      const route = this.routes.get(state.weekend.id);
+      const sessionIndex = state.sessionIndex;
+      const request = {};
+      state.routeImportRequest = request;
+      try {
+        const imported = validateRoute(JSON.parse(await file.text()), route.imageWidth, route.imageHeight);
+        if (this.weekendState !== state || state.sessionIndex !== sessionIndex || !state.showRoute
+          || state.routeImportRequest !== request) return;
+        route.points = imported.points;
+        state.selectedWaypoint = null;
+        state.routeError = "";
+        this.mountTrackRouteDebug(state, route);
+      } catch (error) {
+        if (this.weekendState !== state || state.sessionIndex !== sessionIndex || !state.showRoute
+          || state.routeImportRequest !== request) return;
+        console.error("Could not import route.", error);
+        state.routeError = `Could not import route: ${error.message}`;
+      }
+      this.renderSession();
     });
     panel.querySelector('[data-action="pause-route-session"]')?.addEventListener("click", () => {
       if (state.debugPaused) {
         state.showRoute = false;
         state.editRoute = false;
         state.routeLoading = false;
+        state.routeImportRequest = null;
         state.debugPaused = false;
         this.renderSession();
         if (this.hasSessionRoute()) {
@@ -1319,11 +1361,12 @@ class PitWallConsole {
     state.phase = "running";
     state.message = "";
     state.elapsed = 0;
-    state.debugPaused = this.routeDebugEnabled && state.weekend.id === "bahrain" && !this.hasBahrainRoute();
+    state.debugPaused = this.routeDebugEnabled && state.weekend.id === "bahrain" && !this.isTimedSession();
     state.showRoute = false;
     state.editRoute = false;
     state.routeLoading = false;
     state.routeError = "";
+    state.routeImportRequest = null;
     state.selectedWaypoint = null;
     state.markerLoading = false;
     state.markerError = "";
@@ -1400,14 +1443,14 @@ class PitWallConsole {
     this.renderSession();
     let route;
     try {
-      route = state.weekend.id === "bahrain" ? this.bahrainRoute || await loadBahrainRoute()
+      route = this.hasMappedRoute() ? await this.readTrackRoute(state)
         : { imageWidth: 600, imageHeight: 300, points: [[300, 240], [150, 240], [60, 150], [150, 60], [450, 60], [540, 150], [450, 240]] };
       if (this.weekendState !== state || state.phase !== "running" || state.markerRequest !== request) return;
-      if (state.weekend.id === "bahrain") this.bahrainRoute = route;
+      if (this.hasMappedRoute()) this.routes.set(state.weekend.id, route);
       const circuit = this.rootElement.querySelector(".pit-wall-circuit");
       this.routeMarkers = [];
       if (this.isRace()) {
-        if (state.weekend.id !== "bahrain") {
+        if (!this.hasMappedRoute()) {
           circuit.classList.add("has-schematic");
           circuit.insertAdjacentHTML("beforeend", '<svg data-sprint-overlay class="pit-wall-route-overlay pit-wall-schematic" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet" aria-label="Schematic circuit, not the actual layout"><path d="M 300 240 L 150 240 Q 60 240 60 150 Q 60 60 150 60 L 450 60 Q 540 60 540 150 Q 540 240 450 240 Z"></path></svg><span data-sprint-overlay class="pit-wall-schematic-label">Schematic track</span>');
         }
@@ -1419,7 +1462,8 @@ class PitWallConsole {
           initials: driverInitials(entry.driver), teamColour: entry.team.colour,
           getProgress: () => this.raceProgress(entry),
           getTyre: () => entry.session.tyre,
-          isVisible: () => state.race.started && !entry.retired && entry.finishedAt === null && entry.session.pitState !== "entering",
+          isVisible: () => state.race.started && !entry.retired && entry.finishedAt === null
+            && ["none", "called"].includes(entry.session.pitState),
         })));
       } else {
         const drivers = [{ initials: driverInitials(this.driver), teamColour: this.team.colour,
@@ -1443,8 +1487,8 @@ class PitWallConsole {
       if (this.weekendState !== state || state.phase !== "running" || state.markerRequest !== request) return;
       this.clearSessionTimer();
       this.clearRouteMarker();
-      state.markerError = state.weekend.id === "bahrain"
-        ? "Could not load the Bahrain route. Check the browser console."
+      state.markerError = this.hasMappedRoute()
+        ? `Could not load the ${state.weekend.name} route. Check the browser console.`
         : "Could not load the session route. Check the browser console.";
     }
     state.markerLoading = false;
@@ -1454,39 +1498,38 @@ class PitWallConsole {
   async toggleRoute() {
     const state = this.weekendState;
     const sessionIndex = state.sessionIndex;
+    const phase = state.phase;
     if (state.showRoute) {
       state.showRoute = false;
       state.editRoute = false;
+      state.routeImportRequest = null;
       this.renderSession();
       return;
     }
-    this.pauseSessionTimer();
-    if (state.phase !== "running") return;
+    if (phase === "running") this.pauseSessionTimer();
+    if (state.phase !== phase || !["ready", "running"].includes(phase)) return;
     state.routeError = "";
     state.routeLoading = true;
     this.renderSession();
     let route;
     try {
-      route = this.bahrainRoute || await loadBahrainRoute();
+      route = await this.readTrackRoute(state);
     } catch (error) {
-      console.error("Could not load Bahrain route.", error);
-      if (this.weekendState === state && state.phase === "running" && state.sessionIndex === sessionIndex) {
+      console.error(`Could not load ${state.weekend.name} route.`, error);
+      if (this.weekendState === state && state.phase === phase && state.sessionIndex === sessionIndex) {
         state.routeLoading = false;
-        state.routeError = "Could not load Bahrain route. Check the browser console.";
+        state.routeError = `Could not load ${state.weekend.name} route. Check the browser console.`;
         this.renderSession();
       }
       return;
     }
-    if (this.weekendState !== state || state.phase !== "running" || state.sessionIndex !== sessionIndex || !state.debugPaused) return;
-    this.bahrainRoute = route;
+    if (this.weekendState !== state || state.phase !== phase || state.sessionIndex !== sessionIndex
+      || (phase === "running" && !state.debugPaused)) return;
+    this.routes.set(state.weekend.id, route);
     state.routeLoading = false;
     state.showRoute = true;
     this.routeMarkers?.forEach((marker) => marker.pause(true));
-    this.routeOverlay = mountRouteDebug(this.rootElement.querySelector(".pit-wall-circuit"),
-      this.bahrainRoute, driverInitials(this.driver), (index) => {
-        state.selectedWaypoint = index;
-        this.renderSession();
-      });
+    this.mountTrackRouteDebug(state, route);
     this.renderSession();
     this.rootElement.querySelector('[data-action="toggle-route"]').focus();
   }

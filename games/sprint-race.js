@@ -1,6 +1,6 @@
 import { practiceTyres } from "./practice-classification.js";
 import {
-  advancePracticeSession, callToPit, createPracticeSession, fuelPerLap, serviceRacePit, setDriverMode,
+  advancePracticeSession, callToPit, createPracticeSession, fuelPerLap, serviceRacePit, setDriverMode, updateLapTarget,
 } from "./practice-session.js";
 
 export const SPRINT_POINTS = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -45,6 +45,21 @@ export function createSprintRace(grid, circuitLength, weather, trackCondition, s
   });
   if (!entries.some((entry) => entry.player)) throw new Error("Sprint grid has no player");
   return { entries, laps, elapsed: 0, flagTime: null, grandPrix, random, tyres, balance };
+}
+
+export function setRaceStartingSetup(race, setup) {
+  if (race.started) throw new Error("Cannot change starting setup after lights out");
+  if (!Object.hasOwn(race.balance.tyres, setup.tyre)) throw new Error(`Unknown tyre compound: ${setup.tyre}`);
+  if (!Number.isFinite(setup.fuel) || setup.fuel < 10 || setup.fuel > 100) {
+    throw new Error(`Invalid starting fuel: ${setup.fuel}`);
+  }
+  const player = race.entries.find((entry) => entry.player);
+  if (!player) throw new Error("Race grid has no player");
+  player.session.tyre = setup.tyre;
+  player.session.fuel = setup.fuel;
+  player.tyreHistory[0] = setup.tyre;
+  updateLapTarget(player.session);
+  player.session.lapProgress = -(player.gridPosition - 1) * race.balance.sprintRace.gridGapMs / player.session.lapTarget;
 }
 
 function updateGrandPrixStrategy(race, entry) {
