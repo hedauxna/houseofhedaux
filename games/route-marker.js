@@ -15,13 +15,13 @@ export function mountRouteMarkers(container, route, drivers) {
   path.setAttribute("fill", "none");
   path.setAttribute("stroke", "none");
   svg.append(path);
-  const markers = drivers.map(({ initials, teamColour, getProgress, getTyre = () => null, isVisible = () => true }) => {
+  const markers = drivers.map(({ initials, teamColour, player = false, getProgress, getTyre = () => null, isVisible = () => true }) => {
     const wrapper = doc.createElementNS(SVG_NS, "g");
     wrapper.setAttribute("aria-label", `${initials} driver marker`);
     wrapper.setAttribute("role", "img");
     const marker = doc.createElementNS(SVG_NS, "g");
     marker.classList.add("pit-wall-moving-driver");
-    marker.innerHTML = '<circle class="pit-wall-marker-tyre" r="23"></circle><circle class="pit-wall-marker-team" r="20"></circle><text dy=".35em"></text>';
+    marker.innerHTML = `${player ? '<circle class="pit-wall-marker-player" r="23"></circle>' : ""}<circle class="pit-wall-marker-team" r="20"></circle><text dy=".35em"></text>`;
     marker.querySelector(".pit-wall-marker-team").setAttribute("fill", teamColour);
     marker.querySelector("text").textContent = initials;
     wrapper.append(marker);

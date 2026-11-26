@@ -3,10 +3,10 @@ import { mountRouteMarkers } from "./route-marker.js";
 import { DEFAULT_BALANCE, DISCOVERY_PACE_FIELDS, createBalance } from "./pit-wall-balance.js";
 import { mountBalancePanel } from "./pit-wall-balance-panel.js";
 import { createPracticeClassification, advancePracticeClassification, practiceClassification } from "./practice-classification.js";
-import { createSprintRace, advanceSprintRace, sprintClassification, setRaceStartingSetup, SPRINT_POINTS, GRAND_PRIX_POINTS } from "./sprint-race.js";
+import { createSprintRace, advanceSprintRace, sprintClassification, SPRINT_POINTS, GRAND_PRIX_POINTS } from "./sprint-race.js";
 import {
   PRACTICE_DURATION, SPRINT_QUALIFYING_DURATION, MINIMUM_LAPS, createPracticeSession, advancePracticeSession, fuelPerLap,
-  formatSessionTime, formatLapTime, setDriverMode, callToPit, parkPracticeSession, sendPracticeOut,
+  formatSessionTime, formatLapTime, setDriverMode, callToPit, cancelPitCall, parkPracticeSession, sendPracticeOut,
 } from "./practice-session.js";
 
 /**
@@ -168,9 +168,26 @@ const WEEKENDS = [
     weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
     circuitLength: "4.309 km", laps: 71, image: new URL("../assets/Brazil_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
   },
-  { id: "las-vegas", name: "Las Vegas", country: "United States", track: "Las Vegas Strip Circuit", dates: "18-20 November 2027", circuitLength: "6.201 km" },
-  { id: "qatar", name: "Qatar", country: "Qatar", track: "Lusail International Circuit", dates: "3-5 December 2027", circuitLength: "5.419 km", sprint: true },
-  { id: "abu-dhabi", name: "Abu Dhabi", country: "United Arab Emirates", track: "Yas Marina Circuit", dates: "10-12 December 2027", circuitLength: "5.281 km", sprint: true },
+  {
+    id: "las-vegas", name: "Las Vegas", title: "Las Vegas Grand Prix", country: "United States",
+    track: "Las Vegas Strip Circuit", dates: "18-20 November 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "6.201 km", laps: 50, image: new URL("../assets/Las_Vegas_Circuit_Trimmed.png", import.meta.url).href,
+    routeId: "lasvegas", mappedRoute: true,
+  },
+  {
+    id: "qatar", name: "Qatar", title: "Qatar Grand Prix", country: "Qatar",
+    track: "Lusail International Circuit", dates: "3-5 December 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.419 km", laps: 57, image: new URL("../assets/Qatar_Circuit_Trimmed.png", import.meta.url).href, mappedRoute: true,
+  },
+  {
+    id: "abu-dhabi", name: "Abu Dhabi", title: "Abu Dhabi Grand Prix", country: "United Arab Emirates",
+    track: "Yas Marina Circuit", dates: "10-12 December 2027", sprint: true,
+    weather: "Sunny", weatherIcon: "&#9728;", forecast: "Stable", trackCondition: "Green",
+    circuitLength: "5.281 km", laps: 58, image: new URL("../assets/Abu_Dhabi_Circuit_Trimmed.png", import.meta.url).href,
+    routeId: "abudhabi", mappedRoute: true,
+  },
 ].map((weekend, index) => ({
   ...weekend,
   round: index + 1,
@@ -294,44 +311,85 @@ function driverInitials(driver) {
 }
 
 function classificationRows(entries) {
+  const gap = (entry, reference) => entry.bestLap === null || !reference || entry === reference
+    ? "—" : `+${((entry.bestLap - reference.bestLap) / 1000).toFixed(3)}s`;
   return entries.map((entry, index) => `
-    <li class="pit-wall-classification-row${entry.player ? " is-player" : ""}">
-      <span class="pit-wall-classification-position">${entry.bestLap === null ? "–" : `P${index + 1}`}</span>
-      <span class="pit-wall-classification-marker" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span>
-      <span class="pit-wall-classification-person"><strong>${entry.driver.name}</strong><span>${entry.team.name}</span></span>
-      <span class="pit-wall-classification-time">${entry.bestLapTyre ? `<span class="pit-wall-tyre-label" data-tyre="${entry.bestLapTyre}">${entry.bestLapTyre}</span> ` : ""}${formatLapTime(entry.bestLap)}${entry.inPit ? '<small>In pit</small>' : ""}</span>
+    <li class="pit-wall-classification-row${entry.player ? " is-player" : ""}" role="row">
+      <span class="pit-wall-classification-position" role="cell">${entry.bestLap === null ? "–" : `P${index + 1}`}</span>
+      <span class="pit-wall-classification-marker${entry.inPit ? " is-in-pit" : ""}" role="cell" style="background-color:${entry.team.colour}" aria-label="${entry.driver.name}, ${entry.team.name}${entry.inPit ? ", in pit" : ""}"${entry.inPit ? ' title="In pit"' : ""}>${driverInitials(entry.driver)}</span>
+      <strong class="pit-wall-classification-driver" role="cell">${entry.driver.name}</strong>
+      <span class="pit-wall-classification-team" role="cell">${entry.team.name}</span>
+      <span class="pit-wall-classification-tyre" role="cell">${tyreLabel(entry.currentTyre)}</span>
+      <span class="pit-wall-classification-best${index === 0 && entry.bestLap !== null ? " is-fastest" : ""}" role="cell"${index === 0 && entry.bestLap !== null ? ` aria-label="Fastest lap of the session, ${formatLapTime(entry.bestLap)}"` : ""}>${formatLapTime(entry.bestLap)}</span>
+      <span class="pit-wall-classification-gap" role="cell">${gap(entry, entries[index - 1])}</span>
+      <span class="pit-wall-classification-gap" role="cell">${gap(entry, entries[0])}</span>
     </li>`).join("");
+}
+
+function tyreLabel(tyre) {
+  return tyre ? `<span class="pit-wall-tyre-label" data-tyre="${tyre}">${tyre}</span>` : '<span class="pit-wall-tyre-unknown" aria-label="Tyre not yet known">—</span>';
 }
 
 function raceGap(entry, leader) {
   if (entry.retired) return "DNF";
-  if (entry === leader) return "Leader";
+  if (entry === leader) return "—";
   const distance = leader.session.completedLaps + leader.session.lapProgress
     - entry.session.completedLaps - entry.session.lapProgress;
   const lapped = Math.floor(Math.max(0, distance));
   if (lapped) return `+${lapped}L`;
   const gap = leader.finishedAt !== null && entry.finishedAt !== null
     ? (entry.finishedAt - leader.finishedAt) / 1000 : distance * entry.session.lapTarget / 1000;
-  return `+${Math.max(0, gap).toFixed(1)}s`;
+  return `+${Math.max(0, gap).toFixed(3)}s`;
+}
+
+function fastestRaceEntry(entries) {
+  return entries.reduce((best, entry) =>
+    entry.bestLap !== null && (!best || entry.bestLap < best.bestLap) ? entry : best, null);
 }
 
 function raceRows(entries) {
+  const fastest = fastestRaceEntry(entries);
   return entries.map((entry, index) => `
-    <li class="pit-wall-classification-row${entry.player ? " is-player" : ""}" data-race-driver="${entry.driver.name}">
-      <span class="pit-wall-classification-position">P${index + 1}</span>
-      <span class="pit-wall-classification-marker" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span>
-      <span class="pit-wall-classification-person"><strong>${entry.driver.name}</strong><span>${entry.team.name}</span></span>
-      <span class="pit-wall-classification-time"><small data-race-gap>Gap ${raceGap(entry, entries[0])}</small><small data-race-best>Best ${formatLapTime(entry.bestLap)}</small></span>
+    <li class="pit-wall-classification-row${entry.player ? " is-player" : ""}" data-race-driver="${entry.driver.name}" role="row">
+      <span class="pit-wall-classification-position" role="cell">P${index + 1}</span>
+      <span class="pit-wall-classification-marker" role="cell" style="background-color:${entry.team.colour}" aria-label="${entry.driver.name}, ${entry.team.name}">${driverInitials(entry.driver)}</span>
+      <strong class="pit-wall-classification-driver" role="cell">${entry.driver.name}</strong>
+      <span class="pit-wall-classification-team" role="cell">${entry.team.name}</span>
+      <span class="pit-wall-classification-tyre" data-race-tyre role="cell">${tyreLabel(entry.session.tyre)}</span>
+      <span class="pit-wall-classification-best${entry === fastest ? " is-fastest" : ""}" data-race-best role="cell"${entry === fastest ? ` aria-label="Fastest lap of the session, ${formatLapTime(entry.bestLap)}"` : ""}>${formatLapTime(entry.bestLap)}</span>
+      <span class="pit-wall-classification-gap" data-race-ahead role="cell">${raceGap(entry, entries[Math.max(0, index - 1)])}</span>
+      <span class="pit-wall-classification-gap" data-race-gap role="cell">${raceGap(entry, entries[0])}</span>
     </li>`).join("");
+}
+
+function formatRaceTime(milliseconds) {
+  if (milliseconds == null) return "—";
+  const time = Math.round(milliseconds);
+  const hours = Math.floor(time / 3600000);
+  return `${hours}:${String(Math.floor(time % 3600000 / 60000)).padStart(2, "0")}:${String(Math.floor(time % 60000 / 1000)).padStart(2, "0")}.${String(time % 1000).padStart(3, "0")}`;
+}
+
+function finalRaceTable(race) {
+  const entries = sprintClassification(race);
+  const fastest = fastestRaceEntry(entries);
+  return `<section class="pit-wall-final-classification" aria-label="Final Classification">
+    <h4 id="pit-wall-review-title" tabindex="-1">Final Classification</h4>
+    <table><thead><tr><th scope="col">Pos</th><th scope="col">Driver / Team</th><th scope="col">Time / Gap</th><th scope="col">Best</th><th scope="col">Pts</th></tr></thead>
+      <tbody>${entries.map((entry, index) => `<tr${entry.player ? ' class="is-player"' : ""}>
+        <td>P${index + 1}</td><td><span class="pit-wall-classification-marker" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span> <span class="pit-wall-result-person"><strong>${entry.driver.name}</strong><span>${entry.team.name} ${tyreLabel(entry.session.tyre)}</span></span></td>
+        <td>${entry.retired ? "DNF" : index === 0 ? formatRaceTime(entry.finishedAt) : raceGap(entry, entries[0])}</td>
+        <td${entry === fastest ? ' class="is-fastest" aria-label="Fastest lap of the race"' : ""}>${formatLapTime(entry.bestLap)}</td><td>${entry.points}</td>
+      </tr>`).join("")}</tbody></table>
+  </section>`;
 }
 
 function championshipTable(championship) {
   const entries = [...championship].sort((a, b) => b.points - a.points || a.order - b.order);
   return `<section class="pit-wall-standings" aria-label="Championship Standings">
     <h4>Championship Standings</h4>
-    ${entries.length ? `<table><thead><tr><th scope="col">Pos</th><th scope="col">Driver</th><th scope="col">Team</th><th scope="col">Pts</th><th scope="col" title="Race wins (future)">Wins</th></tr></thead>
+    ${entries.length ? `<table><thead><tr><th scope="col">Pos</th><th scope="col">Driver / Team</th><th scope="col">Pts</th></tr></thead>
       <tbody>${entries.map((entry, index) => `<tr${entry.player ? ' class="is-player"' : ""}>
-        <td>P${index + 1}</td><td>${entry.driver.name}</td><td>${entry.team.name}</td><td>${entry.points}</td><td aria-label="Race wins not tracked">—</td>
+        <td>P${index + 1}</td><td><span class="pit-wall-classification-marker" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span> <span class="pit-wall-result-person"><strong>${entry.driver.name}</strong><span>${entry.team.name}</span></span></td><td>${entry.points}</td>
       </tr>`).join("")}</tbody></table>` : '<p>No championship results yet.</p>'}
   </section>`;
 }
@@ -378,6 +436,7 @@ class PitWallConsole {
               <h2>Pit Wall</h2>
               <p class="pit-wall-subtitle">Race Engineering Command Centre</p>
             </div>
+            <div class="pit-wall-championship" hidden></div>
             <div class="pit-wall-header-info">
               <span class="pit-wall-info-label">Session Status</span>
               <span class="pit-wall-info-value">Ready</span>
@@ -475,6 +534,7 @@ class PitWallConsole {
     this.weekendDiscoveries = [];
     this.uniqueRewards = new Set();
     this.weekendState = null;
+    this.rootElement.querySelector(".pit-wall-championship").hidden = true;
     this.championship = [];
     this.renderCommand();
     this.seasonWeekends = [];
@@ -541,10 +601,19 @@ class PitWallConsole {
     if (showClassification) {
       driverPanel.innerHTML = `
         <section class="pit-wall-classification" aria-label="Practice Classification"><h4>Practice Classification</h4>
-          <ol></ol>
+          <div role="table" aria-label="Classification">
+            <div class="pit-wall-classification-columns" role="row">
+              <span role="columnheader">Pos</span><span role="columnheader" aria-label="Driver initials">ID</span>
+              <span class="pit-wall-classification-driver" role="columnheader">Driver</span><span class="pit-wall-classification-team" role="columnheader">Team</span><span role="columnheader">Tyre</span>
+              <span role="columnheader">Best Lap</span><span role="columnheader">Gap<br>Ahead</span><span role="columnheader">Gap<br>Leader</span>
+            </div>
+            <ol role="rowgroup"></ol>
+          </div>
         </section>
-        <section class="pit-wall-driver-details" aria-label="Driver Details" tabindex="0">
+        <section class="pit-wall-driver-details${this.weekendState.phase === "running" ? " is-active" : ""}" aria-label="Driver Details" tabindex="0">
           <h4>Driver Details</h4>
+          <button type="button" class="pit-wall-details-toggle" aria-expanded="${Boolean(this.weekendState.driverDetailsExpanded)}">Driver Details</button>
+          <div class="pit-wall-driver-details-content">
           <p><strong>Driver</strong> ${this.driver.name}</p>
           <p><strong>Team</strong> ${this.team.name}</p>
           <p><strong>Strengths</strong> ${this.driver.strengths.join(" · ")}</p>
@@ -554,11 +623,18 @@ class PitWallConsole {
           ${unique.length ? `<ul class="pit-wall-upgrade-list">${unique.map((upgrade) =>
     `<li class="${upgrade.rarity}" aria-label="${labels[upgrade.rarity]}: ${upgrade.name} ${upgrade.stat ? upgrade.effect : this.effectiveDiscovery(upgrade).effect || ""}${upgrade.stackable ? `, level ${upgrade.level}` : ""}">${upgrade.name} ${upgrade.stat ? upgrade.effect : this.effectiveDiscovery(upgrade).effect || ""}${upgrade.stackable ? ` (Lv ${upgrade.level})` : ""}</li>`).join("")}</ul>`
     : '<span class="pit-wall-upgrade-empty">None yet</span>'}
+          </div>
         </section>`;
     } else {
       driverPanel.innerHTML = profile;
     }
-    if (showClassification) this.updateClassification();
+    if (showClassification) {
+      driverPanel.querySelector(".pit-wall-details-toggle").addEventListener("click", (event) => {
+        this.weekendState.driverDetailsExpanded = !this.weekendState.driverDetailsExpanded;
+        event.currentTarget.setAttribute("aria-expanded", String(this.weekendState.driverDetailsExpanded));
+      });
+      this.updateClassification();
+    }
     if (status) this.rootElement.querySelector(".pit-wall-info-value").textContent = status;
   }
 
@@ -575,8 +651,9 @@ class PitWallConsole {
         section.setAttribute("aria-label", title);
       }
       const entries = sprintClassification(state.race);
+      const fastest = fastestRaceEntry(entries);
       const signature = JSON.stringify([title, ...entries.map((entry) =>
-        [entry.driver.name, raceGap(entry, entries[0]), entry.bestLap])]);
+        [entry.driver.name, entry.session.tyre, raceGap(entry, entries[0]), raceGap(entry, entries[Math.max(0, entries.indexOf(entry) - 1)]), entry.bestLap])]);
       if (list.dataset.signature === signature) return;
       if (list.dataset.mode !== "race") {
         list.innerHTML = raceRows(entries);
@@ -587,12 +664,20 @@ class PitWallConsole {
           if (list.children[index] !== row) list.insertBefore(row, list.children[index] || null);
           const position = row.querySelector(".pit-wall-classification-position");
           const gap = row.querySelector("[data-race-gap]");
+          const ahead = row.querySelector("[data-race-ahead]");
           const best = row.querySelector("[data-race-best]");
-          const gapText = `Gap ${raceGap(entry, entries[0])}`;
-          const bestText = `Best ${formatLapTime(entry.bestLap)}`;
+          const tyre = row.querySelector("[data-race-tyre]");
+          if (tyre.querySelector(".pit-wall-tyre-label")?.dataset.tyre !== entry.session.tyre) tyre.innerHTML = tyreLabel(entry.session.tyre);
+          const gapText = raceGap(entry, entries[0]);
+          const aheadText = raceGap(entry, entries[Math.max(0, index - 1)]);
+          const bestText = formatLapTime(entry.bestLap);
           if (position.textContent !== `P${index + 1}`) position.textContent = `P${index + 1}`;
           if (gap.textContent !== gapText) gap.textContent = gapText;
+          if (ahead.textContent !== aheadText) ahead.textContent = aheadText;
           if (best.textContent !== bestText) best.textContent = bestText;
+          best.classList.toggle("is-fastest", entry === fastest);
+          if (entry === fastest) best.setAttribute("aria-label", `Fastest lap of the session, ${bestText}`);
+          else best.removeAttribute("aria-label");
         });
       }
       list.dataset.mode = "race";
@@ -609,7 +694,7 @@ class PitWallConsole {
     }
     const entries = practiceClassification(state.classification, state.practice);
     const signature = JSON.stringify([title, ...entries.map((entry) =>
-      [entry.driver.name, entry.bestLap, entry.bestLapTyre, entry.inPit])]);
+      [entry.driver.name, entry.bestLap, entry.currentTyre, entry.inPit])]);
     if (list.dataset.signature === signature) return;
     list.innerHTML = classificationRows(entries);
     list.dataset.signature = signature;
@@ -763,18 +848,18 @@ class PitWallConsole {
       race: null,
       setup: { tyre: "Medium", fuel: 100 },
     };
+    const championship = this.rootElement.querySelector(".pit-wall-championship");
+    championship.innerHTML = `<strong>2027 Championship</strong>
+      <span>Round ${weekend.round} / ${WEEKENDS.length}</span>
+      ${this.seasonWeekends.length !== WEEKENDS.length ? `<span>Selected: ${this.currentRoundIndex + 1} / ${this.seasonWeekends.length}</span>` : ""}
+      <progress aria-label="Season progress" max="${this.seasonWeekends.length}" value="${this.roundsCompleted}"></progress>`;
+    championship.hidden = false;
     const mainPanel = this.rootElement.querySelector(".pit-wall-track-display");
     this.renderProfile("Race Weekend Ready");
     mainPanel.classList.add("pit-wall-weekend-display");
     mainPanel.innerHTML = `
       <section class="pit-wall-weekend" aria-labelledby="pit-wall-weekend-title">
         <header class="pit-wall-weekend-banner">
-          <div class="pit-wall-championship">
-            <strong>2027 Championship</strong>
-            <span>Current Round: Round ${weekend.round} / ${WEEKENDS.length}</span>
-            ${this.seasonWeekends.length !== WEEKENDS.length ? `<span>Selected: ${this.currentRoundIndex + 1} / ${this.seasonWeekends.length}</span>` : ""}
-            <progress aria-label="Season progress" max="${this.seasonWeekends.length}" value="${this.roundsCompleted}"></progress>
-          </div>
           <div class="pit-wall-weekend-heading">
             <h4 id="pit-wall-weekend-title" tabindex="-1">${weekend.title}</h4>
             <span>${weekend.dates}</span>
@@ -782,6 +867,7 @@ class PitWallConsole {
           <div class="pit-wall-weekend-facts">
             <span>${weekend.weatherIcon ? `<span aria-hidden="true">${weekend.weatherIcon}</span> ` : ""}${weekend.weather || "Weather: Not available"}</span>
             <span>Forecast: ${weekend.forecast || "Not available"}</span>
+            <span>Track Conditions: ${weekend.trackCondition || "Green"}</span>
             <span>Circuit: ${weekend.circuitLength || "TBC"}</span>
             <span>Race Distance: ${weekend.laps ? `${weekend.laps} Laps` : "TBC"}</span>
           </div>
@@ -939,12 +1025,12 @@ class PitWallConsole {
       </div>`;
       return;
     }
-    if (!running) {
+    const race = this.isRace();
+    if (!running && !race) {
       content.innerHTML = '<div class="pit-wall-command-controls"><div class="pit-wall-command-actions"><button type="button" class="pit-wall-discovery-action" data-action="start-session">Start Session</button></div></div>';
       content.querySelector('[data-action="start-session"]').addEventListener("click", () => this.startSession());
       return;
     }
-    const race = this.isRace();
     content.innerHTML = `
       <div class="pit-wall-command-controls">
         <div class="pit-wall-command-group" role="group" aria-label="Driver mode">
@@ -954,37 +1040,50 @@ class PitWallConsole {
     `<button type="button" class="pit-wall-discovery-action" data-driver-mode="${mode}">${mode}</button>`).join("")}
           </div>
         </div>
-        <div class="pit-wall-command-group" role="group" aria-label="Next stint tyre">
-          <span class="pit-wall-command-group-label">Next Tyre Choice</span>
+        <div class="pit-wall-command-group" role="group" aria-label="${running ? "Next stint tyre" : "Starting tyre"}">
+          <span class="pit-wall-command-group-label">${running ? "Next Tyre Choice" : "Starting Tyre"}</span>
           <div class="pit-wall-command-group-controls">
           ${Object.keys(this.balance.tyres).map((tyre) =>
     `<button type="button" class="pit-wall-discovery-action pit-wall-tyre-button" data-tyre="${tyre}" data-setup-tyre="${tyre}" aria-label="${tyre}" title="${tyre}"><span class="pit-wall-tyre-full">${tyre}</span><span class="pit-wall-tyre-short" aria-hidden="true">${tyre[0]}</span></button>`).join("")}
           </div>
         </div>
-        <div class="pit-wall-command-group" role="group" aria-label="Next fuel">
-          <span class="pit-wall-command-group-label">Next Fuel</span>
+        <div class="pit-wall-command-group" role="group" aria-label="${running ? "Next fuel" : "Starting fuel"}">
+          <span class="pit-wall-command-group-label">${running ? "Next Fuel" : "Starting Fuel"}</span>
           <label class="pit-wall-setup-fuel">
-            <input type="range" aria-label="Next Fuel" min="${this.isQualifying() ? ".1" : "10"}" max="100" step="${this.isQualifying() ? ".1" : "1"}" value="${state.setup.fuel}" data-setup-fuel>
-            <output data-setup-fuel-value>${state.setup.fuel}%</output>
+            <input type="range" aria-label="${running ? "Next Fuel" : "Starting Fuel"}" min="${this.isQualifying() ? ".1" : "10"}" max="100" step="${this.isQualifying() ? ".1" : "1"}" value="${state.setup.fuel}" data-setup-fuel>
+            <output data-setup-fuel-value>${state.setup.fuel}%</output>${!running ? '<span data-setup-range></span>' : ""}
           </label>
         </div>
-        <div class="pit-wall-command-group" role="group" aria-label="Session speed">
-          <span class="pit-wall-command-group-label">Session Speed</span>
-          <div class="pit-wall-speed-buttons">
-          ${[0, 1, 10, 50].map((speed) => `<button type="button" class="pit-wall-discovery-action" data-speed="${speed}" aria-pressed="${state.practice.speed === speed}"${speed === 0 ? ' aria-label="Pause"' : ""}>${speed === 0 ? "⏸" : `${speed}x`}</button>`).join("")}
+        <div class="pit-wall-command-operations">
+          <div class="pit-wall-command-status">
+            <strong class="pit-wall-session-name" tabindex="-1">${state.weekend.sessions[state.sessionIndex]}${!running ? " · Race Setup" : ""}</strong>
+            ${running ? `<span class="pit-wall-session-running">${state.debugPaused ? "Paused (Route Debug)" : state.practice.speed === 0 ? "Paused" : "Running..."}</span>
+              ${race ? '<span data-race-status>Starting lights</span>' : this.isQualifying() ? '<span data-qualifying-status>In garage</span>' : '<span data-practice-goal></span>'}
+              <span data-pit-status role="status"></span>` : '<span>Choose your starting setup</span>'}
           </div>
-        </div>
-        <div class="pit-wall-command-actions">
+          <div class="pit-wall-operational-controls">
+          ${running ? `<div class="pit-wall-command-group" role="group" aria-label="Session speed">
+            <span class="pit-wall-command-group-label">Session Speed</span>
+            <div class="pit-wall-speed-buttons">
+            ${[0, 1, 10, 50].map((speed) => `<button type="button" class="pit-wall-discovery-action" data-speed="${speed}" aria-pressed="${state.practice.speed === speed}"${speed === 0 ? ' aria-label="Pause"' : ""}>${speed === 0 ? "⏸" : `${speed}x`}</button>`).join("")}
+            </div>
+          </div>` : ""}
+          <div class="pit-wall-command-actions">
+          ${running ? `
           <button type="button" class="pit-wall-discovery-action" data-action="call-pit" disabled hidden>Call To Pit</button>
           <button type="button" class="pit-wall-discovery-action" data-action="send-out" disabled${race ? " hidden" : ""}>Send Out</button>
-          ${race ? "" : `<button type="button" class="pit-wall-discovery-action" data-action="complete-session"${this.hasSessionRoute() && !this.routeMarker ? " disabled" : ""}>Complete Session</button>`}
+          ${race ? "" : `<button type="button" class="pit-wall-discovery-action" data-action="complete-session"${this.hasSessionRoute() && !this.routeMarker ? " disabled" : ""}>Complete Session</button>`}` : '<button type="button" class="pit-wall-discovery-action" data-action="start-session">Start Race</button>'}
+          </div>
+          </div>
         </div>
       </div>`;
+    content.querySelector('[data-action="start-session"]')?.addEventListener("click", () => this.startSession());
     content.querySelector('[data-action="complete-session"]')?.addEventListener("click", () => this.completeSession());
     content.querySelectorAll("[data-speed]").forEach((button) => {
       button.addEventListener("click", () => this.setPracticeSpeed(Number(button.dataset.speed)));
     });
     const sync = () => {
+      if (!running) return state.phase === "ready";
       if (this.sessionTimer != null && this.syncPracticeClock()) {
         this.completeSession();
         return false;
@@ -994,19 +1093,24 @@ class PitWallConsole {
     content.querySelectorAll("[data-driver-mode]").forEach((button) => {
       button.addEventListener("click", () => {
         if (!sync()) return;
+        if (!running) {
+          state.setup.mode = button.dataset.driverMode;
+          this.updateTiming();
+          return;
+        }
         if (race && (state.race.entries.find((entry) => entry.player).retired
           || state.race.entries.find((entry) => entry.player).finishedAt !== null)) return;
         setDriverMode(state.practice, button.dataset.driverMode);
-        if (race && !state.race.started) state.setup.mode = button.dataset.driverMode;
         this.updateTiming();
       });
     });
-    content.querySelector('[data-action="call-pit"]').addEventListener("click", () => {
+    content.querySelector('[data-action="call-pit"]')?.addEventListener("click", () => {
       if (!sync()) return;
-      callToPit(state.practice);
+      if (state.practice.pitState === "called") cancelPitCall(state.practice);
+      else callToPit(state.practice);
       this.updateTiming();
     });
-    content.querySelector('[data-action="send-out"]').addEventListener("click", () => {
+    content.querySelector('[data-action="send-out"]')?.addEventListener("click", () => {
       if (!sync()) return;
       if (sendPracticeOut(state.practice, state.setup)) {
         this.routeMarker?.update();
@@ -1017,19 +1121,17 @@ class PitWallConsole {
       button.addEventListener("click", () => {
         if (!sync()) return;
         state.setup.tyre = button.dataset.setupTyre;
-        if (race && !state.race.started) setRaceStartingSetup(state.race, state.setup);
         this.updateTiming();
       });
     });
     content.querySelector("[data-setup-fuel]").addEventListener("input", (event) => {
       const fuel = Number(event.currentTarget.value);
       if (!sync()) return;
-      if (race && state.race.started) {
+      if (race && running) {
         this.updateTiming();
         return;
       }
       state.setup.fuel = fuel;
-      if (race) setRaceStartingSetup(state.race, state.setup);
       this.updateTiming();
     });
     this.updateCommand();
@@ -1046,18 +1148,12 @@ class PitWallConsole {
     });
     content.querySelector("[data-setup-fuel]").value = String(state.setup.fuel);
     const race = this.isRace();
-    content.querySelector("[data-setup-fuel]").disabled = race && state.race.started;
-    if (race && !state.race.started) {
-      const racer = state.race.entries.find((entry) => entry.player);
-      const gridMarker = this.rootElement.querySelector(`.pit-wall-start-grid span:nth-child(${racer.gridPosition})`);
-      if (gridMarker) {
-        gridMarker.dataset.tyre = racer.session.tyre;
-        gridMarker.title = `P${racer.gridPosition} ${racer.driver.name}, ${racer.session.tyre} tyre`;
-      }
-    }
+    content.querySelector("[data-setup-fuel]").disabled = race && state.phase === "running";
     const rate = fuelPerLap(this.balance, practice ? practice.mode : state.setup.mode || "Balanced", this.activeDiscoveries(),
       practice ? practice.circuitLength : parseFloat(state.weekend.circuitLength));
     content.querySelector("[data-setup-fuel-value]").textContent = `${state.setup.fuel}%`;
+    const setupRange = content.querySelector("[data-setup-range]");
+    if (setupRange) setupRange.textContent = rate > 0 ? `≈ ${(state.setup.fuel / rate).toFixed(1)} laps` : "No fuel use";
     if (!practice) {
       if (race) content.querySelectorAll("[data-driver-mode]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.driverMode === (state.setup.mode || "Balanced")));
@@ -1073,7 +1169,8 @@ class PitWallConsole {
     const onTrack = ["none", "called"].includes(practice.pitState)
       && (!race || (state.race.started && !racer.retired && racer.finishedAt === null));
     call.hidden = !onTrack || practice.speed === 0 || state.debugPaused;
-    call.disabled = practice.pitState !== "none" || (race && (!state.race.started || racer.retired || racer.finishedAt !== null));
+    call.disabled = !["none", "called"].includes(practice.pitState) || (race && (!state.race.started || racer.retired || racer.finishedAt !== null));
+    call.textContent = practice.pitState === "called" ? "Cancel Pit Call" : "Call To Pit";
     const send = content.querySelector('[data-action="send-out"]');
     send.hidden = race || onTrack;
     send.disabled = practice.pitState !== "stopped"
@@ -1086,7 +1183,7 @@ class PitWallConsole {
       : practice.pitState === "called" ? "Pit requested · awaiting lap end"
       : practice.pitState === "entering" ? `Pit entry · ${Math.ceil(practice.pitRemaining / 1000)}s`
         : practice.pitState === "stopped" ? "In garage · ready to send out"
-        : fuelShort ? "Fuel short at this mode" : "";
+        : fuelShort ? "Fuel short at this mode" : race && !state.race.started ? "On grid" : "On track";
     if (status && status.textContent !== statusText) status.textContent = statusText;
   }
 
@@ -1179,6 +1276,7 @@ class PitWallConsole {
     const tracker = this.rootElement.querySelector(".pit-wall-session-tracker");
     const panel = this.rootElement.querySelector(".pit-wall-session-panel");
     const circuit = this.rootElement.querySelector(".pit-wall-circuit");
+    panel.hidden = false;
     circuit.hidden = state.phase === "discovery" || state.phase === "review" || state.phase === "complete";
     if (!state.showRoute || !["ready", "running"].includes(state.phase)) {
       this.routeOverlay?.remove();
@@ -1187,6 +1285,7 @@ class PitWallConsole {
     panel.classList.toggle("is-discovery", state.phase === "discovery");
     panel.classList.toggle("is-review", state.phase === "review");
     panel.classList.toggle("is-complete", state.phase === "complete");
+    this.rootElement.querySelector(".pit-wall-driver-details")?.classList.toggle("is-active", state.phase === "running");
     this.renderTiming();
     this.renderCommand();
     this.updateClassification();
@@ -1195,7 +1294,7 @@ class PitWallConsole {
       const current = index === state.sessionIndex && !completed && state.phase !== "complete";
       const label = completed ? "Completed" : current ? "Current" : "Pending";
       const icon = completed ? "&#10003;" : current ? "&#9679;" : "&#183;";
-      return `<li class="pit-wall-session-step ${label.toLowerCase()}" aria-label="${session}: ${label}"${current ? ' aria-current="step"' : ""}>${icon} ${session}</li>`;
+      return `<li class="pit-wall-session-step ${label.toLowerCase()}" aria-label="${session}: ${label}"${current ? ' aria-current="step" tabindex="-1"' : ""}>${icon} ${session}</li>`;
     }).join("");
 
     if (state.phase === "complete") {
@@ -1218,21 +1317,9 @@ class PitWallConsole {
     const session = state.weekend.sessions[state.sessionIndex];
     if (state.phase === "review") {
       if (this.isRace()) {
-        const result = state.raceResult;
         panel.innerHTML = `
           <section class="pit-wall-session-review is-race-review" aria-labelledby="pit-wall-review-title">
-            <h4 id="pit-wall-review-title" tabindex="-1">${this.isGrandPrix() ? "Race Results" : "Sprint Results"}</h4>
-            <div class="pit-wall-review-stats">
-              <dl>
-                <dt>Finishing Position</dt><dd>${result.retired ? `P${result.position} · DNF` : `P${result.position}`}</dd>
-                <dt>Best Lap</dt><dd>${formatLapTime(result.bestLap)}</dd>
-                <dt>Average Lap</dt><dd>${formatLapTime(result.averageLap)}</dd>
-                <dt>Laps Completed</dt><dd>${result.laps}</dd>
-                <dt>Points Earned</dt><dd>${result.points}</dd>
-                ${this.isGrandPrix() ? `<dt>Pit Stops</dt><dd>${result.pitStops}</dd>
-                <dt>Tyre Usage</dt><dd>${result.tyres.join(" → ")}</dd>` : ""}
-              </dl>
-            </div>
+            ${finalRaceTable(state.race)}
             ${championshipTable(this.championship)}
             <button type="button" class="pit-wall-menu-button" data-action="continue-review">Continue</button>
           </section>`;
@@ -1339,29 +1426,6 @@ class PitWallConsole {
     }
 
     panel.innerHTML = `
-      <div class="pit-wall-session-current">
-        <div class="pit-wall-session-details">
-          <span class="pit-wall-session-label">Current Session</span>
-          <strong class="pit-wall-session-name" tabindex="-1">${session}</strong>
-          <span>Track Conditions: Green</span>
-          <span>Weather: ${state.weekend.weather || "Not available"}</span>
-          <span>Driver Confidence: Normal</span>
-          ${session === "Sprint Race" && state.sprintGrid ? `<span>Sprint Grid: ${state.sprintGrid.position === null ? "No qualifying time" : `P${state.sprintGrid.position}`}</span>` : ""}
-          ${session === "Grand Prix" && state.grandPrixGrid ? `<span>Race Grid: ${state.grandPrixGrid.position === null ? "No qualifying time" : `P${state.grandPrixGrid.position}`}</span>` : ""}
-        </div>
-        ${state.phase === "running" ? `
-          <div class="pit-wall-session-actions">
-            <span class="pit-wall-session-running">${session} ${state.debugPaused ? "Paused (Route Debug)" : state.practice && state.practice.speed === 0 ? "Paused" : "Running..."}</span>
-            ${this.isTimedSession() ? "" : `<progress aria-label="${session} progress" max="${SESSION_DURATION}" value="${state.elapsed}"></progress>`}
-          </div>
-        ` : ""}
-        ${state.phase === "running" && this.isTimedSession() ? `
-          <div class="pit-wall-session-status">
-            ${this.isRace() ? '<span data-race-status>Starting lights</span>' : this.isQualifying() ? '<span data-qualifying-status>In garage</span>' : `<span data-practice-goal>${state.practice.lapTimes.length >= MINIMUM_LAPS ? "Discovery goal achieved" : `Discovery data: ${state.practice.lapTimes.length} / ${MINIMUM_LAPS} laps`}</span>`}
-            <span data-pit-status role="status"></span>
-          </div>
-        ` : ""}
-      </div>
       ${state.phase === "running" && state.markerLoading ? `<p class="pit-wall-session-notice" role="status">Loading ${state.weekend.name} route...</p>` : ""}
       ${state.phase === "running" && state.markerError ? `
         <div class="pit-wall-route-error" role="alert">${state.markerError}
@@ -1385,9 +1449,10 @@ class PitWallConsole {
       ` : ""}
       ${state.message ? `<p class="pit-wall-session-notice" role="status">${state.message}</p>` : ""}
     `;
+    panel.hidden = !panel.children.length;
     const routeError = panel.querySelector("[data-route-error]");
     if (routeError) routeError.textContent = state.routeError;
-    this.updateCommand();
+    this.updateTiming();
     panel.querySelector('[data-action="retry-marker"]')?.addEventListener("click", () => this.startRouteMarker());
     panel.querySelector('[data-action="toggle-route"]')?.addEventListener("click", () => this.toggleRoute());
     panel.querySelector('[data-action="edit-route"]')?.addEventListener("click", () => {
@@ -1455,6 +1520,7 @@ class PitWallConsole {
     const state = this.weekendState;
     if (state.phase !== "ready") return;
     state.phase = "running";
+    state.driverDetailsExpanded = false;
     state.message = "";
     state.elapsed = 0;
     state.debugPaused = this.routeDebugEnabled && state.weekend.id === "bahrain" && !this.isTimedSession();
@@ -1553,16 +1619,16 @@ class PitWallConsole {
         circuit.insertAdjacentHTML("beforeend", `<div data-sprint-overlay class="pit-wall-start-lights" role="status" aria-label="Start lights">
           ${[1, 2, 3, 4, 5].map((light) => `<span data-start-light="${light}"></span>`).join("")}</div>
           <div data-sprint-overlay class="pit-wall-start-grid" aria-label="${this.isGrandPrix() ? "Grand Prix" : "Sprint"} starting grid">${state.race.entries.map((entry) =>
-    `<span title="P${entry.gridPosition} ${entry.driver.name}, ${entry.session.tyre} tyre" data-tyre="${entry.session.tyre}" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span>`).join("")}</div>`);
+    `<span class="${entry.player ? "is-player" : ""}" title="P${entry.gridPosition} ${entry.driver.name}" data-tyre="${entry.session.tyre}" style="background-color:${entry.team.colour}">${driverInitials(entry.driver)}</span>`).join("")}</div>`);
         this.routeMarker = mountRouteMarkers(circuit, route, state.race.entries.map((entry) => ({
-          initials: driverInitials(entry.driver), teamColour: entry.team.colour,
+          initials: driverInitials(entry.driver), teamColour: entry.team.colour, player: entry.player,
           getProgress: () => this.raceProgress(entry),
           getTyre: () => entry.session.tyre,
           isVisible: () => state.race.started && !entry.retired && entry.finishedAt === null
             && ["none", "called"].includes(entry.session.pitState),
         })));
       } else {
-        const drivers = [{ initials: driverInitials(this.driver), teamColour: this.team.colour,
+        const drivers = [{ initials: driverInitials(this.driver), teamColour: this.team.colour, player: true,
           getProgress: () => this.practiceProgress(), getTyre: () => state.practice.tyre,
           isVisible: () => ["none", "called"].includes(state.practice.pitState) }];
         for (const entry of state.classification.opponents) drivers.push({
@@ -1718,8 +1784,7 @@ class PitWallConsole {
       button.setAttribute("aria-pressed", String(Number(button.dataset.speed) === speed));
     });
     const status = this.rootElement.querySelector(".pit-wall-session-running");
-    const session = state.weekend.sessions[state.sessionIndex];
-    status.textContent = `${session} ${state.debugPaused ? "Paused (Route Debug)" : speed === 0 ? "Paused" : "Running..."}`;
+    status.textContent = state.debugPaused ? "Paused (Route Debug)" : speed === 0 ? "Paused" : "Running...";
     this.updateTiming();
   }
 
@@ -1942,6 +2007,7 @@ class PitWallConsole {
     this.renderProfile("Race Weekend Ready");
     if (state.phase === "complete") {
       this.roundsCompleted += 1;
+      this.rootElement.querySelector(".pit-wall-championship progress").value = this.roundsCompleted;
       this.weekendDiscoveries = [];
       if (this.currentRoundIndex === this.seasonWeekends.length - 1) {
         this.renderSeasonComplete(message);
@@ -1950,8 +2016,8 @@ class PitWallConsole {
       this.renderProfile("Round Complete");
     }
     this.renderSession();
-    const heading = this.rootElement.querySelector(".pit-wall-session-name, .pit-wall-session-complete");
-    heading.focus();
+    const heading = this.rootElement.querySelector(".pit-wall-session-name, .pit-wall-session-complete, .pit-wall-session-step.current");
+    heading?.focus();
   }
 
   renderSeasonComplete(message) {

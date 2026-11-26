@@ -24,6 +24,7 @@ export function createPracticeClassification(driver, team, opponents, circuitLen
       ...entry,
       bestLap: null,
       bestLapTyre: null,
+      currentTyre: null,
       session: null,
       garageRemaining: duration(random, settings.initialDelayMinMs, settings.initialDelayMaxMs),
       modeRemaining: 0,
@@ -64,6 +65,7 @@ function startStint(classification, entry) {
     entry.stintLaps = minLaps + Math.floor(random() * (maxLaps - minLaps + 1));
     entry.modeRemaining = 0;
   }
+  entry.currentTyre = entry.session.tyre;
   entry.session.duration = Infinity;
 }
 
@@ -114,9 +116,11 @@ export function practiceClassification(classification, practice) {
   return [
     { driver: classification.driver, team: classification.team, bestLap,
       bestLapTyre: bestLap === null ? null : practice.lapTyres[laps.indexOf(bestLap)],
+      currentTyre: practice.tyre,
       inPit: practice.pitState === "stopped" || practice.pitState === "entering", player: true },
     ...classification.opponents.map((entry) => ({
       driver: entry.driver, team: entry.team, bestLap: entry.bestLap, bestLapTyre: entry.bestLapTyre,
+      currentTyre: entry.session?.tyre || entry.currentTyre,
       inPit: !entry.session, player: false,
     })),
   ].sort((a, b) => (a.bestLap ?? Infinity) - (b.bestLap ?? Infinity));

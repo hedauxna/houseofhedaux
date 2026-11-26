@@ -276,8 +276,9 @@
       assert(practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).bestLapTyre === "Medium",
         "The player's best lap must record its compound");
       sendPracticeOut(tyrePractice, { tyre: "Hard", fuel: 100 });
-      assert(practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).bestLapTyre === "Medium",
-        "Changing tyres without improving the best lap must not change its compound");
+      assert(practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).bestLapTyre === "Medium"
+        && practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).currentTyre === "Hard",
+        "Current tyres must update independently of the best-lap compound");
       playerLap("Hard", 101000);
       playerLap("Soft", 100000);
       assert(practiceClassification(aiClassification, tyrePractice).find((entry) => entry.player).bestLapTyre === "Medium",
@@ -758,8 +759,8 @@
       game.syncPracticeClock();
       assert(sprintPractice.lapTimes.length === 0
         && root.querySelector("[data-qualifying-status]").textContent === "Flying Lap"
-        && !root.querySelector(".pit-wall-classification-row.is-player .pit-wall-tyre-label"),
-      "The out lap must not enter the qualifying classification");
+        && root.querySelector(".pit-wall-classification-row.is-player .pit-wall-tyre-label").dataset.tyre === "Soft",
+      "The out lap must not enter the qualifying classification, but the current tyre must be shown");
       game.weekendState.timerStartedAt -= sprintPractice.lapTarget;
       game.syncPracticeClock();
       assert(sprintPractice.lapTimes.length === 1
@@ -781,34 +782,41 @@
       root.querySelector('[data-action="continue-review"]').click();
       root.querySelector('[data-discovery-index="0"]').click();
       assert(game.weekendState.sprintGrid === sprintGrid && game.weekendState.sessionIndex === 2
-        && root.querySelector(".pit-wall-session-details").textContent.includes(`Sprint Grid: P${sprintGrid.position}`),
-      "The qualifying grid must remain available for the upcoming Sprint Race");
+        && root.querySelector(".pit-wall-command-status").textContent.includes("Race Setup"),
+      "The qualifying grid must remain available while preparing the Sprint Race");
       let raceNow = 0;
       try {
         Object.defineProperty(performance, "now", { configurable: true, value: () => raceNow });
+        assert(!game.weekendState.race && !root.querySelector(".pit-wall-start-grid, .pit-wall-start-lights")
+          && root.querySelector('[data-action="start-session"]').textContent === "Start Race",
+        "Race setup must not create the grid or start lights");
+        root.querySelector('[data-driver-mode="Push"]').click();
+        root.querySelector('[data-setup-tyre="Soft"]').click();
+        let raceFuel = root.querySelector("[data-setup-fuel]");
+        raceFuel.value = "60";
+        raceFuel.dispatchEvent(new Event("input", { bubbles: true }));
+        const range = 60 / fuelPerLap(game.balance, "Push", game.activeDiscoveries(), 5.412);
+        assert(root.querySelector("[data-setup-range]").textContent === `≈ ${range.toFixed(1)} laps`
+          && !raceFuel.disabled && !game.weekendState.race,
+        "Race setup must show the range for the selected fuel and mode");
         root.querySelector('[data-action="start-session"]').click();
         await waitForMarker(root);
         const liveRace = game.weekendState.race;
         const playerCar = liveRace.entries.find((entry) => entry.player);
-        root.querySelector('[data-speed="0"]').click();
-        root.querySelector('[data-driver-mode="Push"]').click();
-        root.querySelector('[data-setup-tyre="Soft"]').click();
-        const raceFuel = root.querySelector("[data-setup-fuel]");
-        raceFuel.value = "60";
-        raceFuel.dispatchEvent(new Event("input", { bubbles: true }));
+        raceFuel = root.querySelector("[data-setup-fuel]");
         assert(playerCar.tyreHistory[0] === "Soft"
           && playerCar.session.lapTargetBeforeMode === playerCar.session.baseLapTarget
             + game.balance.tyres.Soft.pace - 40 * game.balance.lap.fuelSavingMsPerPercent
-          && !raceFuel.disabled,
-        "Grid setup must update starting tyre history and lap pace while lights are paused");
-        root.querySelector('[data-speed="1"]').click();
+          && raceFuel.disabled,
+        "Starting the race must apply the setup and lock fuel before the lights");
         assert(liveRace.entries.map((entry) => entry.driver.name).join("|")
           === sprintGrid.entries.map((entry) => entry.driver.name).join("|")
           && playerCar.session.tyre === "Soft" && playerCar.session.fuel === 60
-          && playerCar.session.mode === "Push" && !root.querySelector("[data-setup-fuel]").disabled
+          && playerCar.session.mode === "Push" && root.querySelector("[data-setup-fuel]").disabled
           && !root.querySelector('[data-action="send-out"]:not([hidden])')
           && !root.querySelector('[data-action="call-pit"]:not([hidden])')
           && root.querySelectorAll(".pit-wall-start-grid span").length === 10
+          && root.querySelectorAll(".pit-wall-start-grid span.is-player").length === 1
           && [...root.querySelectorAll(".pit-wall-start-grid span")].every((marker, index) =>
             marker.dataset.tyre === liveRace.entries[index].session.tyre)
           && liveRace.startDuration >= 4000 && liveRace.startDuration <= 5000,
@@ -839,12 +847,22 @@
           "Fuel cannot be changed after lights out, even by a delayed input event");
         const raceMarkers = [...root.querySelectorAll(".pit-wall-moving-driver")];
         assert(raceMarkers.every((marker, index) => marker.dataset.tyre === liveRace.entries[index].session.tyre
-          && marker.closest('[role="img"]').getAttribute("aria-label").includes(marker.dataset.tyre)),
-        "Each visible race marker must show and announce its fitted tyre");
+          && Boolean(marker.querySelector(".pit-wall-marker-player")) === liveRace.entries[index].player)
+          && root.querySelectorAll(".pit-wall-marker-player").length === 1
+          && liveRace.entries.every((entry) => root.querySelector(`[data-race-driver="${entry.driver.name}"] [data-race-tyre] .pit-wall-tyre-label`).dataset.tyre === entry.session.tyre),
+        "Race classification must show current tyres while only the player has a marker highlight");
         root.querySelector('[data-setup-tyre="Hard"]').click();
         root.querySelector('[data-action="call-pit"]').click();
+        assert(playerCar.session.pitState === "called"
+          && root.querySelector('[data-action="call-pit"]').textContent === "Cancel Pit Call",
+        "A pending pit call must be cancellable");
+        root.querySelector('[data-action="call-pit"]').click();
+        assert(playerCar.session.pitState === "none"
+          && root.querySelector('[data-action="call-pit"]').textContent === "Call To Pit",
+        "Cancelling a pit call must keep the car on track");
+        root.querySelector('[data-action="call-pit"]').click();
         raceNow += (1 - playerCar.session.lapProgress) * playerCar.session.lapTarget + 1;
-        game.syncPracticeClock();
+        root.querySelector('[data-action="call-pit"]').click();
         assert(playerCar.session.pitState === "entering"
           && root.querySelector('[data-action="call-pit"]').hidden
           && root.querySelector('[data-action="send-out"]').hidden,
@@ -854,7 +872,8 @@
         assert(playerCar.session.tyre === "Hard" && playerCar.session.fuel < 60
           && playerCar.session.fuel > 50 && !root.querySelector("[data-setup-fuel]:not(:disabled)")
           && !root.querySelector('[data-action="call-pit"]').hidden && root.querySelector('[data-action="send-out"]').hidden
-          && raceMarkers[liveRace.entries.indexOf(playerCar)].dataset.tyre === "Hard",
+          && raceMarkers[liveRace.entries.indexOf(playerCar)].dataset.tyre === "Hard"
+          && root.querySelector(".pit-wall-classification-row.is-player [data-race-tyre] .pit-wall-tyre-label").dataset.tyre === "Hard",
         "The player's pit stop must change tyres while retaining the remaining race fuel");
         raceNow += 10000000;
         assert(game.syncPracticeClock(), "The sprint must finish after all cars finish or retire");
@@ -862,8 +881,10 @@
         const finalRace = sprintClassification(liveRace);
         const earned = game.weekendState.raceResult.points;
         assert(game.weekendState.phase === "review"
-          && root.querySelector("#pit-wall-review-title").textContent === "Sprint Results"
-          && root.querySelector(".pit-wall-session-review").textContent.includes("Points Earned")
+          && root.querySelector("#pit-wall-review-title").textContent === "Final Classification"
+          && root.querySelector(".pit-wall-final-classification tbody").children.length === 10
+          && root.querySelectorAll(".pit-wall-final-classification .pit-wall-tyre-label").length === 10
+          && root.querySelectorAll(".pit-wall-final-classification .is-fastest").length === 1
           && root.querySelector(".pit-wall-classification h4").textContent === "Final Classification"
           && root.querySelector(".pit-wall-session-review .pit-wall-standings tr.is-player")
           && game.championship.find((entry) => entry.player).points === earned
@@ -872,6 +893,54 @@
         game.completeSession();
         assert(game.championship.find((entry) => entry.player).points === earned,
           "Sprint points must not be awarded twice");
+        const savedEntries = liveRace.entries.map((entry) => ({
+          entry, retired: entry.retired, finishedAt: entry.finishedAt, bestLap: entry.bestLap,
+          laps: entry.session.completedLaps, progress: entry.session.lapProgress,
+        }));
+        liveRace.entries.forEach((entry, index) => {
+          entry.retired = index >= 4;
+          entry.finishedAt = [5400000, 5401234, 5403418, 5480000][index] ?? null;
+          entry.bestLap = index < 2 ? 90000 : 91000;
+          entry.session.completedLaps = liveRace.laps - (index === 3 ? 1 : 0);
+          entry.session.lapProgress = 0;
+        });
+        game.renderSession();
+        let rows = [...root.querySelectorAll(".pit-wall-final-classification tbody tr")];
+        let liveRows = [...root.querySelectorAll(".pit-wall-classification-row")];
+        assert(rows[0].cells[2].textContent === "1:30:00.000"
+          && rows[1].cells[2].textContent === "+1.234s"
+          && rows[3].cells[2].textContent === "+1L"
+          && rows[4].cells[2].textContent === "DNF"
+          && rows[0].cells[3].classList.contains("is-fastest")
+          && root.querySelectorAll(".pit-wall-final-classification .is-fastest").length === 1
+          && liveRows[2].querySelector("[data-race-gap]").textContent === "+3.418s"
+          && liveRows[2].querySelector("[data-race-ahead]").textContent === "+2.184s"
+          && root.querySelectorAll(".pit-wall-classification-best.is-fastest").length === 1,
+        "Race results must distinguish finish times, lapped and retired cars, both gaps and a tied fastest lap");
+        liveRace.entries[2].bestLap = 88000;
+        game.updateClassification();
+        assert(root.querySelectorAll(".pit-wall-classification-best.is-fastest").length === 1
+          && root.querySelector(`[data-race-driver="${liveRace.entries[2].driver.name}"] [data-race-best]`).classList.contains("is-fastest"),
+        "A new fastest race lap must move the purple highlight");
+        [liveRace.entries[1].finishedAt, liveRace.entries[2].finishedAt] =
+          [liveRace.entries[2].finishedAt, liveRace.entries[1].finishedAt];
+        liveRace.entries.forEach((entry) => { entry.bestLap = null; });
+        game.renderSession();
+        rows = [...root.querySelectorAll(".pit-wall-final-classification tbody tr")];
+        liveRows = [...root.querySelectorAll(".pit-wall-classification-row")];
+        assert(!root.querySelector(".pit-wall-final-classification .is-fastest")
+          && rows[1].cells[1].textContent.includes(liveRace.entries[2].driver.name)
+          && liveRows[1].querySelector("[data-race-ahead]").textContent === "+1.234s"
+          && !root.querySelector(".pit-wall-classification-best.is-fastest"),
+        "Position changes must update gaps and no fastest lap is highlighted without a valid lap");
+        savedEntries.forEach(({ entry, retired, finishedAt, bestLap, laps, progress }) => {
+          entry.retired = retired;
+          entry.finishedAt = finishedAt;
+          entry.bestLap = bestLap;
+          entry.session.completedLaps = laps;
+          entry.session.lapProgress = progress;
+        });
+        game.renderSession();
         root.querySelector('[data-action="continue-review"]').click();
         root.querySelector('[data-discovery-index="0"]').click();
         assert(game.weekendState.sessionIndex === 3
@@ -902,14 +971,29 @@
         "Ordinary qualifying must retain a separate Grand Prix grid");
         root.querySelector('[data-action="continue-review"]').click();
         root.querySelector('[data-discovery-index="0"]').click();
+        assert(game.isGrandPrix() && !game.weekendState.race
+          && !root.querySelector(".pit-wall-start-grid, .pit-wall-start-lights")
+          && root.querySelector('[data-action="start-session"]').textContent === "Start Race",
+        "Grand Prix must also wait in Race Setup before starting");
+        root.querySelector('[data-driver-mode="Manage"]').click();
+        root.querySelector('[data-setup-tyre="Hard"]').click();
+        const gpFuel = root.querySelector("[data-setup-fuel]");
+        gpFuel.value = "80";
+        gpFuel.dispatchEvent(new Event("input", { bubbles: true }));
+        assert(root.querySelector("[data-setup-range]").textContent ===
+          `≈ ${(80 / fuelPerLap(game.balance, "Manage", game.activeDiscoveries(), 5.412)).toFixed(1)} laps`,
+        "Grand Prix setup must estimate range using the selected fuel and mode");
         root.querySelector('[data-action="start-session"]').click();
         await waitForMarker(root);
         const race = game.weekendState.race;
         assert(race.laps === 57 && race.grandPrix
           && race.entries.map((entry) => entry.driver.name).join("|") === qualifyingGrid.entries.map((entry) => entry.driver.name).join("|")
           && root.querySelectorAll(".pit-wall-start-grid span").length === 10
-          && !root.querySelector("[data-setup-fuel]").disabled,
-        "The Bahrain Grand Prix must use the qualifying grid, 57 laps and adjustable grid fuel");
+          && race.entries.find((entry) => entry.player).session.mode === "Manage"
+          && race.entries.find((entry) => entry.player).session.tyre === "Hard"
+          && race.entries.find((entry) => entry.player).session.fuel === 80
+          && root.querySelector("[data-setup-fuel]").disabled,
+        "The Bahrain Grand Prix must use the qualifying grid, 57 laps and locked grid fuel");
         gpNow += 3000;
         game.syncPracticeClock();
         assert(root.querySelectorAll(".pit-wall-start-lights .is-lit").length === 5 && !race.started,
@@ -919,9 +1003,8 @@
         game.completeSession();
         const final = sprintClassification(race);
         assert(game.weekendState.phase === "review"
-          && root.querySelector("#pit-wall-review-title").textContent === "Race Results"
-          && root.querySelector(".pit-wall-session-review").textContent.includes("Tyre Usage")
-          && root.querySelector(".pit-wall-session-review").textContent.includes("Pit Stops")
+          && root.querySelector("#pit-wall-review-title").textContent === "Final Classification"
+          && root.querySelector(".pit-wall-final-classification tbody").children.length === 10
           && root.querySelector(".pit-wall-classification h4").textContent === "Final Classification"
           && final.every((entry, index) => entry.points === (entry.retired ? 0 : GRAND_PRIX_POINTS[index] || 0)
             && game.championship.find((standing) => standing.driver.name === entry.driver.name).points
@@ -929,7 +1012,7 @@
         "Grand Prix results must show strategy and add points to the sprint standings");
         const table = root.querySelector(".pit-wall-session-review .pit-wall-standings");
         assert(table && table.querySelector("tr.is-player")
-          && [...table.querySelectorAll("th")].map((cell) => cell.textContent).join("|") === "Pos|Driver|Team|Pts|Wins"
+          && [...table.querySelectorAll("th")].map((cell) => cell.textContent).join("|") === "Pos|Driver / Team|Pts"
           && table.querySelectorAll("tbody tr").length === 10
           && !root.querySelector(".pit-wall-panel-left .pit-wall-standings"),
         "The Main panel must show the highlighted championship table alongside final race classification");
@@ -985,8 +1068,8 @@
         && [...new Set(entries.map((entry) => entry.team.name))]
           .every((team) => entries.filter((entry) => entry.team.name === team).length === 2)
         && root.querySelectorAll(".pit-wall-moving-driver").length === 10
-        && !root.querySelector(".pit-wall-classification .pit-wall-tyre-label"),
-      "Practice must show all ten drivers without a best-lap tyre before a lap is set");
+        && root.querySelector(".pit-wall-classification-row.is-player .pit-wall-tyre-label").dataset.tyre === "Medium",
+      "Practice must show all ten drivers and the player's current tyre before a lap is set");
       root.querySelector('[data-action="send-out"]').click();
       assert(game.weekendState.practice.tyre === "Soft" && game.weekendState.practice.fuel <= 35
         && game.weekendState.practice.fuel > 34.9
@@ -1044,7 +1127,8 @@
       root.querySelector('[data-action="send-out"]').click();
       const position = marker.getAttribute("transform");
       await new Promise((resolve) => setTimeout(resolve, 350));
-      assert(root.querySelector(".pit-wall-session-running").textContent.includes("Practice 1 Running")
+      assert(root.querySelector(".pit-wall-session-name").textContent === "Practice 1"
+        && root.querySelector(".pit-wall-session-running").textContent === "Running..."
         && marker.querySelector("text").textContent === game.driver.name.split(" ").map((part) => part[0]).join("")
         && marker.querySelector(".pit-wall-marker-team").getAttribute("fill") === game.team.colour
         && marker.getAttribute("transform") !== position
@@ -1064,11 +1148,12 @@
       "Running practice must expose pause, speed and completion controls without Skip Session");
       const commandControls = root.querySelector(".pit-wall-command-controls");
       assert([...commandControls.children].map((item) => item.className).join("|")
-        === "pit-wall-command-group|pit-wall-command-group|pit-wall-command-group|pit-wall-command-group|pit-wall-command-actions"
+        === "pit-wall-command-group|pit-wall-command-group|pit-wall-command-group|pit-wall-command-operations"
         && [...commandControls.querySelectorAll(".pit-wall-command-group-label")].map((item) => item.textContent).join("|")
           === "Driver Mode|Next Tyre Choice|Next Fuel|Session Speed"
         && [...commandControls.querySelector(".pit-wall-command-actions").children].map((item) => item.dataset.action).join("|")
           === "call-pit|send-out|complete-session"
+        && commandControls.querySelector('[aria-label="Session speed"]').nextElementSibling.className === "pit-wall-command-actions"
         && !root.querySelector("[data-fuel-laps]"),
       "Command Centre controls must follow the engineering workflow with completion last");
       root.querySelector('[data-driver-mode="Push"]').click();
@@ -1086,7 +1171,7 @@
       "Preparing a stint while circulating must not alter the current tyre or refuel");
       root.querySelector('[data-action="call-pit"]').click();
       assert(game.weekendState.practice.pitState === "called"
-        && !root.querySelector('[data-action="call-pit"]').hidden && root.querySelector('[data-action="call-pit"]').disabled
+        && !root.querySelector('[data-action="call-pit"]').hidden && root.querySelector('[data-action="call-pit"]').textContent === "Cancel Pit Call"
         && root.querySelector('[data-action="send-out"]').hidden, "Call To Pit must queue the stop");
       game.weekendState.timerStartedAt -= (1 - game.weekendState.practice.lapProgress) * game.weekendState.practice.lapTarget + 1;
       game.syncPracticeClock();
@@ -1605,7 +1690,7 @@
         "portugal", "great-britain", "austria", "belgium", "hungary", "italy", "spain", "azerbaijan",
         "turkiye", "singapore", "united-states", "mexico", "brazil", "las-vegas", "qatar", "abu-dhabi",
       ];
-      const sprintRounds = new Set([1, 3, 4, 7, 8, 10, 14, 21, 23, 24]);
+      const sprintRounds = new Set([1, 3, 4, 7, 8, 10, 14, 21, 22, 23, 24]);
       let seasonTime = 0;
       try {
         Object.defineProperty(performance, "now", { configurable: true, value: () => seasonTime });
@@ -1620,16 +1705,8 @@
             && trackerLabels().length === 5
             && trackerLabels()[1].startsWith(weekend.sprint ? "Sprint Qualifying" : "Practice 2"),
           `Round ${round} must show current championship progress and the correct session format`);
-          if (round > 21) {
-            const placeholder = root.querySelector(".pit-wall-circuit-placeholder");
-            assert(placeholder && !root.querySelector(".pit-wall-circuit img")
-              && placeholder.textContent.includes("Track Layout Coming Soon")
-              && placeholder.textContent.includes(weekend.track) && placeholder.textContent.includes(weekend.country)
-              && placeholder.textContent.includes(`Round ${round}`) && placeholder.textContent.includes(weekend.format)
-              && placeholder.textContent.includes(`Circuit Length: ${weekend.circuitLength}`)
-              && placeholder.textContent.includes("Lap Count: TBC"),
-            `Round ${round} must show the correct track placeholder`);
-          }
+          assert(root.querySelector(".pit-wall-circuit img") && !root.querySelector(".pit-wall-circuit-placeholder"),
+            `Round ${round} must show its circuit image`);
           if (round <= 2) {
             for (const roll of round === 1 ? [.1, .5] : [.95, .99]) {
               Math.random = () => roll;
@@ -1663,7 +1740,8 @@
             root.querySelector('[data-discovery-index="0"]').click();
           }
           while (game.weekendState.phase === "ready") game.skipSession();
-          assert(game.roundsCompleted === round && game.weekendDiscoveries.length === 0,
+          assert(game.roundsCompleted === round && game.weekendDiscoveries.length === 0
+            && root.querySelector(".pit-wall-header .pit-wall-championship progress").value === round,
             `Completing round ${round} must count once and clear weekend discoveries`);
           if (round === 2) {
             const progressText = driverPanel.querySelector(".pit-wall-season-progress").textContent;
@@ -1960,6 +2038,12 @@
           && Math.abs(confirmBounds.bottom - season.getBoundingClientRect().bottom) < 1,
           `Confirm Season is not at the bottom-right at ${width}x${height}`);
         seasonConfirm.click();
+        const championshipHeader = frameRoot.querySelector(".pit-wall-header .pit-wall-championship");
+        assert(!championshipHeader.hidden && championshipHeader.textContent.includes("2027 Championship")
+          && championshipHeader.textContent.includes("Round 1 / 24")
+          && within(championshipHeader, frameRoot.querySelector(".pit-wall-header"))
+          && !frameRoot.querySelector(".pit-wall-weekend-banner .pit-wall-championship"),
+        `Championship and round must fit in the header at ${width}x${height}`);
         let circuit = frameRoot.querySelector(".pit-wall-circuit img");
         await circuit.decode();
         const imageBounds = circuit.getBoundingClientRect();
@@ -1978,6 +2062,8 @@
         `Weekend details overflow at ${width}x${height}`);
 
         layoutGame.startDraft();
+        assert(frameRoot.querySelector(".pit-wall-championship").hidden,
+          "Starting a new game must clear the previous championship header");
         frameRoot.querySelector("[data-driver-index]").click();
         frameRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
         frameRoot.querySelector("[data-team-index]").click();
@@ -2117,11 +2203,18 @@
           && within(frameRoot.querySelector(".pit-wall-driver-details"), frameRoot.querySelector(".pit-wall-panel-left")),
         `All classification entries and Driver Details must fit at ${width}x${height}`);
         const driverDetailsPanel = frameRoot.querySelector(".pit-wall-driver-details");
-        assert(classificationRows.every((row) => within(row, classification))
-          && within(driverDetailsPanel, frameRoot.querySelector(".pit-wall-panel-left"))
-          && !driverDetailsPanel.querySelector("summary, [data-detail-next]"),
+        const detailsToggle = driverDetailsPanel.querySelector(".pit-wall-details-toggle");
+        assert(detailsToggle.getAttribute("aria-expanded") === "false"
+          && frame.contentWindow.getComputedStyle(driverDetailsPanel.querySelector(".pit-wall-driver-details-content")).display === "none",
+        `Driver Details must default to collapsed during mobile sessions at ${width}x${height}`);
+        detailsToggle.click();
+        assert(detailsToggle.getAttribute("aria-expanded") === "true"
+          && frame.contentWindow.getComputedStyle(driverDetailsPanel.querySelector(".pit-wall-driver-details-content")).display !== "none"
+          && classificationRows.every((row) => within(row, classification)),
         `Expanded Driver Details must keep classification visible at ${width}x${height}`);
-        assert(within(frameRoot.querySelector(".pit-wall-session-panel"), main)
+        detailsToggle.click();
+        assert((frameRoot.querySelector(".pit-wall-session-panel").hidden
+            || within(frameRoot.querySelector(".pit-wall-session-panel"), main))
           && within(circuit, main)
           && circuit.getBoundingClientRect().height > 30
           && within(frameRoot.querySelector('[data-action="complete-session"]'), frameRoot.querySelector(".pit-wall-panel-bottom"))
@@ -2170,13 +2263,23 @@
         layoutGame.weekendState.practice.lapTimes = [];
         layoutGame.weekendState.practice.lapTyres = [];
         layoutGame.updateTiming();
-        frameRoot.querySelector('[data-action="call-pit"]').click();
+        const pitButton = frameRoot.querySelector('[data-action="call-pit"]');
+        const checkTouchTarget = (button) => within(button, frameRoot.querySelector(".pit-wall-panel-bottom"))
+          && button.getBoundingClientRect().width >= 44 && button.getBoundingClientRect().height >= 32
+          && button.scrollWidth <= button.clientWidth + 1 && button.scrollHeight <= button.clientHeight + 1;
+        assert(checkTouchTarget(pitButton), `Call To Pit must be touch-friendly at ${width}x${height}`);
+        pitButton.click();
+        assert(pitButton.textContent === "Cancel Pit Call" && checkTouchTarget(pitButton),
+          `Cancel Pit Call must be touch-friendly at ${width}x${height}`);
         layoutGame.weekendState.timerStartedAt -= (1 - layoutGame.weekendState.practice.lapProgress)
           * layoutGame.weekendState.practice.lapTarget + 1;
         layoutGame.syncPracticeClock();
         await new Promise((resolve) => setTimeout(resolve, 250));
         const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
         const consolePanel = frameRoot.querySelector(".pit-wall-console");
+        const statusArea = command.querySelector(".pit-wall-command-status");
+        const actionsArea = command.querySelector(".pit-wall-command-actions");
+        const speedArea = command.querySelector('[aria-label="Session speed"]');
         const commandButtons = [...command.querySelectorAll("button:not([hidden])")];
         assert([...classification.querySelectorAll(".pit-wall-classification-row")].every((row) =>
           within(row, classification) && row.scrollWidth <= row.clientWidth + 1
@@ -2189,14 +2292,21 @@
         `Pit tyre choices must use the same compound colours at ${width}x${height}`);
         assert(within(command, consolePanel)
           && within(liveTiming, timingContent) && within(circuit, main)
+          && within(statusArea, command) && [...statusArea.children].every((item) => within(item, command))
+          && Math.abs(statusArea.getBoundingClientRect().right - actionsArea.getBoundingClientRect().right) < 1
+          && statusArea.getBoundingClientRect().bottom <= actionsArea.getBoundingClientRect().top + 1
+          && Math.abs(speedArea.getBoundingClientRect().right - actionsArea.getBoundingClientRect().left) <= 4
+          && frame.contentWindow.getComputedStyle(statusArea).textAlign === "right"
           && circuit.getBoundingClientRect().height > 30
           && timingContent.scrollHeight <= timingContent.clientHeight + 1
           && timingContent.scrollWidth <= timingContent.clientWidth + 1
           && [...command.querySelectorAll("button:not([hidden]), strong, [data-pit-status], [data-mode-feedback]")].every((item) =>
             within(item, command) && item.scrollWidth <= item.clientWidth + 1
               && item.scrollHeight <= item.clientHeight + 1)
-          && commandButtons.every((button) =>
-            Math.abs(button.getBoundingClientRect().top - commandButtons[0].getBoundingClientRect().top) < 1)
+          && checkTouchTarget(command.querySelector('[data-action="send-out"]'))
+          && checkTouchTarget(command.querySelector('[data-action="complete-session"]'))
+          && command.querySelector("[data-setup-fuel]").getBoundingClientRect().height >= 28
+          && command.querySelector("[data-setup-fuel]").getBoundingClientRect().width >= 48
           && Math.abs(commandButtons[commandButtons.length - 1].getBoundingClientRect().right
             - command.querySelector(".pit-wall-command-controls").getBoundingClientRect().right) < 1
           && [...summary.querySelectorAll("dl > div")].every((row) =>
@@ -2222,31 +2332,44 @@
         const compounds = Object.keys(tyreColours);
         layoutGame.weekendState.classification.opponents.forEach((entry, index) => {
           entry.bestLap = 90000 + index * 100;
-          entry.bestLapTyre = compounds[index % compounds.length];
+          entry.currentTyre = compounds[index % compounds.length];
+          if (entry.session) entry.session.tyre = entry.currentTyre;
         });
         layoutGame.weekendState.practice.lapTimes = [89500];
         layoutGame.weekendState.practice.lapTyres = ["Intermediate"];
+        layoutGame.weekendState.practice.tyre = "Intermediate";
         layoutGame.updateTiming();
         const upgradeList = driverDetailsPanel.querySelector(".pit-wall-upgrade-list");
         upgradeList?.remove();
         let classifiedRows = [...classification.querySelectorAll(".pit-wall-classification-row")];
-        assert(classifiedRows.some((row) => row.querySelector(".pit-wall-classification-time").textContent.includes(":"))
+        const headings = [...classification.querySelectorAll(".pit-wall-classification-columns > span")];
+        assert(headings.length === 8
+          && classifiedRows.some((row) => row.querySelector(".pit-wall-classification-gap").textContent.startsWith("+"))
+          && classification.querySelectorAll(".pit-wall-classification-best.is-fastest").length === 1
           && classifiedRows.every((row) => within(row, classification)
             && row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1
-            && [...row.children].every((item) => within(item, row) && item.scrollWidth <= item.clientWidth + 1)
-            && within(row.querySelector(".pit-wall-tyre-label"), row.querySelector(".pit-wall-classification-time")))
+            && row.children.length === 8
+            && [...row.children].every((item, index) => index === 2 || index === 3
+              ? frame.contentWindow.getComputedStyle(item).display === "none"
+              : within(item, row) && item.scrollWidth <= item.clientWidth + 1
+                && Math.abs(item.getBoundingClientRect().left - headings[index].getBoundingClientRect().left) < 1)
+            && within(row.querySelector(".pit-wall-tyre-label"), row.querySelector(".pit-wall-classification-tyre")))
           && Object.entries(tyreColours).every(([tyre, colour]) => {
             const label = classification.querySelector(`.pit-wall-tyre-label[data-tyre="${tyre}"]`);
             return label && label.textContent === tyre
               && frame.contentWindow.getComputedStyle(label, "::before").backgroundColor === colour;
           }),
         `Populated classification must fit without clipping at ${width}x${height}`);
-        layoutGame.weekendState.classification.opponents.forEach((entry) => { entry.bestLapTyre = "Intermediate"; });
+        layoutGame.weekendState.classification.opponents.forEach((entry) => {
+          entry.currentTyre = "Intermediate";
+          if (entry.session) entry.session.tyre = "Intermediate";
+        });
         layoutGame.updateTiming();
         classifiedRows = [...classification.querySelectorAll(".pit-wall-classification-row")];
         assert(classifiedRows.every((row) =>
           within(row, classification) && row.scrollWidth <= row.clientWidth + 1
-          && [...row.children].every((item) => within(item, row) && item.scrollWidth <= item.clientWidth + 1)),
+          && [...row.children].every((item) => frame.contentWindow.getComputedStyle(item).display === "none"
+            || within(item, row) && item.scrollWidth <= item.clientWidth + 1)),
         `Long compound names must not clip any driver or lap time at ${width}x${height}`);
         assert(classifiedRows.every((row) => within(row, classification))
           && within(classification, frameRoot.querySelector(".pit-wall-panel-left"))
@@ -2261,7 +2384,7 @@
           && driverDetailsPanel.textContent.includes("Strengths")
           && driverDetailsPanel.textContent.includes("Upgrades"),
         "Driver Details must include driver, team, traits and upgrades");
-        if (upgradeList) driverDetailsPanel.append(upgradeList);
+        if (upgradeList) driverDetailsPanel.querySelector(".pit-wall-driver-details-content").append(upgradeList);
         layoutGame.weekendState.practice.lapTimes = completedLapTimes;
         layoutGame.weekendState.practice.lapTyres = completedLapTyres;
         frameRoot.querySelector('[data-action="complete-session"]').click();
@@ -2269,8 +2392,8 @@
         assert(frameRoot.querySelector(".pit-wall-classification h4").textContent === "Final Practice Classification"
           && frameRoot.querySelectorAll(".pit-wall-classification-row").length === 10
           && frameRoot.querySelector(".pit-wall-classification-row.is-player .pit-wall-tyre-label").dataset.tyre
-            === completedLapTyres[completedLapTimes.indexOf(Math.min(...completedLapTimes))],
-        "Final classification must preserve the player's best-lap compound alongside the session review");
+            === layoutGame.weekendState.practice.tyre,
+        "Final classification must show the player's current compound alongside the session review");
         assert(within(reviewPanel, main) && [...reviewPanel.querySelectorAll("dt, dd, p, button, h4")]
           .every((item) => within(item, reviewPanel) && item.scrollHeight <= item.clientHeight + 1
             && item.scrollWidth <= item.clientWidth + 1),
@@ -2465,6 +2588,33 @@
           && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
         `The São Paulo circuit must fit at ${width}x${height}`);
         assertCircuitCentred(circuit, `Brazil at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "las-vegas"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1257 && circuit.naturalHeight === 726 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("6.201 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("50 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Las Vegas circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Las Vegas at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "qatar"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1029 && circuit.naturalHeight === 741 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.419 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("57 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Qatar circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Qatar at ${width}x${height}`);
+        layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "abu-dhabi"));
+        circuit = frameRoot.querySelector(".pit-wall-circuit img");
+        await circuit.decode();
+        assert(circuit.naturalWidth === 1349 && circuit.naturalHeight === 626 && within(circuit, main)
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("5.281 km")
+          && frameRoot.querySelector(".pit-wall-weekend-banner").textContent.includes("58 Laps")
+          && frame.contentWindow.getComputedStyle(circuit).objectFit === "contain",
+        `The Abu Dhabi circuit must fit at ${width}x${height}`);
+        assertCircuitCentred(circuit, `Abu Dhabi at ${width}x${height}`);
         layoutGame.currentRoundIndex = layoutGame.seasonWeekends.length - 1;
         for (let i = 0; i < 5; i += 1) layoutGame.skipSession();
         const finish = frameRoot.querySelector(".pit-wall-season-finish");
@@ -2583,13 +2733,18 @@
       await waitForMarker(frameRoot);
       const tyreMarker = frameRoot.querySelector(".pit-wall-moving-driver");
       const originalTyre = tyreMarker.dataset.tyre;
-      for (const [tyre, colour] of Object.entries(tyreColours)) {
+      for (const tyre of Object.keys(tyreColours)) {
         tyreMarker.dataset.tyre = tyre;
-        assert(frame.contentWindow.getComputedStyle(tyreMarker.querySelector(".pit-wall-marker-tyre")).stroke === colour,
-          `${tyre} markers must use the matching compound colour`);
+        assert(frame.contentWindow.getComputedStyle(tyreMarker.querySelector(".pit-wall-marker-player")).stroke === tyreColours.Medium,
+          `The player highlight must remain yellow on ${tyre} tyres`);
       }
       tyreMarker.dataset.tyre = originalTyre;
+      assert(frameRoot.querySelectorAll(".pit-wall-marker-player").length === 1,
+        "Only the player marker must have a yellow highlight ring");
       const desktopDetails = frameRoot.querySelector(".pit-wall-driver-details");
+      assert(frame.contentWindow.getComputedStyle(desktopDetails.querySelector(".pit-wall-details-toggle")).display === "none"
+        && frame.contentWindow.getComputedStyle(desktopDetails.querySelector(".pit-wall-driver-details-content")).display !== "none",
+      "Desktop Driver Details must stay expanded without a toggle");
       const desktopUpgrades = desktopDetails.querySelector(".pit-wall-upgrade-list");
       desktopUpgrades.remove();
       const desktopDriverContent = frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content");
@@ -2598,7 +2753,7 @@
         && desktopDetails.getBoundingClientRect().top
           > frameRoot.querySelector(".pit-wall-classification").getBoundingClientRect().bottom + 20,
       "Driver Details must stay at the bottom when desktop space remains beneath classification");
-      desktopDetails.append(desktopUpgrades);
+      desktopDetails.querySelector(".pit-wall-driver-details-content").append(desktopUpgrades);
       for (const level of [100, 75, 50, 25, 0]) {
         layoutGame.weekendState.practice.tyreWear = 100 - level;
         layoutGame.weekendState.practice.fuel = level;
@@ -2697,7 +2852,7 @@
                 && parseFloat(frame.contentWindow.getComputedStyle(group).borderTopWidth) >= 1;
             })
             && [...command.querySelectorAll("button:not([hidden]), label, [data-setup-fuel-value]")].every((item) => within(item, command))
-            && within(frameRoot.querySelector("[data-qualifying-status]"), panel)
+            && within(frameRoot.querySelector("[data-qualifying-status]"), command)
             && currentLap.scrollWidth <= currentLap.clientWidth + 1
             && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification))
             && [...frameRoot.querySelectorAll("[data-speed]")].every((button, index, buttons) =>
@@ -2708,7 +2863,7 @@
             command: within(command, consolePanel), commandWidth: command.scrollWidth - command.clientWidth,
             commandHeight: command.scrollHeight - command.clientHeight,
             controls: [...command.querySelectorAll("button:not([hidden]), label, [data-setup-fuel-value]")].every((item) => within(item, command)),
-            status: within(frameRoot.querySelector("[data-qualifying-status]"), panel),
+            status: within(frameRoot.querySelector("[data-qualifying-status]"), command),
             lapWidth: currentLap.scrollWidth - currentLap.clientWidth,
             rows: [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification)),
             circuit: frameRoot.querySelector(".pit-wall-circuit").getBoundingClientRect().height,
@@ -2734,14 +2889,23 @@
       }
       frameRoot.querySelector('[data-action="continue-review"]').click();
       frameRoot.querySelector('[data-discovery-index="0"]').click();
-      frameRoot.querySelector('[data-action="start-session"]').click();
-      await waitForMarker(frameRoot);
-      frameRoot.querySelector('[data-speed="0"]').click();
       frameRoot.querySelector('[data-driver-mode="Push"]').click();
       const layoutRaceFuel = frameRoot.querySelector("[data-setup-fuel]");
       layoutRaceFuel.value = "10";
       layoutRaceFuel.dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
-      frameRoot.querySelector('[data-speed="1"]').click();
+      for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
+        assert(command.scrollWidth <= command.clientWidth + 1 && command.scrollHeight <= command.clientHeight + 1
+          && [...command.querySelectorAll("button, label, [data-setup-range], .pit-wall-command-status")].every((item) =>
+            within(item, command) && item.scrollWidth <= item.clientWidth + 1 && item.scrollHeight <= item.clientHeight + 1)
+          && frameRoot.querySelector(".pit-wall-circuit").getBoundingClientRect().height > 30,
+        `Race setup and range must fit with the circuit at ${width}x${height}`);
+      }
+      frameRoot.querySelector('[data-action="start-session"]').click();
+      await waitForMarker(frameRoot);
       layoutGame.clearSessionTimer();
       for (const stage of ["grid", "racing"]) {
         if (stage === "racing") {
@@ -2765,14 +2929,69 @@
             && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification))
             && [...frameRoot.querySelectorAll("[data-speed]")].every((button, index, buttons) =>
               Math.abs(button.getBoundingClientRect().top - buttons[0].getBoundingClientRect().top) < 1)
-            && buttons.every((button) => Math.abs(button.getBoundingClientRect().top - buttons[0].getBoundingClientRect().top) < 1)
             && circuit.getBoundingClientRect().height > 30
             && (stage !== "grid" || within(frameRoot.querySelector(".pit-wall-start-grid"), circuit)
-              && within(frameRoot.querySelector(".pit-wall-start-lights"), circuit))
+              && within(frameRoot.querySelector(".pit-wall-start-lights"), circuit)
+              && frame.contentWindow.getComputedStyle(frameRoot.querySelector(".pit-wall-start-grid .is-player")).borderColor === tyreColours.Medium)
             && consolePanel.scrollHeight <= consolePanel.clientHeight + 1,
           `Sprint ${stage} controls and circuit must fit at ${width}x${height}`);
         }
       }
+      const layoutRaceEntries = layoutGame.weekendState.race.entries;
+      const savedRaceDisplay = layoutRaceEntries.map((entry) => ({
+        entry, bestLap: entry.bestLap, tyre: entry.session.tyre,
+        laps: entry.session.completedLaps, progress: entry.session.lapProgress,
+      }));
+      layoutRaceEntries.forEach((entry, index) => {
+        entry.bestLap = 90000 + index * 100;
+        entry.session.tyre = "Intermediate";
+        entry.session.completedLaps = 0;
+        entry.session.lapProgress = .95 - index * .1;
+      });
+      layoutGame.updateTiming();
+      for (const [width, height] of [[568, 320], [844, 390], [1440, 900]]) {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const classification = frameRoot.querySelector(".pit-wall-classification");
+        const headings = [...classification.querySelectorAll(".pit-wall-classification-columns > span")];
+        const rows = [...classification.querySelectorAll(".pit-wall-classification-row")];
+        const fastest = classification.querySelector(".pit-wall-classification-best.is-fastest");
+        const mainPanel = frameRoot.querySelector(".pit-wall-panel-centre");
+        const driverPanel = frameRoot.querySelector(".pit-wall-panel-left");
+        assert(rows.length === 10 && headings.length === 8
+          && [2, 3].every((index) => (frame.contentWindow.getComputedStyle(headings[index]).display === "none") === (width < 1200))
+          && rows.every((row) => row.querySelector(".pit-wall-classification-marker").getAttribute("aria-label")
+            .includes(row.querySelector(".pit-wall-classification-driver").textContent))
+          && parseFloat(frame.contentWindow.getComputedStyle(rows[0]).fontSize) >= (width < 1200 ? 10 : 8.5)
+          && classification.querySelectorAll(".pit-wall-classification-best.is-fastest").length === 1
+          && frame.contentWindow.getComputedStyle(fastest).color === "rgb(215, 162, 255)"
+          && rows.every((row) => row.children.length === 8 && within(row, classification)
+            && row.scrollWidth <= row.clientWidth + 1
+            && [...row.children].every((cell, index) => width < 1200 && (index === 2 || index === 3)
+              ? frame.contentWindow.getComputedStyle(cell).display === "none"
+              : within(cell, row) && cell.scrollWidth <= cell.clientWidth + 1
+                && Math.abs(cell.getBoundingClientRect().left - headings[index].getBoundingClientRect().left) < 1)),
+        `Populated race columns must be readable, aligned and unclipped at ${width}x${height}`);
+        assert(width < 844 || mainPanel.getBoundingClientRect().width > width * .25,
+          `The circuit panel must retain useful space at ${width}x${height}`);
+        assert(width < 1440 || mainPanel.getBoundingClientRect().width > driverPanel.getBoundingClientRect().width,
+          `The circuit panel must remain dominant on desktop at ${width}x${height}`);
+      }
+      frame.style.width = "390px";
+      frame.style.height = "844px";
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const portraitHeader = frameRoot.querySelector(".pit-wall-header");
+      assert([...portraitHeader.querySelector(".pit-wall-header-content").children].every((item) => item.hidden
+        || within(item, portraitHeader)),
+      "The championship header must fit in portrait");
+      savedRaceDisplay.forEach(({ entry, bestLap, tyre, laps, progress }) => {
+        entry.bestLap = bestLap;
+        entry.session.tyre = tyre;
+        entry.session.completedLaps = laps;
+        entry.session.lapProgress = progress;
+      });
+      layoutGame.updateTiming();
       layoutGame.weekendState.timerStartedAt -= 10000000;
       layoutGame.syncPracticeClock();
       layoutGame.completeSession();
@@ -2785,6 +3004,8 @@
         assert(within(review, frameRoot.querySelector(".pit-wall-track-display"))
           && [...review.querySelectorAll("h4, dt, dd, p, button")].every((item) => within(item, review)
             && item.scrollWidth <= item.clientWidth + 1 && item.scrollHeight <= item.clientHeight + 1)
+          && [...review.querySelectorAll(".pit-wall-final-classification th, .pit-wall-final-classification td, .pit-wall-standings th, .pit-wall-standings td")].every((item) =>
+            within(item, review) && item.scrollWidth <= item.clientWidth + 1)
           && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification)),
         `Sprint results and standings must fit at ${width}x${height}`);
       }
@@ -2808,7 +3029,7 @@
           && [...review.querySelectorAll("h4, dt, dd, p, button")].every((item) => within(item, review)
             && item.scrollWidth <= item.clientWidth + 1 && item.scrollHeight <= item.clientHeight + 1)
           && [...classification.querySelectorAll(".pit-wall-classification-row")].every((item) => within(item, classification))
-          && [...review.querySelectorAll(".pit-wall-standings th, .pit-wall-standings td")].every((item) => within(item, review)
+          && [...review.querySelectorAll(".pit-wall-final-classification th, .pit-wall-final-classification td, .pit-wall-standings th, .pit-wall-standings td")].every((item) => within(item, review)
             && item.scrollWidth <= item.clientWidth + 1),
         `Grand Prix results and table controls must fit at ${width}x${height}`);
       }
@@ -2843,7 +3064,19 @@
             && cell.scrollWidth <= cell.clientWidth + 1),
         `Season review must show the full championship table at ${width}x${height}`);
       }
-      layoutGame.renderWeekend(layoutGame.seasonWeekends.find((weekend) => weekend.id === "qatar"));
+      const unmappedWeekend = {
+        ...layoutGame.seasonWeekends.find((weekend) => weekend.id === "abu-dhabi"),
+        image: undefined, mappedRoute: false, routeId: undefined, laps: undefined,
+      };
+      layoutGame.renderWeekend(unmappedWeekend);
+      const placeholder = frameRoot.querySelector(".pit-wall-circuit-placeholder");
+      assert(placeholder && !frameRoot.querySelector(".pit-wall-circuit img")
+        && placeholder.textContent.includes("Track Layout Coming Soon")
+        && placeholder.textContent.includes(unmappedWeekend.track) && placeholder.textContent.includes(unmappedWeekend.country)
+        && placeholder.textContent.includes(`Round ${unmappedWeekend.round}`) && placeholder.textContent.includes(unmappedWeekend.format)
+        && placeholder.textContent.includes(`Circuit Length: ${unmappedWeekend.circuitLength}`)
+        && placeholder.textContent.includes("Lap Count: TBC"),
+      "An unmapped weekend must show its track placeholder");
       layoutGame.skipSession();
       layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
@@ -2864,7 +3097,7 @@
       layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(frameRoot);
-      assert(layoutGame.weekendState.race.laps === Math.ceil(305 / 5.419)
+      assert(layoutGame.weekendState.race.laps === Math.ceil(305 / 5.281)
         && frameRoot.querySelector(".pit-wall-schematic"),
       "A Grand Prix without an explicit distance must use the 305 km fallback and schematic route");
       assert(frame.contentWindow.location.href === originalUrl && !doc.querySelector("#games-pit-wall").hidden,
@@ -4219,6 +4452,9 @@
         { id: "great-britain", routeId: "greatbritain", title: "British Grand Prix", country: "United Kingdom", length: 5.891, laps: 52, width: 1107, height: 695 },
         { id: "italy", title: "Italian Grand Prix", country: "Italy", length: 5.793, laps: 53, width: 1181, height: 647 },
         { id: "brazil", title: "São Paulo Grand Prix", country: "Brazil", length: 4.309, laps: 71, width: 1132, height: 742 },
+        { id: "las-vegas", routeId: "lasvegas", title: "Las Vegas Grand Prix", country: "United States", length: 6.201, laps: 50, width: 1257, height: 726 },
+        { id: "qatar", title: "Qatar Grand Prix", country: "Qatar", length: 5.419, laps: 57, width: 1029, height: 741 },
+        { id: "abu-dhabi", routeId: "abudhabi", title: "Abu Dhabi Grand Prix", country: "United Arab Emirates", length: 5.281, laps: 58, width: 1349, height: 626 },
       ]) {
         const circuitWeekend = debugGame.seasonWeekends.find((weekend) => weekend.id === circuit.id);
         debugGame.renderWeekend(circuitWeekend);

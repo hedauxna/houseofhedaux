@@ -110,6 +110,12 @@ export function callToPit(session) {
   return true;
 }
 
+export function cancelPitCall(session) {
+  if (session.pitState !== "called") return false;
+  session.pitState = "none";
+  return true;
+}
+
 export function parkPracticeSession(session) {
   session.pitState = "stopped";
 }
