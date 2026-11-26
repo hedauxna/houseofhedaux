@@ -636,7 +636,9 @@
       root.querySelector('[data-action="new-game"]').click();
 
       const cards = [...root.querySelectorAll("[data-driver-index]")];
-      assert(cards.length === 3, "New Game must present three drivers");
+      assert(cards.length === 3 && cards.every((card) => card.querySelector('input[type="radio"]'))
+        && !root.querySelector(".pit-wall-panel-centre button"),
+      "New Game must present three drivers without progression buttons in the Main panel");
       assert(new Set(cards.map((card) => card.querySelector(".pit-wall-driver-name").textContent)).size === 3,
         "Draft candidates must be distinct");
       assert(cards.every((card) => card.querySelector(".pit-wall-driver-portrait")
@@ -647,18 +649,17 @@
       const driverPanel = root.querySelector(".pit-wall-panel-left");
       cards[0].click();
       assert(driverPanel.textContent.includes(cards[0].querySelector(".pit-wall-driver-name").textContent)
-        && cards[0].querySelector(".pit-wall-card-choice").getAttribute("aria-pressed") === "true"
-        && !cards[0].querySelector(".pit-wall-confirm-button").hidden,
+        && cards[0].querySelector("input").checked
+        && !root.querySelector(".pit-wall-confirm-button").disabled,
       "Choosing a driver must update the Driver panel and show confirmation");
       cards[1].click();
       assert(driverPanel.textContent.includes(cards[1].querySelector(".pit-wall-driver-name").textContent)
-        && cards[0].querySelector(".pit-wall-card-choice").getAttribute("aria-pressed") === "false"
-        && cards[0].querySelector(".pit-wall-confirm-button").hidden
-        && cards[1].querySelector(".pit-wall-card-choice").getAttribute("aria-pressed") === "true"
-        && !cards[1].querySelector(".pit-wall-confirm-button").hidden,
+        && !cards[0].querySelector("input").checked
+        && cards[1].querySelector("input").checked
+        && root.querySelector(".pit-wall-confirm-button").getAttribute("aria-label").includes(cards[1].querySelector(".pit-wall-driver-name").textContent),
       "Choosing another driver must move the selection and confirmation");
       const selectedDriver = cards[1].querySelector(".pit-wall-driver-name").textContent;
-      cards[1].querySelector(".pit-wall-confirm-button").click();
+      root.querySelector(".pit-wall-confirm-button").click();
       assert(driverPanel.textContent.includes(selectedDriver) && driverPanel.textContent.includes("Driver Confirmed")
         && root.querySelector(".pit-wall-info-value").textContent === "Driver Confirmed"
         && root.querySelector("#pit-wall-draft-title").textContent === "Team Draft",
@@ -670,13 +671,12 @@
       "Team Draft must show three distinct teams with a bonus, weakness and description");
       teamCards[0].click();
       teamCards[1].click();
-      assert(teamCards[0].querySelector(".pit-wall-confirm-button").hidden
-        && teamCards[0].querySelector(".pit-wall-card-choice").getAttribute("aria-pressed") === "false"
-        && !teamCards[1].querySelector(".pit-wall-confirm-button").hidden
-        && teamCards[1].querySelector(".pit-wall-card-choice").getAttribute("aria-pressed") === "true",
+      assert(!teamCards[0].querySelector("input").checked
+        && root.querySelector(".pit-wall-confirm-button").getAttribute("aria-label").includes(teamCards[1].querySelector(".pit-wall-driver-name").textContent)
+        && teamCards[1].querySelector("input").checked,
       "Changing team selection must move the confirmation");
       const selectedTeam = teamCards[1].querySelector(".pit-wall-driver-name").textContent;
-      teamCards[1].querySelector(".pit-wall-confirm-button").click();
+      root.querySelector(".pit-wall-confirm-button").click();
       assert(driverPanel.textContent.includes(selectedDriver) && driverPanel.textContent.includes(selectedTeam)
         && driverPanel.textContent.includes("Driver Traits") && driverPanel.textContent.includes("Team Traits")
         && driverPanel.textContent.includes("Ready For Season")
@@ -687,12 +687,14 @@
 
       const confirmSeason = root.querySelector('[data-action="confirm-season"]');
       const seasonButtons = [...root.querySelectorAll("[data-weekend]")];
-      assert(seasonButtons.length === 24 && seasonButtons.every((button) => button.getAttribute("aria-pressed") === "true")
+      assert(seasonButtons.length === 24 && seasonButtons.every((button) => button.querySelector('input[type="checkbox"]').checked)
+        && !root.querySelector(".pit-wall-panel-centre button")
+        && root.querySelector(".pit-wall-panel-bottom [data-action='confirm-season']")
         && root.querySelector("[data-season-count]").textContent === "24 Races Selected"
         && !root.querySelector(".pit-wall-season-navigation")
         && !root.querySelector('[data-action="select-all-races"], [data-action="clear-races"]')
         && root.querySelector('[data-weekend="miami"] .pit-wall-season-date').textContent === "30 Apr-2 May"
-        && root.querySelector('[data-weekend="abu-dhabi"]').getAttribute("aria-label").includes("Sprint weekend"),
+        && root.querySelector('[data-weekend="abu-dhabi"] input').getAttribute("aria-label").includes("Sprint weekend"),
       "All 24 races must be selected and visible on one calendar");
       seasonButtons.forEach((button) => button.click());
       assert(confirmSeason.disabled && root.querySelector("[data-season-count]").textContent === "0 Races Selected"
@@ -704,7 +706,7 @@
       root.querySelector('[data-weekend="bahrain"]').click();
       assert(root.querySelector("[data-season-count]").textContent === "2 Races Selected",
         "Two races must be selectable");
-      seasonButtons.filter((button) => button.getAttribute("aria-pressed") === "false").forEach((button) => button.click());
+      seasonButtons.filter((button) => !button.querySelector("input").checked).forEach((button) => button.click());
       assert(root.querySelector("[data-season-count]").textContent === "24 Races Selected",
         "Manually reselecting races must restore the full season");
       confirmSeason.click();
@@ -1034,7 +1036,8 @@
       game.permanentUpgrades = [];
       game.uniqueRewards.clear();
       game.renderWeekend(bahrainWeekend);
-      assert(root.querySelector(".pit-wall-command-body").textContent.trim() === "Start Session"
+      assert([...root.querySelectorAll(".pit-wall-command-body button")].map((button) => button.textContent).join("|") === "Start Session"
+        && root.querySelector(".pit-wall-command-status").textContent.includes("Ready")
         && !root.querySelector("[data-driver-mode], [data-setup-tyre], [data-setup-fuel], [data-speed], [data-action='call-pit'], [data-action='send-out']"),
       "Before starting a session the Command Centre must show only Start Session");
       root.querySelector('[data-action="start-session"]').click();
@@ -1247,6 +1250,8 @@
       assert(game.weekendState.phase === "review"
         && root.querySelector(".pit-wall-session-review").textContent.includes("Insufficient Data Collected")
         && root.querySelector(".pit-wall-session-review").textContent.includes("Minimum 3 laps")
+        && root.querySelector(".pit-wall-panel-bottom [data-action='continue-review']")
+        && !root.querySelector(".pit-wall-panel-centre button")
         && !root.querySelector("[data-discovery-index]") && !root.querySelector(".pit-wall-lap-entry.is-current"),
       "Completing before three laps must show a review without discoveries");
       const upgradesBeforeInsufficientReview = game.permanentUpgrades.length + game.weekendDiscoveries.length;
@@ -1341,7 +1346,8 @@
       root.querySelector('[data-action="continue-review"]').click();
       assert(game.weekendState.phase === "discovery"
         && root.querySelector(".pit-wall-discovery-heading").textContent.includes("Session Complete")
-        && root.querySelector(".pit-wall-discovery-heading").textContent.includes("Engineering Discovery Available"),
+        && root.querySelector(".pit-wall-discovery-heading").textContent.includes("Engineering Discovery Available")
+        && [...root.querySelectorAll(".pit-wall-panel-centre button")].every((button) => button.hasAttribute("data-discovery-index")),
       "Eligible practice must offer a discovery after review");
       const firstOptions = [...root.querySelectorAll("[data-discovery-index]")];
       assert(firstOptions.length === 3 && new Set(game.weekendState.options.map((item) => item.id)).size === 3
@@ -1679,9 +1685,9 @@
       const startSeason = () => {
         game.startDraft();
         root.querySelector("[data-driver-index]").click();
-        root.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+        root.querySelector(".pit-wall-confirm-button").click();
         root.querySelector("[data-team-index]").click();
-        root.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+        root.querySelector(".pit-wall-confirm-button").click();
       };
       startSeason();
       root.querySelector('[data-action="confirm-season"]').click();
@@ -1826,7 +1832,7 @@
             "Every draft must contain three distinct drivers");
           shortlistNames.forEach((name) => names.add(name));
           shortlist[0].click();
-          shortlist[0].querySelector(".pit-wall-confirm-button").click();
+          root.querySelector(".pit-wall-confirm-button").click();
           const teams = [...root.querySelectorAll("[data-team-index]")];
           const namesInDraft = teams.map((card) => card.querySelector(".pit-wall-driver-name").textContent);
           assert(teams.length === 3 && new Set(namesInDraft).size === 3,
@@ -1978,15 +1984,11 @@
               assert(within(frameRoot.querySelector(".pit-wall-driver-profile"),
                 frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content")),
               `Selected driver overflows at ${width}x${height}`);
-              const footer = card.querySelector(".pit-wall-card-footer");
-              const selected = footer.querySelector(".pit-wall-driver-select").getBoundingClientRect();
-              const confirm = footer.querySelector(".pit-wall-confirm-button").getBoundingClientRect();
-              assert(Math.abs(selected.top + selected.height / 2 - confirm.top - confirm.height / 2) < 1
-                && confirm.right <= footer.getBoundingClientRect().right + 1,
-              `Confirmation is not on the card footer at ${width}x${height}`);
+              assert(within(frameRoot.querySelector(".pit-wall-confirm-button"), frameRoot.querySelector(".pit-wall-panel-bottom")),
+                `Confirmation must fit in the Command Centre at ${width}x${height}`);
             });
             choices[0].click();
-            choices[0].querySelector(".pit-wall-confirm-button").click();
+            frameRoot.querySelector(".pit-wall-confirm-button").click();
             const teams = [...frameRoot.querySelectorAll("[data-team-index]")];
             assert(teams.every((card) => within(card, main))
               && teams.every((card) => Math.abs(card.getBoundingClientRect().top
@@ -1999,7 +2001,7 @@
               card.click();
             });
             teams[0].click();
-            teams[0].querySelector(".pit-wall-confirm-button").click();
+            frameRoot.querySelector(".pit-wall-confirm-button").click();
             profiles.push([layoutGame.driver, layoutGame.team]);
             assert(within(frameRoot.querySelector(".pit-wall-driver-profile"),
               frameRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content")),
@@ -2014,7 +2016,7 @@
         const season = frameRoot.querySelector(".pit-wall-season");
         const seasonConfirm = frameRoot.querySelector('[data-action="confirm-season"]');
         const calendarCards = [...season.querySelectorAll("[data-weekend]")];
-        assert(within(season, main) && within(seasonConfirm, main)
+        assert(within(season, main) && within(seasonConfirm, frameRoot.querySelector(".pit-wall-panel-bottom"))
           && season.scrollHeight <= season.clientHeight + 1
           && season.scrollWidth <= season.clientWidth + 1
           && isCalendarGrid(calendarCards) && calendarCards.every((card, index) =>
@@ -2032,11 +2034,8 @@
             && card.scrollHeight <= card.clientHeight + 1),
         `Empty-season warning must fit at ${width}x${height}`);
         calendarCards.forEach((card) => card.click());
-        const seasonFooter = season.querySelector(".pit-wall-season-footer").getBoundingClientRect();
-        const confirmBounds = seasonConfirm.getBoundingClientRect();
-        assert(Math.abs(confirmBounds.right - seasonFooter.right) < 1
-          && Math.abs(confirmBounds.bottom - season.getBoundingClientRect().bottom) < 1,
-          `Confirm Season is not at the bottom-right at ${width}x${height}`);
+        assert(within(seasonConfirm, frameRoot.querySelector(".pit-wall-panel-bottom")),
+          `Confirm Season must be in the Command Centre at ${width}x${height}`);
         seasonConfirm.click();
         const championshipHeader = frameRoot.querySelector(".pit-wall-header .pit-wall-championship");
         assert(!championshipHeader.hidden && championshipHeader.textContent.includes("2027 Championship")
@@ -2065,9 +2064,9 @@
         assert(frameRoot.querySelector(".pit-wall-championship").hidden,
           "Starting a new game must clear the previous championship header");
         frameRoot.querySelector("[data-driver-index]").click();
-        frameRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+        frameRoot.querySelector(".pit-wall-confirm-button").click();
         frameRoot.querySelector("[data-team-index]").click();
-        frameRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+        frameRoot.querySelector(".pit-wall-confirm-button").click();
         frameRoot.querySelector('[data-weekend="bahrain"]').click();
         frameRoot.querySelector('[data-action="confirm-season"]').click();
         circuit = frameRoot.querySelector(".pit-wall-circuit img");
@@ -2277,10 +2276,18 @@
         await new Promise((resolve) => setTimeout(resolve, 250));
         const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
         const consolePanel = frameRoot.querySelector(".pit-wall-console");
-        const statusArea = command.querySelector(".pit-wall-command-status");
+        const statusArea = frameRoot.querySelector(".pit-wall-panel-bottom > .pit-wall-panel-header .pit-wall-command-status");
         const actionsArea = command.querySelector(".pit-wall-command-actions");
         const speedArea = command.querySelector('[aria-label="Session speed"]');
         const commandButtons = [...command.querySelectorAll("button:not([hidden])")];
+        const commandModules = [...command.querySelectorAll(".pit-wall-command-group, .pit-wall-command-actions > button:not([hidden])")];
+        assert(commandModules.every((module) =>
+          Math.abs(module.getBoundingClientRect().height - 40) < 1
+          && Math.abs(module.getBoundingClientRect().bottom - speedArea.getBoundingClientRect().bottom) < 1)
+          && command.querySelector("[data-setup-fuel]").getBoundingClientRect().width >= 110
+          && speedArea.getBoundingClientRect().left
+            - command.querySelector('[aria-label="Next fuel"]').getBoundingClientRect().right <= 4,
+        `Command modules must share a 40px baseline and a wider fuel slider at ${width}x${height}`);
         assert([...classification.querySelectorAll(".pit-wall-classification-row")].every((row) =>
           within(row, classification) && row.scrollWidth <= row.clientWidth + 1
             && row.scrollHeight <= row.clientHeight + 1)
@@ -2292,11 +2299,12 @@
         `Pit tyre choices must use the same compound colours at ${width}x${height}`);
         assert(within(command, consolePanel)
           && within(liveTiming, timingContent) && within(circuit, main)
-          && within(statusArea, command) && [...statusArea.children].every((item) => within(item, command))
-          && Math.abs(statusArea.getBoundingClientRect().right - actionsArea.getBoundingClientRect().right) < 1
+          && within(statusArea, frameRoot.querySelector(".pit-wall-panel-bottom > .pit-wall-panel-header"))
+          && [...statusArea.children].every((item) => within(item, statusArea))
           && statusArea.getBoundingClientRect().bottom <= actionsArea.getBoundingClientRect().top + 1
+          && frameRoot.querySelector(".pit-wall-panel-bottom > .pit-wall-panel-header").getBoundingClientRect().right
+            - statusArea.getBoundingClientRect().right <= 8
           && Math.abs(speedArea.getBoundingClientRect().right - actionsArea.getBoundingClientRect().left) <= 4
-          && frame.contentWindow.getComputedStyle(statusArea).textAlign === "right"
           && circuit.getBoundingClientRect().height > 30
           && timingContent.scrollHeight <= timingContent.clientHeight + 1
           && timingContent.scrollWidth <= timingContent.clientWidth + 1
@@ -2306,11 +2314,15 @@
           && checkTouchTarget(command.querySelector('[data-action="send-out"]'))
           && checkTouchTarget(command.querySelector('[data-action="complete-session"]'))
           && command.querySelector("[data-setup-fuel]").getBoundingClientRect().height >= 28
-          && command.querySelector("[data-setup-fuel]").getBoundingClientRect().width >= 48
+          && command.querySelector("[data-setup-fuel]").getBoundingClientRect().width >= speedArea.getBoundingClientRect().width - 1
           && Math.abs(commandButtons[commandButtons.length - 1].getBoundingClientRect().right
             - command.querySelector(".pit-wall-command-controls").getBoundingClientRect().right) < 1
           && [...summary.querySelectorAll("dl > div")].every((row) =>
             row.scrollWidth <= row.clientWidth + 1 && row.scrollHeight <= row.clientHeight + 1)
+          && Math.abs(summary.querySelectorAll(".pit-wall-gauge")[0].getBoundingClientRect().width
+            - summary.querySelectorAll(".pit-wall-gauge")[1].getBoundingClientRect().width) < 1
+          && Math.abs(summary.querySelector(".pit-wall-fuel-readout dt").getBoundingClientRect().top
+            - summary.querySelector(".pit-wall-fuel-readout dd").getBoundingClientRect().top) < 1
           && consolePanel.scrollHeight <= consolePanel.clientHeight + 1
           && consolePanel.scrollWidth <= consolePanel.clientWidth + 1,
         `Pit controls and telemetry must fit without scrolling at ${width}x${height}`);
@@ -2371,6 +2383,9 @@
           && [...row.children].every((item) => frame.contentWindow.getComputedStyle(item).display === "none"
             || within(item, row) && item.scrollWidth <= item.clientWidth + 1)),
         `Long compound names must not clip any driver or lap time at ${width}x${height}`);
+        assert(frameRoot.querySelector(".pit-wall-panel-left").getBoundingClientRect().right
+          - classifiedRows[0].querySelector(".pit-wall-classification-gap:last-child").getBoundingClientRect().right <= 12,
+        `The driver panel must not leave excess space after the gap columns at ${width}x${height}`);
         assert(classifiedRows.every((row) => within(row, classification))
           && within(classification, frameRoot.querySelector(".pit-wall-panel-left"))
           && within(driverDetailsPanel, frameRoot.querySelector(".pit-wall-panel-left")),
@@ -2389,12 +2404,18 @@
         layoutGame.weekendState.practice.lapTyres = completedLapTyres;
         frameRoot.querySelector('[data-action="complete-session"]').click();
         const reviewPanel = frameRoot.querySelector(".pit-wall-session-review");
+        const reviewAction = frameRoot.querySelector('[data-action="continue-review"]');
+        const commandContent = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
         assert(frameRoot.querySelector(".pit-wall-classification h4").textContent === "Final Practice Classification"
           && frameRoot.querySelectorAll(".pit-wall-classification-row").length === 10
           && frameRoot.querySelector(".pit-wall-classification-row.is-player .pit-wall-tyre-label").dataset.tyre
             === layoutGame.weekendState.practice.tyre,
         "Final classification must show the player's current compound alongside the session review");
-        assert(within(reviewPanel, main) && [...reviewPanel.querySelectorAll("dt, dd, p, button, h4")]
+        assert(within(reviewPanel, main) && !main.querySelector("button")
+          && within(reviewAction, commandContent)
+          && Math.abs(reviewAction.getBoundingClientRect().right - commandContent.getBoundingClientRect().right
+            + parseFloat(frame.contentWindow.getComputedStyle(commandContent).paddingRight)) < 1
+          && [...reviewPanel.querySelectorAll("dt, dd, p, button, h4")]
           .every((item) => within(item, reviewPanel) && item.scrollHeight <= item.clientHeight + 1
             && item.scrollWidth <= item.clientWidth + 1),
         `Practice review must fit without clipping at ${width}x${height}`);
@@ -2403,7 +2424,9 @@
         for (let i = 1; i < 5; i += 1) layoutGame.skipSession();
         assert(layoutGame.weekendState.phase === "complete"
           && layoutGame.weekendState.sessionResults[0] === "completed"
-          && layoutGame.weekendState.sessionResults.slice(1).every((result) => result === "skipped"),
+          && layoutGame.weekendState.sessionResults.slice(1).every((result) => result === "skipped")
+          && within(frameRoot.querySelector('[data-action="next-round"]'), commandContent)
+          && !main.querySelector("button"),
         `All five Saudi sessions must advance in order at ${width}x${height}`);
         frameRoot.querySelector('[data-action="next-round"]').click();
         circuit = frameRoot.querySelector(".pit-wall-circuit img");
@@ -2638,9 +2661,9 @@
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         layoutGame.startDraft();
         frameRoot.querySelector("[data-driver-index]").click();
-        frameRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+        frameRoot.querySelector(".pit-wall-confirm-button").click();
         frameRoot.querySelector("[data-team-index]").click();
-        frameRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+        frameRoot.querySelector(".pit-wall-confirm-button").click();
         const main = frameRoot.querySelector(".pit-wall-track-display");
         const season = main.querySelector(".pit-wall-season");
         const calendarCards = [...season.querySelectorAll("[data-weekend]")];
@@ -2652,13 +2675,13 @@
         `The complete calendar must fit without clipped content at ${width}x${height}`);
         calendarCards.forEach((card) => card.click());
         const footer = season.querySelector(".pit-wall-season-footer");
-        assert(season.querySelector('[data-action="confirm-season"]').disabled
+        assert(frameRoot.querySelector('[data-action="confirm-season"]').disabled
           && [...footer.children].every((part) => within(part, footer))
           && calendarCards.every((card) => within(card, main)
             && card.scrollHeight <= card.clientHeight + 1),
         `Empty-season warning must fit at ${width}x${height}`);
         calendarCards.forEach((card) => card.click());
-        season.querySelector('[data-action="confirm-season"]').click();
+        frameRoot.querySelector('[data-action="confirm-season"]').click();
         layoutGame.permanentUpgrades = fullSeasonPermanent;
         layoutGame.weekendDiscoveries = fullSeasonWeekend;
         layoutGame.renderProfile("Race Weekend Ready");
@@ -2676,18 +2699,18 @@
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       layoutGame.startDraft();
       frameRoot.querySelector("[data-driver-index]").click();
-      frameRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+      frameRoot.querySelector(".pit-wall-confirm-button").click();
       frameRoot.querySelector("[data-team-index]").click();
-      frameRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+      frameRoot.querySelector(".pit-wall-confirm-button").click();
       frameRoot.querySelector('[data-weekend="bahrain"]').click();
       frameRoot.querySelector('[data-action="confirm-season"]').click();
       await frameRoot.querySelector(".pit-wall-circuit img").decode();
       assertCircuitCentred(frameRoot.querySelector(".pit-wall-circuit img"), "Saudi Arabia on desktop");
       layoutGame.startDraft();
       frameRoot.querySelector("[data-driver-index]").click();
-      frameRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+      frameRoot.querySelector(".pit-wall-confirm-button").click();
       frameRoot.querySelector("[data-team-index]").click();
-      frameRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+      frameRoot.querySelector(".pit-wall-confirm-button").click();
       frameRoot.querySelector('[data-action="confirm-season"]').click();
       const desktopCircuit = frameRoot.querySelector(".pit-wall-circuit img");
       await desktopCircuit.decode();
@@ -2742,6 +2765,9 @@
       assert(frameRoot.querySelectorAll(".pit-wall-marker-player").length === 1,
         "Only the player marker must have a yellow highlight ring");
       const desktopDetails = frameRoot.querySelector(".pit-wall-driver-details");
+      assert(frameRoot.querySelector(".pit-wall-panel-left").getBoundingClientRect().right
+        - frameRoot.querySelector(".pit-wall-classification-row .pit-wall-classification-gap:last-child").getBoundingClientRect().right <= 12,
+      "Desktop classification must not leave excess space after the gap columns");
       assert(frame.contentWindow.getComputedStyle(desktopDetails.querySelector(".pit-wall-details-toggle")).display === "none"
         && frame.contentWindow.getComputedStyle(desktopDetails.querySelector(".pit-wall-driver-details-content")).display !== "none",
       "Desktop Driver Details must stay expanded without a toggle");
@@ -2809,9 +2835,9 @@
       "Desktop discoveries must replace the circuit with three side-by-side cards");
       layoutGame.startDraft();
       frameRoot.querySelector("[data-driver-index]").click();
-      frameRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+      frameRoot.querySelector(".pit-wall-confirm-button").click();
       frameRoot.querySelector("[data-team-index]").click();
-      frameRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+      frameRoot.querySelector(".pit-wall-confirm-button").click();
       frameRoot.querySelector('[data-action="confirm-season"]').click();
       layoutGame.skipSession();
       frameRoot.querySelector('[data-action="start-session"]').click();
@@ -2838,8 +2864,26 @@
           const currentLap = frameRoot.querySelector(".pit-wall-lap-entry.is-current");
           const classification = frameRoot.querySelector(".pit-wall-classification");
           const groups = [...command.querySelectorAll(".pit-wall-command-group")];
+          const modules = [...groups, ...command.querySelectorAll(".pit-wall-command-actions > button:not([hidden])")];
+          const heading = frameRoot.querySelector(".pit-wall-weekend-heading h4");
+          const date = frameRoot.querySelector(".pit-wall-weekend-heading span");
+          const originalHeading = heading.textContent;
+          const originalDate = date.textContent;
+          for (const [title, dates] of [["Saudi Arabian Grand Prix", "19-21 March 2027"],
+            ["Hungarian Grand Prix", "30 July-1 August 2027"]]) {
+            heading.textContent = title;
+            date.textContent = dates;
+            assert(date.getBoundingClientRect().top < heading.getBoundingClientRect().bottom
+              && within(date, heading.parentElement) && within(heading, heading.parentElement),
+            `Long event names and dates must share a line at ${width}x${height}`);
+          }
+          heading.textContent = originalHeading;
+          date.textContent = originalDate;
           assert(within(command, consolePanel) && command.scrollWidth <= command.clientWidth + 1
             && command.scrollHeight <= command.clientHeight + 1
+            && modules.every((module) => Math.abs(module.getBoundingClientRect().height - 40) < 1
+              && Math.abs(module.getBoundingClientRect().bottom - groups[0].getBoundingClientRect().bottom) < 1)
+            && Math.abs(heading.getBoundingClientRect().bottom - date.getBoundingClientRect().bottom) < 3
             && groups.length === 4 && groups.every((group) => {
               const label = group.querySelector(".pit-wall-command-group-label");
               const controls = label.nextElementSibling;
@@ -2847,12 +2891,12 @@
               const groupBounds = group.getBoundingClientRect();
               return within(group, command) && within(label, group) && within(controls, group)
                 && label.scrollWidth <= label.clientWidth + 1
-                && labelBounds.bottom <= controls.getBoundingClientRect().top + 1
+                && controls.getBoundingClientRect().bottom <= labelBounds.top + 1
                 && Math.abs((labelBounds.left + labelBounds.right - groupBounds.left - groupBounds.right) / 2) < 1
                 && parseFloat(frame.contentWindow.getComputedStyle(group).borderTopWidth) >= 1;
             })
             && [...command.querySelectorAll("button:not([hidden]), label, [data-setup-fuel-value]")].every((item) => within(item, command))
-            && within(frameRoot.querySelector("[data-qualifying-status]"), command)
+            && within(frameRoot.querySelector("[data-qualifying-status]"), frameRoot.querySelector(".pit-wall-command-status"))
             && currentLap.scrollWidth <= currentLap.clientWidth + 1
             && [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification))
             && [...frameRoot.querySelectorAll("[data-speed]")].every((button, index, buttons) =>
@@ -2863,7 +2907,7 @@
             command: within(command, consolePanel), commandWidth: command.scrollWidth - command.clientWidth,
             commandHeight: command.scrollHeight - command.clientHeight,
             controls: [...command.querySelectorAll("button:not([hidden]), label, [data-setup-fuel-value]")].every((item) => within(item, command)),
-            status: within(frameRoot.querySelector("[data-qualifying-status]"), command),
+            status: within(frameRoot.querySelector("[data-qualifying-status]"), frameRoot.querySelector(".pit-wall-command-status")),
             lapWidth: currentLap.scrollWidth - currentLap.clientWidth,
             rows: [...classification.querySelectorAll(".pit-wall-classification-row")].every((row) => within(row, classification)),
             circuit: frameRoot.querySelector(".pit-wall-circuit").getBoundingClientRect().height,
@@ -2899,7 +2943,7 @@
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const command = frameRoot.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
         assert(command.scrollWidth <= command.clientWidth + 1 && command.scrollHeight <= command.clientHeight + 1
-          && [...command.querySelectorAll("button, label, [data-setup-range], .pit-wall-command-status")].every((item) =>
+          && [...command.querySelectorAll("button, label, [data-setup-range]")].every((item) =>
             within(item, command) && item.scrollWidth <= item.clientWidth + 1 && item.scrollHeight <= item.clientHeight + 1)
           && frameRoot.querySelector(".pit-wall-circuit").getBoundingClientRect().height > 30,
         `Race setup and range must fit with the circuit at ${width}x${height}`);
@@ -3293,9 +3337,9 @@
       balancePanel.querySelector('[data-action="close-balance"]').click();
       debugGame.startDraft();
       debugRoot.querySelector("[data-driver-index]").click();
-      debugRoot.querySelector("[data-driver-index] .pit-wall-confirm-button").click();
+      debugRoot.querySelector(".pit-wall-confirm-button").click();
       debugRoot.querySelector("[data-team-index]").click();
-      debugRoot.querySelector("[data-team-index] .pit-wall-confirm-button").click();
+      debugRoot.querySelector(".pit-wall-confirm-button").click();
       debugRoot.querySelector('[data-action="confirm-season"]').click();
       debugRoot.querySelector('[data-action="start-session"]').click();
       await waitForMarker(debugRoot);
@@ -3342,6 +3386,20 @@
           === markers[0].getAttribute("transform")
         && debugGame.sessionTimer == null,
       "Route debug must show numbered points and the stationary driver at waypoint zero");
+      debugFrame.style.width = "568px";
+      debugFrame.style.height = "320px";
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const debugStatus = debugRoot.querySelector(".pit-wall-command-status");
+      const debugActions = debugRoot.querySelector(".pit-wall-command-actions");
+      assert(within(debugRoot.querySelector(".pit-wall-details-toggle"), debugRoot.querySelector(".pit-wall-panel-left .pit-wall-panel-content"))
+        && within(debugStatus, debugRoot.querySelector(".pit-wall-panel-bottom > .pit-wall-panel-header"))
+        && debugStatus.getBoundingClientRect().bottom <= debugActions.getBoundingClientRect().top + 1
+        && debugRoot.querySelector(".pit-wall-panel-bottom > .pit-wall-panel-header").getBoundingClientRect().right
+          - debugStatus.getBoundingClientRect().right <= 8,
+      "Mobile route debugging must keep Driver Details and the right-aligned operational status visible");
+      debugFrame.style.width = "844px";
+      debugFrame.style.height = "390px";
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       debugRoot.querySelector('[data-action="edit-route"]').click();
       assert(overlay.classList.contains("is-editing")
         && debugRoot.querySelector('[data-action="export-route"]'),

@@ -658,6 +658,7 @@
     }
 
     .pit-wall-driver-card {
+      position: relative;
       display: flex;
       flex-direction: column;
       min-width: 0;
@@ -693,7 +694,7 @@
       cursor: pointer;
     }
 
-    .pit-wall-card-choice:focus-visible,
+    .pit-wall-driver-card:has(.pit-wall-selection-input:focus-visible),
     .pit-wall-confirm-button:focus-visible {
       outline: 2px solid var(--gold);
       outline-offset: 2px;
@@ -799,8 +800,8 @@
 
     .pit-wall-classification [role="table"] {
       display: grid;
-      grid-template-columns: max-content max-content minmax(max-content, 1fr) minmax(max-content, 1fr) repeat(4, max-content);
-      column-gap: 4px;
+      grid-template-columns: repeat(8, max-content);
+      column-gap: 3px;
       font: 11px/1.1 var(--sans);
       font-variant-numeric: tabular-nums;
     }
@@ -938,6 +939,7 @@
     }
 
     .pit-wall-season-race {
+      position: relative;
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto auto;
       align-items: center;
@@ -952,15 +954,24 @@
       cursor: pointer;
     }
 
-    .pit-wall-season-race[aria-pressed="true"] {
+    .pit-wall-season-race:has(.pit-wall-selection-input:checked) {
       border-color: var(--gold);
       background: rgba(35, 75, 101, .98);
     }
 
-    .pit-wall-season-race:focus-visible,
+    .pit-wall-season-race:has(.pit-wall-selection-input:focus-visible),
     .pit-wall-season-confirm:focus-visible {
       outline: 2px solid var(--gold);
       outline-offset: 2px;
+    }
+    .pit-wall-selection-input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      margin: 0;
+      opacity: 0;
     }
 
     .pit-wall-season-round {
@@ -1134,8 +1145,15 @@
       font: 11px/1.3 var(--sans);
     }
 
+    .pit-wall-weekend-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 8px;
+    }
+
     .pit-wall-weekend-heading h4 {
-      margin: 0 0 3px;
+      margin: 0;
       color: var(--paper);
       font: 600 18px/1.2 var(--serif);
     }
@@ -1368,7 +1386,8 @@
 
     .pit-wall-telemetry .pit-wall-fuel-readout {
       justify-content: flex-end;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      white-space: nowrap;
       gap: 1px 5px;
       color: var(--paper);
       font-size: .85em;
@@ -1378,7 +1397,7 @@
     .pit-wall-telemetry .pit-wall-fuel-readout dt { color: var(--paper); }
 
     .pit-wall-gauge {
-      flex: 0 1 50%;
+      flex: 0 0 50%;
       min-width: 20px;
       height: 8px;
       border: 1px solid transparent;
@@ -2060,7 +2079,7 @@
       display: flex;
       justify-content: flex-end;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 1px 6px;
       min-width: 0;
       text-align: right;
@@ -2068,6 +2087,18 @@
       font: 10px/1.1 var(--sans);
     }
     .pit-wall-command-status .pit-wall-session-name { font: 600 10px/1.1 var(--sans); color: var(--gold); }
+    .pit-wall-route-tools:not([hidden]) {
+      flex: 0 0 auto;
+      padding: 2px 6px;
+      font: 10px/1.1 var(--sans);
+    }
+    .pit-wall-route-tools .pit-wall-route-controls { margin-top: 0; }
+    .pit-wall-route-tools .pit-wall-route-selection { flex-basis: auto; height: auto; }
+    .pit-wall-route-tools .pit-wall-route-selection:empty { display: none; }
+    .pit-wall-panel.pit-wall-panel-bottom:has(.pit-wall-route-tools:not([hidden])) {
+      height: auto;
+      flex-basis: auto;
+    }
 
     .pit-wall-panel-bottom .pit-wall-placeholder-block {
       min-height: 0;
@@ -2080,27 +2111,33 @@
     }
 
     .pit-wall-command-controls {
+      --command-module-height: 40px;
+      position: relative;
       display: flex;
       width: 100%;
       flex-wrap: nowrap;
       align-items: flex-end;
       gap: clamp(2px, .7vw, 12px);
       color: var(--paper);
-      font: 11px/1.2 var(--sans);
+      font: 12px/1.2 var(--sans);
     }
 
     .pit-wall-command-controls .pit-wall-setup-fuel {
       display: flex;
+      flex-wrap: nowrap;
       align-items: center;
       gap: 4px;
+      width: 100%;
       white-space: nowrap;
     }
 
-    .pit-wall-command-controls .pit-wall-setup-fuel input { width: clamp(35px, 6vw, 90px); }
+    .pit-wall-command-controls .pit-wall-setup-fuel input { flex: 1 1 auto; min-width: 110px; width: 0; }
 
     .pit-wall-command-group:not([hidden]) {
       display: flex;
       flex-direction: column;
+      box-sizing: border-box;
+      height: var(--command-module-height);
       align-items: center;
       justify-content: center;
       gap: 2px;
@@ -2111,8 +2148,9 @@
     }
 
     .pit-wall-command-group-label {
+      order: 1;
       color: var(--gold);
-      font: 600 10px/1 var(--sans);
+      font: 600 11px/1 var(--sans);
     }
 
     .pit-wall-command-group-controls,
@@ -2132,9 +2170,16 @@
       margin-left: auto;
       gap: 2px;
     }
+    .pit-wall-command-group:has([data-setup-fuel]) { flex: 1 1 auto; min-width: 0; }
+    .pit-wall-command-controls:has([data-setup-fuel]) .pit-wall-command-operations { flex: 0 0 auto; }
     .pit-wall-operational-controls { display: flex; align-items: flex-end; gap: 4px; }
-    .pit-wall-operational-controls .pit-wall-command-actions { margin-bottom: 4px; }
     .pit-wall-command-actions { justify-content: flex-end; }
+    .pit-wall-command-actions > button {
+      box-sizing: border-box;
+      height: var(--command-module-height);
+      padding: 3px 8px;
+      font-size: 11px;
+    }
     .pit-wall-command-controls > .pit-wall-command-actions { margin-left: auto; }
     .pit-wall-command-controls button { white-space: nowrap; }
     .pit-wall-tyre-short { display: none; }
@@ -2722,6 +2767,8 @@
       .pit-wall-season-finish dl {
         gap: 2px 6px;
       }
+      .pit-wall-console .pit-wall-season-finish p { margin: 2px 0; }
+      .pit-wall-season-finish > .pit-wall-standings { margin-top: 4px; }
 
       .pit-wall-season-footer {
         padding-top: 5px;
@@ -2739,9 +2786,11 @@
       }
 
       .pit-wall-weekend-heading h4 {
-        margin-bottom: 1px;
-        font-size: clamp(11px, 3.2vh, 14px);
+        margin-bottom: 0;
+        font-size: clamp(9px, 2.8vh, 14px);
       }
+      .pit-wall-weekend-heading { gap: 0 2px; }
+      .pit-wall-weekend-heading > span { font-size: clamp(7px, 2.2vh, 9px); }
 
       .pit-wall-weekend-facts {
         gap: 2px 6px;
@@ -3030,8 +3079,8 @@
       }
 
       .pit-wall-panel.pit-wall-panel-bottom {
-        height: 52px;
-        flex-basis: 52px;
+        height: 60px;
+        flex-basis: 60px;
       }
 
       .pit-wall-command-body > .pit-wall-panel-content {
@@ -3043,7 +3092,7 @@
       }
 
       .pit-wall-command-controls {
-        font-size: clamp(7px, 2.2vh, 10px);
+        font-size: clamp(8px, 2.4vh, 10px);
       }
 
       .pit-wall-console .pit-wall-panel-bottom .pit-wall-placeholder-label,
@@ -3071,7 +3120,6 @@
         font-size: clamp(7px, 2vh, 9px);
         line-height: 1;
       }
-
       .pit-wall-panel-bottom .pit-wall-panel-header { height: 16px; padding: 1px 6px; }
       .pit-wall-panel-bottom .pit-wall-panel-header h3 {
         height: 12px;
@@ -3079,18 +3127,17 @@
         line-height: 12px !important;
       }
       .pit-wall-command-group:not([hidden]) { gap: 1px; padding: 1px 2px; }
-      .pit-wall-command-group-label { font-size: clamp(7px, 2.2vh, 9px); }
+      .pit-wall-command-group-label { font-size: clamp(8px, 2.4vh, 10px); }
       .pit-wall-command-controls .pit-wall-setup-fuel input { height: 14px; margin: 0; }
       .pit-wall-command-group-controls,
       .pit-wall-command-actions,
       .pit-wall-speed-buttons { gap: 1px; }
       .pit-wall-command-operations { gap: 0; }
       .pit-wall-operational-controls { gap: 2px; }
-      .pit-wall-operational-controls .pit-wall-command-actions { margin-bottom: 2px; }
 
       .pit-wall-command-controls button {
         padding: 1px 2px;
-        font-size: clamp(7px, 2.2vh, 10px);
+        font-size: clamp(8px, 2.4vh, 10px);
       }
     }
 
@@ -3103,20 +3150,22 @@
 
     @media (min-width: 1201px) {
       .pit-wall-console .pit-wall-layout:has(.pit-wall-classification):not(:has(.is-race-review)) {
-        grid-template-columns: minmax(0, min(47.62%, 510px)) minmax(0, 1fr) minmax(0, 14.29%);
+        grid-template-columns: fit-content(510px) minmax(0, 1fr) minmax(0, 14.29%);
       }
     }
 
     @media (max-width: 1200px) and (orientation: landscape) {
+      .pit-wall-layout > .pit-wall-panel-left,
+      .pit-wall-layout > .pit-wall-panel-centre { border-right: 0; }
       .pit-wall-console .pit-wall-layout:has(.pit-wall-classification):not(:has(.is-race-review)) {
         grid-template-columns: minmax(0, min(61.5%, 420px)) minmax(0, 1fr) minmax(0, 16.5%);
       }
       .pit-wall-console .pit-wall-layout:has(.pit-wall-driver-details.is-active) {
-        grid-template-columns: minmax(0, min(48%, 310px)) minmax(0, 1fr) minmax(0, 16.5%);
+        grid-template-columns: fit-content(41%) minmax(0, 1fr) minmax(130px, 20%);
       }
       .pit-wall-panel-left:has(.pit-wall-driver-details.is-active) .pit-wall-classification [role="table"] {
         grid-template-columns: repeat(6, max-content);
-        justify-content: space-between;
+        justify-content: start;
         column-gap: 2px;
         font-size: clamp(10px, 2.8vh, 12px);
       }
@@ -3143,7 +3192,13 @@
         height: 70px;
         flex-basis: 70px;
       }
-      .pit-wall-operational-controls .pit-wall-command-actions { margin-bottom: 0; }
+      .pit-wall-console:has(.pit-wall-route-tools:not([hidden])) .pit-wall-panel.pit-wall-panel-bottom {
+        height: auto;
+        flex-basis: auto;
+      }
+      .pit-wall-route-tools:not([hidden]) { padding: 0 3px; font-size: 8px; }
+      .pit-wall-route-tools .pit-wall-route-controls { gap: 1px 3px; }
+      .pit-wall-route-tools .pit-wall-discovery-action { padding: 1px 3px; font-size: 8px; line-height: 1; }
       .pit-wall-command-actions [data-action="call-pit"],
       .pit-wall-command-actions [data-action="send-out"],
       .pit-wall-command-actions [data-action="complete-session"] {
@@ -3155,7 +3210,7 @@
       }
       .pit-wall-command-controls .pit-wall-setup-fuel input {
         appearance: none;
-        width: 48px;
+        width: 0;
         height: 28px;
         background: transparent;
         cursor: pointer;

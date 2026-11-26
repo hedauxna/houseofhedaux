@@ -470,10 +470,6 @@ class PitWallConsole {
               <div class="pit-wall-placeholder-block pit-wall-track-placeholder">
                 <p class="pit-wall-placeholder-label">Pit Wall</p>
                 <p class="pit-wall-placeholder-info">Select an option to begin</p>
-                <div class="pit-wall-menu-buttons">
-                  <button class="pit-wall-menu-button" data-action="continue-game">Continue</button>
-                  <button class="pit-wall-menu-button" data-action="new-game">New Game</button>
-                </div>
               </div>
             </div>
           </main>
@@ -493,15 +489,18 @@ class PitWallConsole {
         <footer class="pit-wall-panel pit-wall-panel-bottom">
           <div class="pit-wall-panel-header">
             <h3>Command Centre</h3>
+            <div class="pit-wall-command-status"></div>
           </div>
           <div class="pit-wall-command-body" id="pit-wall-command-content">
             <div class="pit-wall-panel-content">
-              <div class="pit-wall-placeholder-block">
-                <p class="pit-wall-placeholder-label">Radio & Strategy Controls</p>
-                <p class="pit-wall-placeholder-info">Strategic commands and radio instructions will appear here</p>
+              <div class="pit-wall-command-controls"><div class="pit-wall-command-actions">
+                <button type="button" class="pit-wall-discovery-action" data-action="continue-game">Continue</button>
+                <button type="button" class="pit-wall-discovery-action" data-action="new-game">New Game</button>
+              </div>
               </div>
             </div>
           </div>
+          <div class="pit-wall-route-tools" hidden></div>
         </footer>
         ${this.routeDebugEnabled ? '<section id="pit-wall-balance-panel" class="pit-wall-balance-panel" aria-label="Developer balance panel" hidden></section>' : ""}
       </div>
@@ -534,6 +533,8 @@ class PitWallConsole {
     this.weekendDiscoveries = [];
     this.uniqueRewards = new Set();
     this.weekendState = null;
+    this.rootElement.querySelector(".pit-wall-route-tools").innerHTML = "";
+    this.rootElement.querySelector(".pit-wall-route-tools").hidden = true;
     this.rootElement.querySelector(".pit-wall-championship").hidden = true;
     this.championship = [];
     this.renderCommand();
@@ -712,51 +713,55 @@ class PitWallConsole {
         <p class="pit-wall-draft-intro">Choose one ${kind} from your shortlist.</p>
         <div class="pit-wall-draft-cards">
           ${candidates.map((candidate, index) => `
-            <div class="pit-wall-driver-card" data-${kind}-index="${index}">
-              <button type="button" class="pit-wall-card-choice" aria-pressed="false">
+            <label class="pit-wall-driver-card" data-${kind}-index="${index}">
+              <input class="pit-wall-selection-input" type="radio" name="pit-wall-${kind}-draft" value="${index}" aria-label="${candidate.name}">
+              <span class="pit-wall-card-choice">
                 ${isDriver ? portrait(candidate) : ""}
                 <span class="pit-wall-driver-name">${candidate.name}</span>
                 ${isDriver ? driverDetails(candidate) : teamDetails(candidate, true)}
-              </button>
-              <div class="pit-wall-card-footer">
-                <span class="pit-wall-driver-select">Select ${kind}</span>
-                <button type="button" class="pit-wall-confirm-button" aria-label="Confirm ${candidate.name}" hidden>Confirm</button>
-              </div>
-            </div>
+              </span>
+              <span class="pit-wall-card-footer"><span class="pit-wall-driver-select">Select ${kind}</span></span>
+            </label>
           `).join("")}
         </div>
       </section>
     `;
 
+    const command = this.rootElement.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
+    command.innerHTML = `<div class="pit-wall-command-controls"><div class="pit-wall-command-actions">
+      <button type="button" class="pit-wall-discovery-action pit-wall-confirm-button" disabled>Confirm ${kind}</button>
+    </div></div>`;
+    const confirm = command.querySelector(".pit-wall-confirm-button");
+    let selectedIndex = null;
     const cards = mainPanel.querySelectorAll(`[data-${kind}-index]`);
     cards.forEach((card, index) => {
-      const confirm = card.querySelector(".pit-wall-confirm-button");
-      card.addEventListener("click", (event) => {
-        if (event.target.closest(".pit-wall-confirm-button")) return;
+      card.querySelector("input").addEventListener("change", () => {
+        selectedIndex = index;
+        confirm.disabled = false;
+        confirm.setAttribute("aria-label", `Confirm ${candidates[index].name}`);
         cards.forEach((other) => {
           const selected = other === card;
           other.classList.toggle("is-selected", selected);
-          other.querySelector(".pit-wall-card-choice").setAttribute("aria-pressed", String(selected));
           other.querySelector(".pit-wall-driver-select").textContent = selected ? "Selected" : `Select ${kind}`;
-          other.querySelector(".pit-wall-confirm-button").hidden = !selected;
         });
         if (isDriver) {
           this.driver = candidates[index];
           this.renderProfile();
         }
       });
-      confirm.addEventListener("click", () => {
-        if (isDriver) {
-          this.driver = candidates[index];
-          this.renderProfile("Driver Confirmed");
-          this.renderDraft("team");
-        } else {
-          this.team = candidates[index];
-          this.renderProfile("Ready For Season");
-          this.renderSeasonSetup();
-        }
-        mainPanel.querySelector("#pit-wall-draft-title").focus();
-      });
+    });
+    confirm.addEventListener("click", () => {
+      if (selectedIndex === null) return;
+      if (isDriver) {
+        this.driver = candidates[selectedIndex];
+        this.renderProfile("Driver Confirmed");
+        this.renderDraft("team");
+      } else {
+        this.team = candidates[selectedIndex];
+        this.renderProfile("Ready For Season");
+        this.renderSeasonSetup();
+      }
+      mainPanel.querySelector("#pit-wall-draft-title").focus();
     });
   }
 
@@ -769,30 +774,30 @@ class PitWallConsole {
         <div class="pit-wall-season-footer">
           <span class="pit-wall-season-summary" data-season-count aria-live="polite"></span>
           <span class="pit-wall-season-warning" data-season-warning></span>
-          <button type="button" class="pit-wall-menu-button pit-wall-season-confirm" data-action="confirm-season">Confirm Season</button>
         </div>
       </section>
     `;
 
-    const confirm = mainPanel.querySelector('[data-action="confirm-season"]');
+    const command = this.rootElement.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
+    command.innerHTML = '<div class="pit-wall-command-controls"><div class="pit-wall-command-actions"><button type="button" class="pit-wall-discovery-action pit-wall-season-confirm" data-action="confirm-season">Confirm Season</button></div></div>';
+    const confirm = command.querySelector('[data-action="confirm-season"]');
     const renderCalendar = () => {
       const racesElement = mainPanel.querySelector(".pit-wall-season-races");
       racesElement.innerHTML = WEEKENDS.map((weekend) => `
-        <button type="button" class="pit-wall-season-race" data-weekend="${weekend.id}"
-          aria-pressed="${this.selectedWeekends.has(weekend.id)}"
-          aria-label="Round ${weekend.round}, ${weekend.name}, ${weekend.dates}${weekend.sprint ? ", Sprint weekend" : ""}">
+        <label class="pit-wall-season-race" data-weekend="${weekend.id}">
+          <input class="pit-wall-selection-input" type="checkbox" ${this.selectedWeekends.has(weekend.id) ? "checked" : ""}
+            aria-label="Round ${weekend.round}, ${weekend.name}, ${weekend.dates}${weekend.sprint ? ", Sprint weekend" : ""}">
           <span class="pit-wall-season-round">R${weekend.round}</span>
           <span class="pit-wall-season-name">${weekend.name}</span>
           ${weekend.sprint ? '<span class="pit-wall-season-sprint">Sprint</span>' : ""}
           <span class="pit-wall-season-date">${weekend.dates.replace(/ \d{4}$/, "").replace(/\b[A-Za-z]{4,}\b/g, (month) => month.slice(0, 3))}</span>
-        </button>
+        </label>
       `).join("");
-      racesElement.querySelectorAll("[data-weekend]").forEach((button) => {
-        button.addEventListener("click", () => {
-          const id = button.dataset.weekend;
-          if (this.selectedWeekends.has(id)) this.selectedWeekends.delete(id);
-          else this.selectedWeekends.add(id);
-          button.setAttribute("aria-pressed", String(this.selectedWeekends.has(id)));
+      racesElement.querySelectorAll("[data-weekend]").forEach((card) => {
+        const input = card.querySelector("input");
+        input.addEventListener("change", () => {
+          if (input.checked) this.selectedWeekends.add(card.dataset.weekend);
+          else this.selectedWeekends.delete(card.dataset.weekend);
           updateSelection();
         });
       });
@@ -1016,9 +1021,51 @@ class PitWallConsole {
   renderCommand() {
     const state = this.weekendState;
     const content = this.rootElement.querySelector(".pit-wall-command-body > .pit-wall-panel-content");
+    let status = "";
     const practiceAvailable = state && this.isTimedSession() && (state.phase === "ready" || state.phase === "running");
     const running = practiceAvailable && state.phase === "running";
+    if (state && practiceAvailable) {
+      const race = this.isRace();
+      status = `<strong class="pit-wall-session-name" tabindex="-1">${state.weekend.sessions[state.sessionIndex]}${!running && race ? " · Race Setup" : ""}</strong>
+        ${running ? `<span class="pit-wall-session-running">${state.debugPaused ? "Paused (Route Debug)" : state.practice.speed === 0 ? "Paused" : "Running..."}</span>
+          ${race ? '<span data-race-status>Starting lights</span>' : this.isQualifying() ? '<span data-qualifying-status>In garage</span>' : '<span data-practice-goal></span>'}
+          <span data-pit-status role="status"></span>` : "<span>Ready</span>"}`;
+    } else if (state?.phase === "complete") {
+      status = this.currentRoundIndex === this.seasonWeekends.length - 1 ? "Season Complete" : "Weekend Complete";
+    } else if (state?.phase === "review" || state?.phase === "discovery") {
+      status = `${state.weekend.sessions[state.sessionIndex]} · ${state.phase === "review" ? "Complete" : "Engineering Discovery"}`;
+    }
+    this.rootElement.querySelector(".pit-wall-command-status").innerHTML = status;
     if (!practiceAvailable) {
+      if (state?.phase === "review" || state?.phase === "discovery"
+        || (state?.phase === "complete" && this.currentRoundIndex < this.seasonWeekends.length - 1)) {
+        const review = state.phase === "review";
+        const complete = state.phase === "complete";
+        const enoughData = review && (this.isRace() || this.isQualifying() || state.practice.lapTimes.length >= MINIMUM_LAPS);
+        const action = complete ? '<button type="button" class="pit-wall-discovery-action" data-action="next-round">Proceed To Next Round</button>'
+          : review ? `<button type="button" class="pit-wall-discovery-action" data-action="continue-review">${this.isRace() || this.isQualifying() ? "Continue" : enoughData ? "Choose Engineering Discovery" : "Continue to Next Session"}</button>`
+            : `${state.rerollsRemaining ? `<button type="button" class="pit-wall-discovery-action" data-action="reroll-discoveries">Reroll all (${state.rerollsRemaining})</button>` : ""}
+              ${state.replacementsRemaining ? `<button type="button" class="pit-wall-discovery-action" data-action="replace-discovery" aria-pressed="${state.replacementMode}">Reroll one (${state.replacementsRemaining})</button>` : ""}`;
+        content.innerHTML = `<div class="pit-wall-command-controls"><div class="pit-wall-command-operations">
+          <div class="pit-wall-command-actions">${action}</div></div></div>`;
+        content.querySelector('[data-action="next-round"]')?.addEventListener("click", () => {
+          if (this.weekendState !== state || state.phase !== "complete") return;
+          this.currentRoundIndex += 1;
+          this.renderWeekend(this.seasonWeekends[this.currentRoundIndex]);
+        });
+        content.querySelector('[data-action="continue-review"]')?.addEventListener("click", () => {
+          if (state.phase !== "review") return;
+          if (enoughData) this.offerDiscoveries();
+          else this.advanceSession("No discovery awarded: insufficient data.");
+        });
+        content.querySelector('[data-action="reroll-discoveries"]')?.addEventListener("click", () => this.rerollDiscoveries());
+        content.querySelector('[data-action="replace-discovery"]')?.addEventListener("click", () => {
+          state.replacementMode = !state.replacementMode;
+          this.renderSession();
+          this.rootElement.querySelector('[data-action="replace-discovery"]').focus();
+        });
+        return;
+      }
       content.innerHTML = `<div class="pit-wall-placeholder-block">
         <p class="pit-wall-placeholder-label">Radio & Strategy Controls</p>
         <p class="pit-wall-placeholder-info">Controls are available during practice, qualifying and races.</p>
@@ -1027,7 +1074,8 @@ class PitWallConsole {
     }
     const race = this.isRace();
     if (!running && !race) {
-      content.innerHTML = '<div class="pit-wall-command-controls"><div class="pit-wall-command-actions"><button type="button" class="pit-wall-discovery-action" data-action="start-session">Start Session</button></div></div>';
+      content.innerHTML = `<div class="pit-wall-command-controls"><div class="pit-wall-command-operations">
+        <div class="pit-wall-command-actions"><button type="button" class="pit-wall-discovery-action" data-action="start-session">Start Session</button></div></div></div>`;
       content.querySelector('[data-action="start-session"]').addEventListener("click", () => this.startSession());
       return;
     }
@@ -1055,12 +1103,6 @@ class PitWallConsole {
           </label>
         </div>
         <div class="pit-wall-command-operations">
-          <div class="pit-wall-command-status">
-            <strong class="pit-wall-session-name" tabindex="-1">${state.weekend.sessions[state.sessionIndex]}${!running ? " · Race Setup" : ""}</strong>
-            ${running ? `<span class="pit-wall-session-running">${state.debugPaused ? "Paused (Route Debug)" : state.practice.speed === 0 ? "Paused" : "Running..."}</span>
-              ${race ? '<span data-race-status>Starting lights</span>' : this.isQualifying() ? '<span data-qualifying-status>In garage</span>' : '<span data-practice-goal></span>'}
-              <span data-pit-status role="status"></span>` : '<span>Choose your starting setup</span>'}
-          </div>
           <div class="pit-wall-operational-controls">
           ${running ? `<div class="pit-wall-command-group" role="group" aria-label="Session speed">
             <span class="pit-wall-command-group-label">Session Speed</span>
@@ -1276,6 +1318,9 @@ class PitWallConsole {
     const tracker = this.rootElement.querySelector(".pit-wall-session-tracker");
     const panel = this.rootElement.querySelector(".pit-wall-session-panel");
     const circuit = this.rootElement.querySelector(".pit-wall-circuit");
+    const tools = this.rootElement.querySelector(".pit-wall-route-tools");
+    tools.innerHTML = "";
+    tools.hidden = true;
     panel.hidden = false;
     circuit.hidden = state.phase === "discovery" || state.phase === "review" || state.phase === "complete";
     if (!state.showRoute || !["ready", "running"].includes(state.phase)) {
@@ -1301,16 +1346,10 @@ class PitWallConsole {
       panel.innerHTML = `
         <div class="pit-wall-session-complete" tabindex="-1">
           <strong>Weekend Complete</strong>
-          <button type="button" class="pit-wall-menu-button" data-action="next-round">Proceed To Next Round</button>
           ${state.message ? `<span class="pit-wall-session-notice">${state.message}</span>` : ""}
           ${championshipTable(this.championship)}
         </div>
       `;
-      panel.querySelector('[data-action="next-round"]').addEventListener("click", () => {
-        if (this.weekendState !== state || state.phase !== "complete") return;
-        this.currentRoundIndex += 1;
-        this.renderWeekend(this.seasonWeekends[this.currentRoundIndex]);
-      });
       return;
     }
 
@@ -1321,11 +1360,7 @@ class PitWallConsole {
           <section class="pit-wall-session-review is-race-review" aria-labelledby="pit-wall-review-title">
             ${finalRaceTable(state.race)}
             ${championshipTable(this.championship)}
-            <button type="button" class="pit-wall-menu-button" data-action="continue-review">Continue</button>
           </section>`;
-        panel.querySelector('[data-action="continue-review"]').addEventListener("click", () => {
-          if (state.phase === "review") this.offerDiscoveries();
-        });
         return;
       }
       if (this.isQualifying()) {
@@ -1344,11 +1379,7 @@ class PitWallConsole {
               <strong>Qualifying Classification</strong>
               <p>Final classification is shown in the Driver panel.</p>
             </div>
-            <button type="button" class="pit-wall-menu-button" data-action="continue-review">Continue</button>
           </section>`;
-        panel.querySelector('[data-action="continue-review"]').addEventListener("click", () => {
-          if (state.phase === "review") this.offerDiscoveries();
-        });
         return;
       }
       const practice = state.practice;
@@ -1379,13 +1410,7 @@ class PitWallConsole {
           <div class="pit-wall-review-eligibility">
             ${enoughData ? "Engineering Discovery available." : `Insufficient Data Collected<br>Minimum ${MINIMUM_LAPS} laps required for Engineering Discovery.`}
           </div>
-          <button type="button" class="pit-wall-menu-button" data-action="continue-review">${enoughData ? "Choose Engineering Discovery" : "Continue to Next Session"}</button>
         </section>`;
-      panel.querySelector('[data-action="continue-review"]').addEventListener("click", () => {
-        if (state.phase !== "review") return;
-        if (enoughData) this.offerDiscoveries();
-        else this.advanceSession("No discovery awarded: insufficient data.");
-      });
       return;
     }
     if (state.phase === "discovery") {
@@ -1394,8 +1419,6 @@ class PitWallConsole {
           <strong>Session Complete</strong>
           <span>Engineering Discovery Available</span>
           ${state.message ? `<span role="status">${state.message}</span>` : ""}
-          ${state.rerollsRemaining ? `<button type="button" class="pit-wall-discovery-action" data-action="reroll-discoveries">Reroll all (${state.rerollsRemaining})</button>` : ""}
-          ${state.replacementsRemaining ? `<button type="button" class="pit-wall-discovery-action" data-action="replace-discovery" aria-pressed="${state.replacementMode}">Reroll one (${state.replacementsRemaining})</button>` : ""}
           ${state.replacementMode ? '<span role="status">Choose a card to reroll.</span>' : ""}
         </div>
         <div class="pit-wall-discovery-cards">
@@ -1416,16 +1439,10 @@ class PitWallConsole {
           else this.chooseDiscovery(index);
         });
       });
-      panel.querySelector('[data-action="reroll-discoveries"]')?.addEventListener("click", () => this.rerollDiscoveries());
-      panel.querySelector('[data-action="replace-discovery"]')?.addEventListener("click", () => {
-        state.replacementMode = !state.replacementMode;
-        this.renderSession();
-        panel.querySelector('[data-action="replace-discovery"]').focus();
-      });
       return;
     }
 
-    panel.innerHTML = `
+    tools.innerHTML = `
       ${state.phase === "running" && state.markerLoading ? `<p class="pit-wall-session-notice" role="status">Loading ${state.weekend.name} route...</p>` : ""}
       ${state.phase === "running" && state.markerError ? `
         <div class="pit-wall-route-error" role="alert">${state.markerError}
@@ -1447,21 +1464,22 @@ class PitWallConsole {
           ${state.routeError ? '<span class="pit-wall-route-error" role="alert" data-route-error></span>' : ""}
         </div>
       ` : ""}
-      ${state.message ? `<p class="pit-wall-session-notice" role="status">${state.message}</p>` : ""}
     `;
+    tools.hidden = !tools.children.length;
+    panel.innerHTML = state.message ? `<p class="pit-wall-session-notice" role="status">${state.message}</p>` : "";
     panel.hidden = !panel.children.length;
-    const routeError = panel.querySelector("[data-route-error]");
+    const routeError = tools.querySelector("[data-route-error]");
     if (routeError) routeError.textContent = state.routeError;
     this.updateTiming();
-    panel.querySelector('[data-action="retry-marker"]')?.addEventListener("click", () => this.startRouteMarker());
-    panel.querySelector('[data-action="toggle-route"]')?.addEventListener("click", () => this.toggleRoute());
-    panel.querySelector('[data-action="edit-route"]')?.addEventListener("click", () => {
+    tools.querySelector('[data-action="retry-marker"]')?.addEventListener("click", () => this.startRouteMarker());
+    tools.querySelector('[data-action="toggle-route"]')?.addEventListener("click", () => this.toggleRoute());
+    tools.querySelector('[data-action="edit-route"]')?.addEventListener("click", () => {
       state.editRoute = !state.editRoute;
       this.routeOverlay.setEditing(state.editRoute);
       this.renderSession();
-      panel.querySelector('[data-action="edit-route"]').focus();
+      tools.querySelector('[data-action="edit-route"]').focus();
     });
-    panel.querySelector('[data-action="export-route"]')?.addEventListener("click", () => {
+    tools.querySelector('[data-action="export-route"]')?.addEventListener("click", () => {
       const url = URL.createObjectURL(new Blob([JSON.stringify(this.routes.get(state.weekend.id), null, 2) + "\n"], { type: "application/json" }));
       const link = document.createElement("a");
       link.href = url;
@@ -1469,10 +1487,10 @@ class PitWallConsole {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
-    panel.querySelector('[data-action="import-route"]')?.addEventListener("click", () => {
-      panel.querySelector("[data-route-file]").click();
+    tools.querySelector('[data-action="import-route"]')?.addEventListener("click", () => {
+      tools.querySelector("[data-route-file]").click();
     });
-    panel.querySelector("[data-route-file]")?.addEventListener("change", async (event) => {
+    tools.querySelector("[data-route-file]")?.addEventListener("change", async (event) => {
       const file = event.currentTarget.files[0];
       if (!file) return;
       const route = this.routes.get(state.weekend.id);
@@ -1495,7 +1513,7 @@ class PitWallConsole {
       }
       this.renderSession();
     });
-    panel.querySelector('[data-action="pause-route-session"]')?.addEventListener("click", () => {
+    tools.querySelector('[data-action="pause-route-session"]')?.addEventListener("click", () => {
       if (state.debugPaused) {
         state.showRoute = false;
         state.editRoute = false;
