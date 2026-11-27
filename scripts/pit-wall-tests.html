@@ -16,6 +16,13 @@
 
     const results = document.querySelector("#results");
     const root = document.querySelector("#fixture");
+    const memoryStorage = () => {
+      const values = new Map();
+      return {
+        getItem: (key) => values.has(key) ? values.get(key) : null,
+        setItem: (key, value) => values.set(key, String(value)),
+      };
+    };
     const assert = (condition, message) => {
       if (!condition) throw new Error(message);
     };
@@ -625,8 +632,11 @@
         Math.random = actualRandom;
       }
 
-      const game = new PitWallConsole(root);
+      const careerStorage = memoryStorage();
+      const game = new PitWallConsole(root, careerStorage);
       game.mount();
+      assert(root.querySelector('[data-action="continue-game"]').disabled,
+        "Continue must be disabled without a career save");
       assert(!root.querySelector('[data-action="balance-toggle"]') && !root.querySelector("#pit-wall-balance-panel"),
         "The developer balance panel must not be present without developer mode");
       const commandBody = root.querySelector("#pit-wall-command-content");
@@ -719,6 +729,55 @@
         && root.querySelector('[data-timing="remaining"]').textContent === "60:00"
         && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "100",
       "A confirmed season must load the first selected weekend");
+      const savedRoot = document.createElement("div");
+      document.body.append(savedRoot);
+      const restored = new PitWallConsole(savedRoot, careerStorage);
+      restored.mount();
+      assert(!savedRoot.querySelector('[data-action="continue-game"]').disabled,
+        "Continue must be enabled after a career is saved");
+      const confirmOverwrite = window.confirm;
+      try {
+        window.confirm = () => false;
+        savedRoot.querySelector('[data-action="new-game"]').click();
+        assert(savedRoot.querySelector('[data-action="continue-game"]'),
+          "Cancelling the overwrite warning must leave the saved career untouched");
+      } finally {
+        window.confirm = confirmOverwrite;
+      }
+      savedRoot.querySelector('[data-action="continue-game"]').click();
+      assert(restored.driver.name === selectedDriver && restored.team.name === selectedTeam
+        && restored.weekendState.sessionIndex === 0 && restored.weekendState.phase === "ready",
+      "Continue must restore the selected driver, team and first unfinished session");
+      restored.balance.lap.fuelPerLap += 1;
+      restored.saveCareer();
+      const balanceResume = new PitWallConsole(savedRoot, careerStorage);
+      balanceResume.mount();
+      savedRoot.querySelector('[data-action="continue-game"]').click();
+      assert(balanceResume.balance.lap.fuelPerLap === restored.balance.lap.fuelPerLap,
+        "Continue must restore the active developer balance");
+      game.saveCareer();
+      const failedWrites = {
+        getItem: (key) => careerStorage.getItem(key),
+        setItem: () => { throw new Error("Storage unavailable"); },
+      };
+      const failedGame = new PitWallConsole(savedRoot, failedWrites);
+      failedGame.mount();
+      savedRoot.querySelector('[data-action="continue-game"]').click();
+      failedGame.saveCareer();
+      assert(savedRoot.querySelector(".pit-wall-save-feedback").textContent.includes("Storage unavailable"),
+        "Storage failures must be reported to the player");
+      savedRoot.remove();
+      const badStorage = memoryStorage();
+      badStorage.setItem("pit-wall-career-v1", "{invalid");
+      const badRoot = document.createElement("div");
+      document.body.append(badRoot);
+      const badGame = new PitWallConsole(badRoot, badStorage);
+      badGame.mount();
+      assert(badRoot.querySelector('[data-action="continue-game"]').disabled
+        && badRoot.querySelector(".pit-wall-save-feedback").textContent.includes("Could not read career save")
+        && badStorage.getItem("pit-wall-career-v1") === "{invalid",
+      "A corrupt save must be reported without being overwritten");
+      badRoot.remove();
       await root.querySelector(".pit-wall-circuit img").decode();
 
       const bahrainWeekend = game.weekendState.weekend;
@@ -731,6 +790,10 @@
         && root.querySelector(".pit-wall-classification h4").textContent === "Sprint Qualifying Classification"
         && !root.querySelector('[data-action="send-out"]').disabled,
       "Sprint Qualifying must start in the garage with its live classification");
+      const checkpointBeforeActiveSession = careerStorage.getItem("pit-wall-career-v1");
+      game.saveCareer();
+      assert(careerStorage.getItem("pit-wall-career-v1") === checkpointBeforeActiveSession,
+        "An active session must never overwrite its preceding checkpoint");
       root.querySelector('[data-driver-mode="Push"]').click();
       root.querySelector('[data-setup-tyre="Soft"]').click();
       const qualifyingFuel = root.querySelector("[data-setup-fuel]");
@@ -739,8 +802,9 @@
       qualifyingFuel.value = "4.7";
       qualifyingFuel.dispatchEvent(new Event("input", { bubbles: true }));
       assert(root.querySelector("[data-setup-fuel-value]").textContent === "4.7%"
-        && root.querySelector('[data-timing="fuel-percent"]').textContent === "100%",
-      "Pending qualifying fuel must not replace the current fuel reading before Send Out");
+        && root.querySelector('[data-timing="fuel-percent"]').textContent === "4.7%"
+        && game.weekendState.practice.fuel === 100,
+      "Qualifying garage telemetry must preview fuel without refuelling before Send Out");
       root.querySelector('[data-action="send-out"]').click();
       assert(root.querySelector("[data-qualifying-status]").textContent.includes("Out Lap")
         && root.querySelector("[data-qualifying-status]").textContent.includes("Tyres Warming")
@@ -786,6 +850,17 @@
       assert(game.weekendState.sprintGrid === sprintGrid && game.weekendState.sessionIndex === 2
         && root.querySelector(".pit-wall-command-status").textContent.includes("Race Setup"),
       "The qualifying grid must remain available while preparing the Sprint Race");
+      const gridRoot = document.createElement("div");
+      document.body.append(gridRoot);
+      const gridResume = new PitWallConsole(gridRoot, careerStorage);
+      gridResume.mount();
+      gridRoot.querySelector('[data-action="continue-game"]').click();
+      assert(gridResume.weekendState.sessionIndex === 2
+        && gridResume.weekendState.sprintGrid.entries.map((entry) => entry.driver.name).join("|")
+          === sprintGrid.entries.map((entry) => entry.driver.name).join("|")
+        && gridResume.weekendState.sprintGrid.playerBest === sprintGrid.playerBest,
+      "Continue must retain the qualifying grid for the next race");
+      gridRoot.remove();
       let raceNow = 0;
       try {
         Object.defineProperty(performance, "now", { configurable: true, value: () => raceNow });
@@ -1055,8 +1130,13 @@
       assert(root.querySelectorAll('[data-setup-tyre][aria-pressed="true"]').length === 1
         && root.querySelector('[data-setup-tyre="Soft"]').getAttribute("aria-pressed") === "true"
         && root.querySelector("[data-setup-fuel-value]").textContent === "35%"
-        && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "100",
-      "Setup choices must update pending selections without changing fitted fuel");
+        && root.querySelector('[aria-label="Fuel load"]').getAttribute("aria-valuenow") === "35"
+        && root.querySelector('[data-timing="fuel-percent"]').textContent === "35%"
+        && root.querySelector('[data-timing="fuel-range"]').textContent.includes(
+          (35 / fuelPerLap(game.balance, game.weekendState.practice.mode, game.weekendState.practice.upgrades,
+            game.weekendState.practice.circuitLength)).toFixed(1))
+        && game.weekendState.practice.fuel === 100,
+      "Garage telemetry must immediately show pending fuel without refuelling until Send Out");
       game.renderSession();
       assert(root.querySelector('[data-setup-tyre="Soft"]').getAttribute("aria-pressed") === "true"
         && root.querySelector("[data-setup-fuel]").value === "35", "Setup must survive a session rerender");
@@ -1170,7 +1250,8 @@
       plannedFuel.value = "35";
       plannedFuel.dispatchEvent(new Event("input", { bubbles: true }));
       assert(game.weekendState.practice.tyre === "Medium" && game.weekendState.practice.fuel <= currentFuel
-        && game.weekendState.practice.fuel > currentFuel - .1,
+        && game.weekendState.practice.fuel > currentFuel - .1
+        && root.querySelector('[data-timing="fuel-percent"]').textContent !== "35%",
       "Preparing a stint while circulating must not alter the current tyre or refuel");
       root.querySelector('[data-action="call-pit"]').click();
       assert(game.weekendState.practice.pitState === "called"
@@ -1254,6 +1335,14 @@
         && !root.querySelector(".pit-wall-panel-centre button")
         && !root.querySelector("[data-discovery-index]") && !root.querySelector(".pit-wall-lap-entry.is-current"),
       "Completing before three laps must show a review without discoveries");
+      const insufficientRoot = document.createElement("div");
+      document.body.append(insufficientRoot);
+      const insufficientResume = new PitWallConsole(insufficientRoot, careerStorage);
+      insufficientResume.mount();
+      insufficientRoot.querySelector('[data-action="continue-game"]').click();
+      assert(insufficientResume.weekendState.phase === "ready" && insufficientResume.weekendState.sessionIndex === 1,
+        "Resuming insufficient practice must advance without inventing a discovery");
+      insufficientRoot.remove();
       const upgradesBeforeInsufficientReview = game.permanentUpgrades.length + game.weekendDiscoveries.length;
       root.querySelector('[data-action="continue-review"]').click();
       assert(game.weekendState.sessionIndex === 1
@@ -1343,6 +1432,23 @@
           formatLapTime(completedTimes.reduce((sum, lap) => sum + lap, 0) / completedTimes.length))
         && root.querySelector(".pit-wall-session-review").textContent.includes("Driver Feedback"),
       "Completing a practice must stop the marker and show its review");
+      const rewardRoot = document.createElement("div");
+      document.body.append(rewardRoot);
+      const rewardResume = new PitWallConsole(rewardRoot, careerStorage);
+      rewardResume.mount();
+      rewardRoot.querySelector('[data-action="continue-game"]').click();
+      assert(rewardResume.weekendState.phase === "discovery"
+        && rewardResume.weekendState.options.map((item) => item.id).join("|")
+          === game.weekendState.options.map((item) => item.id).join("|"),
+      "Resuming a completed session must preserve its earned discovery offer");
+      rewardRoot.querySelector('[data-discovery-index="0"]').click();
+      const afterReward = new PitWallConsole(rewardRoot, careerStorage);
+      afterReward.mount();
+      rewardRoot.querySelector('[data-action="continue-game"]').click();
+      assert(afterReward.weekendState.phase === "ready" && afterReward.weekendState.sessionIndex === 1
+        && afterReward.activeDiscoveries().length === game.activeDiscoveries().length + 1,
+      "Choosing a discovery must save the reward and next unfinished session");
+      rewardRoot.remove();
       root.querySelector('[data-action="continue-review"]').click();
       assert(game.weekendState.phase === "discovery"
         && root.querySelector(".pit-wall-discovery-heading").textContent.includes("Session Complete")
@@ -1404,6 +1510,31 @@
         && driverPanel.textContent.includes("Active Upgrades")
         && !driverPanel.querySelector(".pit-wall-upgrade-list .green"),
       "Five completed sessions must finish the round and expire weekend discoveries");
+      const nextRoundRoot = document.createElement("div");
+      document.body.append(nextRoundRoot);
+      const nextRoundResume = new PitWallConsole(nextRoundRoot, careerStorage);
+      nextRoundResume.mount();
+      nextRoundRoot.querySelector('[data-action="continue-game"]').click();
+      assert(nextRoundResume.currentRoundIndex === 1 && nextRoundResume.roundsCompleted === 1
+        && nextRoundResume.weekendState.phase === "ready" && nextRoundResume.weekendState.sessionIndex === 0
+        && JSON.stringify(nextRoundResume.championship.map((entry) => entry.points))
+          === JSON.stringify(game.championship.map((entry) => entry.points))
+        && nextRoundResume.permanentUpgrades.length === game.permanentUpgrades.length,
+      "Resuming a completed weekend must preserve points and upgrades and open the next round");
+      nextRoundResume.currentRoundIndex = nextRoundResume.seasonWeekends.length - 1;
+      nextRoundResume.roundsCompleted = nextRoundResume.seasonWeekends.length;
+      nextRoundResume.renderWeekend(nextRoundResume.seasonWeekends[nextRoundResume.currentRoundIndex]);
+      nextRoundResume.weekendState.phase = "complete";
+      nextRoundResume.weekendState.sessionIndex = nextRoundResume.weekendState.weekend.sessions.length;
+      nextRoundResume.weekendState.sessionResults.fill("completed");
+      nextRoundResume.saveCareer();
+      const finalResume = new PitWallConsole(nextRoundRoot, careerStorage);
+      finalResume.mount();
+      nextRoundRoot.querySelector('[data-action="continue-game"]').click();
+      assert(nextRoundRoot.querySelector(".pit-wall-season-finish")
+        && finalResume.roundsCompleted === finalResume.seasonWeekends.length,
+      "A completed final weekend must resume at the season summary");
+      nextRoundRoot.remove();
 
       const drawAt = (roll, selection) => {
         let call = 0;
@@ -1869,7 +2000,7 @@
         new frame.contentWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
       doc.querySelector('a[href="#games-pit-wall"]').click();
       const originalUrl = frame.contentWindow.location.href;
-      const layoutGame = new PitWallConsole(frameRoot);
+      const layoutGame = new PitWallConsole(frameRoot, memoryStorage());
       layoutGame.mount();
       frameRoot.querySelector('[data-action="new-game"]').click();
       await new Promise((resolve) => setTimeout(resolve, 250));
@@ -2783,6 +2914,7 @@
       for (const level of [100, 75, 50, 25, 0]) {
         layoutGame.weekendState.practice.tyreWear = 100 - level;
         layoutGame.weekendState.practice.fuel = level;
+        layoutGame.weekendState.setup.fuel = level;
         layoutGame.updateTiming();
         for (const name of ["Tyre condition", "Fuel load"]) {
           const meter = frameRoot.querySelector(`[aria-label="${name}"]`);
@@ -3163,7 +3295,7 @@
       debugDoc.querySelector('[data-room="gamesroom"]').dispatchEvent(
         new debugFrame.contentWindow.MouseEvent("click", { bubbles: true, cancelable: true }));
       debugDoc.querySelector('a[href="#games-pit-wall"]').click();
-      const debugGame = new PitWallConsole(debugRoot);
+      const debugGame = new PitWallConsole(debugRoot, memoryStorage());
       debugGame.balance.driverTraits["New Driver Trait"] = 125;
       debugGame.balance.teamTraits["New Team Trait"] = 75;
       debugGame.balance.vehicleStats.Experimental = { base: 0, lapGainMs: 120, newAdjustment: 4 };

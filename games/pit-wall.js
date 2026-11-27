@@ -416,9 +416,19 @@ function teamDetails(team, includeDescription = false) {
   `;
 }
 
+const CAREER_SAVE_KEY = "pit-wall-career-v1";
+
+function balanceMatches(value, template) {
+  if (typeof template === "number") return typeof value === "number" && Number.isFinite(value);
+  if (template === null || typeof template !== "object") return typeof value === typeof template;
+  if (!value || typeof value !== "object" || Array.isArray(value) !== Array.isArray(template)) return false;
+  return Object.keys(template).every((key) => balanceMatches(value[key], template[key]));
+}
+
 class PitWallConsole {
-  constructor(rootElement) {
+  constructor(rootElement, storage) {
     this.rootElement = rootElement;
+    this.storage = storage;
     this.routeDebugEnabled = new URLSearchParams(rootElement.ownerDocument.defaultView.location.search).get("pitWallDebug") === "1";
     this.routes = new Map();
     this.balance = createBalance();
@@ -444,6 +454,7 @@ class PitWallConsole {
             ${this.routeDebugEnabled ? '<button type="button" class="pit-wall-discovery-action" data-action="balance-toggle" aria-expanded="false" aria-controls="pit-wall-balance-panel">Balance</button>' : ""}
             <a class="pit-wall-exit" href="#games-room-start">Games Room</a>
           </div>
+          <span class="pit-wall-save-feedback" role="status" aria-live="polite"></span>
         </header>
 
         <!-- Main Layout -->
@@ -515,10 +526,175 @@ class PitWallConsole {
         if (this.sessionTimer != null && this.weekendState?.practice && this.syncPracticeClock()) this.completeSession();
       }, () => this.balanceContext());
     }
+    const continueButton = this.rootElement.querySelector('[data-action="continue-game"]');
+    let saved = null;
+    let hasSave = false;
+    try {
+      const raw = this.careerStorage().getItem(CAREER_SAVE_KEY);
+      hasSave = raw !== null;
+      if (hasSave) saved = this.parseCareer(raw);
+    } catch (error) {
+      this.showSaveError("Could not read career save", error);
+    }
+    continueButton.disabled = !saved;
+    continueButton.addEventListener("click", () => {
+      if (!saved || this.weekendState?.phase === "running") return;
+      try {
+        this.restoreCareer(saved);
+      } catch (error) {
+        this.showSaveError("Could not load career save", error);
+      }
+    });
     this.rootElement.querySelector('[data-action="new-game"]').addEventListener("click", () => {
+      if (hasSave && !this.rootElement.ownerDocument.defaultView.confirm(
+        "Starting a new career will overwrite the current save. Continue?")) return;
       this.startDraft();
     });
 
+  }
+
+  careerStorage() {
+    return this.storage || this.rootElement.ownerDocument.defaultView.localStorage;
+  }
+
+  saveFeedback(message, error = false) {
+    const feedback = this.rootElement.querySelector(".pit-wall-save-feedback");
+    if (!feedback) return;
+    clearTimeout(this.saveFeedbackTimer);
+    feedback.textContent = message;
+    feedback.setAttribute("role", error ? "alert" : "status");
+    if (!error) this.saveFeedbackTimer = setTimeout(() => { feedback.textContent = ""; }, 3000);
+  }
+
+  showSaveError(message, error) {
+    console.error(message, error);
+    this.saveFeedback(`${message}: ${error.message}`, true);
+  }
+
+  parseCareer(raw) {
+    const save = JSON.parse(raw);
+    const fail = () => { throw new Error("Invalid or unsupported career save"); };
+    if (!save || save.version !== 1 || !Array.isArray(save.weekends) || !save.weekends.length
+      || new Set(save.weekends).size !== save.weekends.length
+      || !save.weekends.every((id) => WEEKENDS.some((weekend) => weekend.id === id))
+      || !Number.isInteger(save.round) || save.round < 0 || save.round >= save.weekends.length
+      || !Number.isInteger(save.roundsCompleted) || save.roundsCompleted < 0 || save.roundsCompleted > save.weekends.length
+      || !DRIVERS.some((driver) => driver.name === save.driver)
+      || !TEAMS.some((team) => team.name === save.team)
+      || !balanceMatches(save.balance, createBalance())) fail();
+    const weekend = WEEKENDS.find((item) => item.id === save.weekends[save.round]);
+    const state = save.state;
+    if (!state || !["ready", "review", "discovery", "complete"].includes(state.phase)
+      || !Number.isInteger(state.sessionIndex) || state.sessionIndex < 0
+      || state.sessionIndex > weekend.sessions.length
+      || (state.phase === "complete") !== (state.sessionIndex === weekend.sessions.length)
+      || !Array.isArray(state.sessionResults) || state.sessionResults.length !== weekend.sessions.length
+      || !state.sessionResults.every((result) => ["pending", "completed", "skipped"].includes(result))
+      || !state.setup || !Object.hasOwn(save.balance.tyres, state.setup.tyre)
+      || !Number.isFinite(state.setup.fuel) || state.setup.fuel < .1 || state.setup.fuel > 100
+      || (state.setup.mode && !Object.hasOwn(save.balance.modes, state.setup.mode))
+      || !Number.isInteger(state.rerollsRemaining) || state.rerollsRemaining < 0
+      || !Number.isInteger(state.replacementsRemaining) || state.replacementsRemaining < 0) fail();
+    const validDiscovery = (item) => item && DISCOVERIES.some((base) => base.id === item.id)
+      && (item.level === undefined || (Number.isInteger(item.level) && item.level > 0))
+      && (item.amount === undefined || Number.isFinite(item.amount));
+    if (![save.permanentUpgrades, save.weekendDiscoveries, state.options].every(
+      (items) => Array.isArray(items) && items.every(validDiscovery))
+      || !Array.isArray(save.uniqueRewards) || !save.uniqueRewards.every((id) => DISCOVERIES.some((item) => item.id === id))
+      || (state.phase === "discovery" && !state.options.length)
+      || !Array.isArray(save.championship)) fail();
+    const canonicalEntry = (entry) => {
+      if (!entry || !DRIVERS.some((driver) => driver.name === entry.driver?.name)
+        || !TEAMS.some((team) => team.name === entry.team?.name) || typeof entry.player !== "boolean") fail();
+      entry.driver = DRIVERS.find((driver) => driver.name === entry.driver.name);
+      entry.team = TEAMS.find((team) => team.name === entry.team.name);
+    };
+    save.championship.forEach((entry) => {
+      canonicalEntry(entry);
+      if (!Number.isFinite(entry.points) || entry.points < 0 || !Number.isInteger(entry.order)) fail();
+    });
+    for (const grid of [state.sprintGrid, state.grandPrixGrid]) {
+      if (grid !== null) {
+        if (!grid || !Array.isArray(grid.entries) || !grid.entries.length) fail();
+        grid.entries.forEach(canonicalEntry);
+      }
+    }
+    const canonicalDiscovery = (item) => {
+      const base = DISCOVERIES.find((discovery) => discovery.id === item.id);
+      return { ...base, ...(item.level === undefined ? {} : { level: item.level }),
+        ...(item.amount === undefined ? {} : { amount: item.amount }),
+        ...(item.amount === undefined || !base.stat ? {} : { effect: `+${item.amount} ${base.stat}` }) };
+    };
+    save.permanentUpgrades = save.permanentUpgrades.map(canonicalDiscovery);
+    save.weekendDiscoveries = save.weekendDiscoveries.map(canonicalDiscovery);
+    state.options = state.options.map(canonicalDiscovery);
+    return save;
+  }
+
+  saveCareer() {
+    const state = this.weekendState;
+    if (!state || state.phase === "running") return;
+    const snapshot = {
+      version: 1, driver: this.driver.name, team: this.team.name,
+      weekends: this.seasonWeekends.map((weekend) => weekend.id), round: this.currentRoundIndex,
+      roundsCompleted: this.roundsCompleted, championship: this.championship,
+      permanentUpgrades: this.permanentUpgrades, weekendDiscoveries: this.weekendDiscoveries,
+      uniqueRewards: [...this.uniqueRewards], balance: this.balance,
+      state: {
+        phase: state.phase, sessionIndex: state.sessionIndex, sessionResults: state.sessionResults,
+        setup: state.setup, sprintGrid: state.sprintGrid, grandPrixGrid: state.grandPrixGrid,
+        options: state.options, rerollsRemaining: state.rerollsRemaining,
+        replacementsRemaining: state.replacementsRemaining,
+      },
+    };
+    try {
+      const raw = JSON.stringify(snapshot);
+      this.parseCareer(raw);
+      this.careerStorage().setItem(CAREER_SAVE_KEY, raw);
+      this.saveFeedback("Career Saved");
+    } catch (error) {
+      this.showSaveError("Could not save career", error);
+    }
+  }
+
+  restoreCareer(save) {
+    this.clearSessionTimer();
+    this.clearRouteMarker();
+    this.routes.clear();
+    this.driver = DRIVERS.find((driver) => driver.name === save.driver);
+    this.team = TEAMS.find((team) => team.name === save.team);
+    this.seasonWeekends = save.weekends.map((id) => WEEKENDS.find((weekend) => weekend.id === id));
+    this.selectedWeekends = new Set(save.weekends);
+    this.currentRoundIndex = save.round;
+    this.roundsCompleted = save.roundsCompleted;
+    this.championship = save.championship;
+    this.permanentUpgrades = save.permanentUpgrades;
+    this.uniqueRewards = new Set(save.uniqueRewards);
+    Object.assign(this.balance, save.balance);
+    this.renderWeekend(this.seasonWeekends[this.currentRoundIndex]);
+    this.weekendDiscoveries = save.weekendDiscoveries;
+    Object.assign(this.weekendState, save.state);
+    const state = this.weekendState;
+    if (state.phase === "review") {
+      if (state.options.length) {
+        state.phase = "discovery";
+        state.discoveryPrepared = true;
+      } else {
+        this.advanceSession("No discovery awarded.");
+        return;
+      }
+    } else if (state.phase === "complete") {
+      if (this.currentRoundIndex < this.seasonWeekends.length - 1) {
+        this.currentRoundIndex += 1;
+        this.renderWeekend(this.seasonWeekends[this.currentRoundIndex]);
+        this.saveCareer();
+      } else {
+        this.renderSeasonComplete("");
+      }
+      return;
+    }
+    this.renderProfile("Race Weekend Ready");
+    this.renderSession();
   }
 
   startDraft() {
@@ -818,6 +994,7 @@ class PitWallConsole {
       this.currentRoundIndex = 0;
       this.roundsCompleted = 0;
       this.renderWeekend(this.seasonWeekends[0]);
+      this.saveCareer();
     });
     renderCalendar();
     updateSelection();
@@ -947,7 +1124,8 @@ class PitWallConsole {
     const timing = this.rootElement.querySelector(".pit-wall-telemetry");
     if (!timing) return;
     const practice = this.weekendState.practice;
-    const fuel = practice ? practice.fuel : this.weekendState.setup.fuel;
+    const useSetupFuel = !practice || (!this.isRace() && ["stopped", "entering"].includes(practice.pitState));
+    const fuel = useSetupFuel ? this.weekendState.setup.fuel : practice.fuel;
     const mode = practice ? practice.mode : this.weekendState.setup.mode || "Balanced";
     const rate = fuelPerLap(this.balance, mode, practice ? practice.upgrades : this.activeDiscoveries(),
       practice ? practice.circuitLength : parseFloat(this.weekendState.weekend.circuitLength));
@@ -965,7 +1143,7 @@ class PitWallConsole {
     });
     for (const [label, value] of [
       ["Tyre condition", practice ? 100 - practice.tyreWear : 100],
-      ["Fuel load", practice ? practice.fuel : this.weekendState.setup.fuel],
+      ["Fuel load", fuel],
     ]) {
       const meter = timing.querySelector(`[aria-label="${label}"]`);
       const level = Math.max(0, Math.min(100, value));
@@ -1052,6 +1230,7 @@ class PitWallConsole {
           if (this.weekendState !== state || state.phase !== "complete") return;
           this.currentRoundIndex += 1;
           this.renderWeekend(this.seasonWeekends[this.currentRoundIndex]);
+          this.saveCareer();
         });
         content.querySelector('[data-action="continue-review"]')?.addEventListener("click", () => {
           if (state.phase !== "review") return;
@@ -1138,6 +1317,7 @@ class PitWallConsole {
         if (!running) {
           state.setup.mode = button.dataset.driverMode;
           this.updateTiming();
+          this.saveCareer();
           return;
         }
         if (race && (state.race.entries.find((entry) => entry.player).retired
@@ -1164,6 +1344,7 @@ class PitWallConsole {
         if (!sync()) return;
         state.setup.tyre = button.dataset.setupTyre;
         this.updateTiming();
+        if (!running) this.saveCareer();
       });
     });
     content.querySelector("[data-setup-fuel]").addEventListener("input", (event) => {
@@ -1175,6 +1356,9 @@ class PitWallConsole {
       }
       state.setup.fuel = fuel;
       this.updateTiming();
+    });
+    content.querySelector("[data-setup-fuel]").addEventListener("change", () => {
+      if (state.phase === "ready") this.saveCareer();
     });
     this.updateCommand();
   }
@@ -1847,25 +2031,36 @@ class PitWallConsole {
         else state.grandPrixGrid = grid;
       }
       state.phase = "review";
+      if (this.isRace() || this.isQualifying() || state.practice.lapTimes.length >= MINIMUM_LAPS) {
+        this.prepareDiscoveries();
+      }
       this.renderSession();
+      this.saveCareer();
       this.rootElement.querySelector("#pit-wall-review-title").focus();
       return;
     }
     this.offerDiscoveries();
   }
 
-  offerDiscoveries() {
+  prepareDiscoveries() {
     const state = this.weekendState;
-    state.phase = "discovery";
     state.rerollsRemaining = this.permanentUpgrades.filter((item) => item.id === "research-charter").length * this.balance.discoveries.fullRerolls;
     state.replacementsRemaining = this.permanentUpgrades.filter((item) => item.id === "design-review").length * this.balance.discoveries.singleRerolls;
     state.replacementMode = false;
     state.options = discoveryOffer(this.isPostGrandPrix(), this.activeDiscoveries(), this.uniqueRewards, this.balance);
+    state.discoveryPrepared = true;
+  }
+
+  offerDiscoveries() {
+    const state = this.weekendState;
+    state.phase = "discovery";
+    if (!state.discoveryPrepared) this.prepareDiscoveries();
     if (!state.options.length) {
       this.advanceSession("No discoveries available.");
       return;
     }
     this.renderSession();
+    this.saveCareer();
     this.rootElement.querySelector(".pit-wall-discovery-heading").focus();
   }
 
@@ -1925,6 +2120,7 @@ class PitWallConsole {
     state.message = "";
     state.options = options;
     this.renderSession();
+    this.saveCareer();
     this.rootElement.querySelector(".pit-wall-discovery-heading").focus();
   }
 
@@ -1946,6 +2142,7 @@ class PitWallConsole {
     state.replacementMode = false;
     state.message = "";
     this.renderSession();
+    this.saveCareer();
     this.rootElement.querySelector(`[data-discovery-index="${index}"]`).focus();
   }
 
@@ -2016,6 +2213,7 @@ class PitWallConsole {
     const state = this.weekendState;
     state.message = message;
     state.options = [];
+    state.discoveryPrepared = false;
     state.practice = null;
     state.classification = null;
     state.race = null;
@@ -2029,11 +2227,13 @@ class PitWallConsole {
       this.weekendDiscoveries = [];
       if (this.currentRoundIndex === this.seasonWeekends.length - 1) {
         this.renderSeasonComplete(message);
+        this.saveCareer();
         return;
       }
       this.renderProfile("Round Complete");
     }
     this.renderSession();
+    this.saveCareer();
     const heading = this.rootElement.querySelector(".pit-wall-session-name, .pit-wall-session-complete, .pit-wall-session-step.current");
     heading?.focus();
   }

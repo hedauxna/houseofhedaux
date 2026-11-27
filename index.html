@@ -467,6 +467,21 @@
       letter-spacing: .04em;
     }
 
+    .pit-wall-save-feedback:empty { display: none; }
+    .pit-wall-save-feedback:not(:empty) {
+      position: fixed;
+      z-index: 20;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 80vw;
+      padding: 5px 9px;
+      border: 1px solid var(--gold);
+      background: #031a34;
+      color: var(--paper);
+      font: 600 11px/1.3 var(--sans);
+    }
+
     /* Layout Grid */
     .pit-wall-layout {
       flex: 1;

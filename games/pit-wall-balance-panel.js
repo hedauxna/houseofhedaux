@@ -216,7 +216,7 @@ export function mountBalancePanel(root, balance, discoveries, onChange, beforeCh
       <button type="button" class="pit-wall-discovery-action" data-action="export-balance">Export Balance Data</button>
       <button type="button" class="pit-wall-discovery-action" data-action="close-balance">Close</button>
     </header>
-    <p class="pit-wall-balance-intro">Changes are in memory. New lap targets use edited values; export to save them.</p>
+    <p class="pit-wall-balance-intro">New lap targets use edited values. Career checkpoints save the balance; export downloads a copy.</p>
     <p class="pit-wall-balance-context" data-balance-context></p>
     <p class="pit-wall-balance-status" role="status" aria-live="polite"></p>
     <div class="pit-wall-balance-sections"></div>`;
